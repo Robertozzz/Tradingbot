@@ -399,7 +399,7 @@ if [[ $NO_TLS -eq 1 ]]; then
   cat > /etc/nginx/sites-available/tradingbot <<'NGINX'
 server {
     listen 80;
-    server_name _;
+    server_name $DOMAIN;
 
     # Auth gate
     location = /auth/validate {
