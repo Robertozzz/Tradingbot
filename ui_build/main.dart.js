@@ -93482,8 +93482,9 @@ A.I7(null,null,A.ap(["autoconnect","true","reconnect","true","reconnect_delay","
 var s=v.G.document.createElement("iframe")
 s.src="/novnc/vnc_lite.html?autoconnect=1&reconnect=1&reconnect_delay=1000&resize=scale&path=websockify&view_only=0"
 s.style.border="0"
+s.allowFullscreen=!0
 s.style.width="100%"
-s.style.height="820px"
+s.style.height="100%"
 if(!$.aIM){$.aE1()
 $.xY().Bm("ibkr-novnc-lite",new A.aqV(s),!0)
 $.aIM=!0}},

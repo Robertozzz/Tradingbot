@@ -260,8 +260,8 @@ install -D -m 0755 /dev/stdin /opt/ibkr/run-ibgateway.sh <<'BASH'
 set -euo pipefail
 
 export DISPLAY=${DISPLAY:-:1}
-XVFB_W=${XVFB_W:-1280}
-XVFB_H=${XVFB_H:-820}
+XVFB_W=${XVFB_W:-800}
+XVFB_H=${XVFB_H:-600}
 XVFB_D=${XVFB_D:-24}
 
 IB_HOME="${IB_HOME:-$HOME/Jts/ibgateway/1037}"
@@ -289,7 +289,11 @@ if ! pgrep -f "openbox" >/dev/null; then
 fi
 
 if ! pgrep -f "x11vnc.*$DISPLAY" >/dev/null; then
-  x11vnc -display $DISPLAY -localhost -forever -shared -rfbport 5901 -quiet &
+  x11vnc -display $DISPLAY \
+         -localhost -forever -shared \
+         -rfbport 5901 -quiet \
+         -noxdamage -noxrecord -xkb -repeat \
+         -cursor most &
   sleep 0.5
 fi
 
@@ -412,8 +416,8 @@ After=network-online.target
 Type=simple
 User=ibkr
 Environment=DISPLAY=:1
-Environment=XVFB_W=1280
-Environment=XVFB_H=820
+Environment=XVFB_W=800
+Environment=XVFB_H=600
 ExecStart=/opt/ibkr/run-ibgateway.sh
 Restart=always
 RestartSec=5
