@@ -1,0 +1,521 @@
+INFO:     Started server process [18224]
+INFO:     Waiting for application startup.
+INFO:     Application startup complete.
+INFO:     Uvicorn running on http://127.0.0.1:8000 (Press CTRL+C to quit)
+INFO:     127.0.0.1:65389 - "GET /health HTTP/1.1" 200 OK
+INFO:     127.0.0.1:65390 - "GET /health HTTP/1.1" 200 OK
+INFO:     127.0.0.1:65397 - "GET /health HTTP/1.1" 200 OK
+INFO:     127.0.0.1:65398 - "GET /health HTTP/1.1" 200 OK
+INFO:     127.0.0.1:65403 - "GET /health HTTP/1.1" 200 OK
+INFO:     127.0.0.1:65404 - "GET /health HTTP/1.1" 200 OK
+INFO:     127.0.0.1:65416 - "GET /health HTTP/1.1" 200 OK
+INFO:     127.0.0.1:65417 - "GET /health HTTP/1.1" 200 OK
+INFO:     127.0.0.1:65423 - "GET / HTTP/1.1" 304 Not Modified
+INFO:     127.0.0.1:65423 - "GET / HTTP/1.1" 304 Not Modified
+INFO:     127.0.0.1:65423 - "GET / HTTP/1.1" 304 Not Modified
+INFO:     127.0.0.1:65423 - "GET / HTTP/1.1" 304 Not Modified
+INFO:     127.0.0.1:65423 - "GET / HTTP/1.1" 304 Not Modified
+INFO:     127.0.0.1:65423 - "GET / HTTP/1.1" 304 Not Modified
+INFO:     127.0.0.1:65423 - "GET /flutter_service_worker.js?v=1576134862 HTTP/1.1" 304 Not Modified
+INFO:     127.0.0.1:65457 - "GET /health HTTP/1.1" 200 OK
+INFO:     127.0.0.1:65458 - "GET /health HTTP/1.1" 200 OK
+INFO:     127.0.0.1:65469 - "GET / HTTP/1.1" 304 Not Modified
+INFO:     127.0.0.1:65469 - "GET / HTTP/1.1" 304 Not Modified
+INFO:     127.0.0.1:65469 - "GET /flutter_service_worker.js?v=1576134862 HTTP/1.1" 304 Not Modified
+INFO:     127.0.0.1:49154 - "GET /health HTTP/1.1" 200 OK
+INFO:     127.0.0.1:49155 - "GET /health HTTP/1.1" 200 OK
+INFO:     127.0.0.1:49303 - "GET /health HTTP/1.1" 200 OK
+INFO:     127.0.0.1:49304 - "GET /health HTTP/1.1" 200 OK
+INFO:     127.0.0.1:55830 - "GET /health HTTP/1.1" 200 OK
+INFO:     127.0.0.1:55831 - "GET /health HTTP/1.1" 200 OK
+INFO:     127.0.0.1:55953 - "GET /health HTTP/1.1" 200 OK
+INFO:     127.0.0.1:55954 - "GET /health HTTP/1.1" 200 OK
+INFO:     127.0.0.1:56115 - "GET /health HTTP/1.1" 200 OK
+INFO:     127.0.0.1:56116 - "GET /health HTTP/1.1" 200 OK
+INFO:     127.0.0.1:56126 - "GET /health HTTP/1.1" 200 OK
+INFO:     127.0.0.1:56127 - "GET /health HTTP/1.1" 200 OK
+INFO:     127.0.0.1:56267 - "GET /health HTTP/1.1" 200 OK
+INFO:     127.0.0.1:56268 - "GET /health HTTP/1.1" 200 OK
+INFO:     Started server process [20388]
+INFO:     Waiting for application startup.
+INFO:     Application startup complete.
+INFO:     Uvicorn running on http://127.0.0.1:8000 (Press CTRL+C to quit)
+INFO:     127.0.0.1:61792 - "GET /health HTTP/1.1" 200 OK
+INFO:     127.0.0.1:61793 - "GET /health HTTP/1.1" 200 OK
+INFO:     127.0.0.1:61800 - "GET /health HTTP/1.1" 200 OK
+INFO:     127.0.0.1:61801 - "GET /health HTTP/1.1" 200 OK
+INFO:     127.0.0.1:61805 - "GET / HTTP/1.1" 200 OK
+INFO:     127.0.0.1:61805 - "GET /flutter_service_worker.js?v=1576134862 HTTP/1.1" 200 OK
+INFO:     127.0.0.1:61808 - "GET /health HTTP/1.1" 200 OK
+INFO:     127.0.0.1:61809 - "GET /health HTTP/1.1" 200 OK
+INFO:     127.0.0.1:61834 - "GET /health HTTP/1.1" 200 OK
+INFO:     127.0.0.1:61835 - "GET /health HTTP/1.1" 200 OK
+INFO:     127.0.0.1:61849 - "GET / HTTP/1.1" 304 Not Modified
+INFO:     127.0.0.1:61849 - "GET / HTTP/1.1" 304 Not Modified
+INFO:     127.0.0.1:61849 - "GET / HTTP/1.1" 304 Not Modified
+INFO:     127.0.0.1:61849 - "GET / HTTP/1.1" 304 Not Modified
+INFO:     127.0.0.1:61849 - "GET / HTTP/1.1" 304 Not Modified
+INFO:     127.0.0.1:61849 - "GET /flutter_service_worker.js?v=1576134862 HTTP/1.1" 304 Not Modified
+INFO:     127.0.0.1:61871 - "GET /health HTTP/1.1" 200 OK
+INFO:     127.0.0.1:61872 - "GET /health HTTP/1.1" 200 OK
+INFO:     127.0.0.1:61939 - "GET / HTTP/1.1" 304 Not Modified
+INFO:     127.0.0.1:61939 - "GET /.well-known/appspecific/com.chrome.devtools.json HTTP/1.1" 404 Not Found
+INFO:     127.0.0.1:61939 - "GET /flutter.js.map HTTP/1.1" 404 Not Found
+INFO:     127.0.0.1:61963 - "GET /health HTTP/1.1" 200 OK
+INFO:     127.0.0.1:61965 - "GET /health HTTP/1.1" 200 OK
+INFO:     127.0.0.1:62043 - "GET /icons/Icon-512.png HTTP/1.1" 200 OK
+INFO:     127.0.0.1:62043 - "GET /icons/Icon-maskable-192.png HTTP/1.1" 200 OK
+INFO:     127.0.0.1:62043 - "GET /icons/Icon-maskable-512.png HTTP/1.1" 200 OK
+INFO:     127.0.0.1:62080 - "GET / HTTP/1.1" 200 OK
+INFO:     127.0.0.1:62080 - "GET /.well-known/appspecific/com.chrome.devtools.json HTTP/1.1" 404 Not Found
+INFO:     127.0.0.1:62080 - "GET /flutter_bootstrap.js HTTP/1.1" 200 OK
+INFO:     127.0.0.1:62084 - "GET /manifest.json HTTP/1.1" 304 Not Modified
+INFO:     127.0.0.1:62080 - "GET /flutter.js.map HTTP/1.1" 404 Not Found
+INFO:     127.0.0.1:62085 - "GET /flutter_service_worker.js?v=1717064320 HTTP/1.1" 200 OK
+INFO:     127.0.0.1:62085 - "GET /main.dart.mjs HTTP/1.1" 200 OK
+INFO:     127.0.0.1:62141 - "GET /.well-known/appspecific/com.chrome.devtools.json HTTP/1.1" 404 Not Found
+INFO:     127.0.0.1:62141 - "GET /flutter.js.map HTTP/1.1" 404 Not Found
+INFO:     127.0.0.1:62153 - "GET /health HTTP/1.1" 200 OK
+INFO:     127.0.0.1:62154 - "GET /health HTTP/1.1" 200 OK
+INFO:     127.0.0.1:57521 - "GET / HTTP/1.1" 304 Not Modified
+INFO:     127.0.0.1:57522 - "GET /flutter_bootstrap.js HTTP/1.1" 304 Not Modified
+INFO:     127.0.0.1:57521 - "GET /.well-known/appspecific/com.chrome.devtools.json HTTP/1.1" 404 Not Found
+INFO:     127.0.0.1:57522 - "GET /flutter_service_worker.js?v=1717064320 HTTP/1.1" 304 Not Modified
+INFO:     127.0.0.1:57521 - "GET /flutter.js.map HTTP/1.1" 404 Not Found
+INFO:     127.0.0.1:57521 - "GET /main.dart.mjs HTTP/1.1" 304 Not Modified
+INFO:     127.0.0.1:57521 - "GET / HTTP/1.1" 304 Not Modified
+INFO:     127.0.0.1:57521 - "GET /.well-known/appspecific/com.chrome.devtools.json HTTP/1.1" 404 Not Found
+INFO:     127.0.0.1:57521 - "GET /flutter.js.map HTTP/1.1" 404 Not Found
+INFO:     127.0.0.1:57521 - "GET /flutter_service_worker.js?v=1717064320 HTTP/1.1" 304 Not Modified
+INFO:     127.0.0.1:57647 - "GET /health HTTP/1.1" 200 OK
+INFO:     127.0.0.1:57648 - "GET /health HTTP/1.1" 200 OK
+INFO:     Started server process [24060]
+INFO:     Waiting for application startup.
+INFO:     Application startup complete.
+INFO:     Uvicorn running on http://127.0.0.1:8000 (Press CTRL+C to quit)
+INFO:     127.0.0.1:57826 - "GET / HTTP/1.1" 304 Not Modified
+INFO:     127.0.0.1:57826 - "GET /flutter_bootstrap.js HTTP/1.1" 304 Not Modified
+INFO:     127.0.0.1:57826 - "GET /main.dart.mjs HTTP/1.1" 304 Not Modified
+INFO:     127.0.0.1:57833 - "GET /health HTTP/1.1" 200 OK
+INFO:     127.0.0.1:57834 - "GET /health HTTP/1.1" 200 OK
+INFO:     127.0.0.1:57826 - "GET /flutter_service_worker.js?v=1717064320 HTTP/1.1" 304 Not Modified
+INFO:     127.0.0.1:57826 - "GET / HTTP/1.1" 304 Not Modified
+INFO:     127.0.0.1:57826 - "GET /.well-known/appspecific/com.chrome.devtools.json HTTP/1.1" 404 Not Found
+INFO:     127.0.0.1:57845 - "GET /health HTTP/1.1" 200 OK
+INFO:     127.0.0.1:57846 - "GET /health HTTP/1.1" 200 OK
+INFO:     127.0.0.1:57826 - "GET /flutter.js.map HTTP/1.1" 404 Not Found
+INFO:     127.0.0.1:57855 - "GET /health HTTP/1.1" 200 OK
+INFO:     127.0.0.1:57856 - "GET /health HTTP/1.1" 200 OK
+INFO:     127.0.0.1:57872 - "GET / HTTP/1.1" 200 OK
+INFO:     127.0.0.1:57872 - "GET /.well-known/appspecific/com.chrome.devtools.json HTTP/1.1" 404 Not Found
+INFO:     127.0.0.1:57872 - "GET /flutter_bootstrap.js HTTP/1.1" 304 Not Modified
+INFO:     127.0.0.1:57873 - "GET /flutter_service_worker.js?v=1717064320 HTTP/1.1" 304 Not Modified
+INFO:     127.0.0.1:57872 - "GET /flutter.js.map HTTP/1.1" 404 Not Found
+INFO:     127.0.0.1:57872 - "GET /main.dart.mjs HTTP/1.1" 304 Not Modified
+INFO:     127.0.0.1:57875 - "GET /health HTTP/1.1" 200 OK
+INFO:     127.0.0.1:57876 - "GET /health HTTP/1.1" 200 OK
+INFO:     Started server process [9180]
+INFO:     Waiting for application startup.
+INFO:     Application startup complete.
+INFO:     Uvicorn running on http://127.0.0.1:8000 (Press CTRL+C to quit)
+INFO:     127.0.0.1:58063 - "GET /health HTTP/1.1" 200 OK
+INFO:     127.0.0.1:58064 - "GET /health HTTP/1.1" 200 OK
+INFO:     127.0.0.1:58072 - "GET /health HTTP/1.1" 200 OK
+INFO:     127.0.0.1:58073 - "GET /health HTTP/1.1" 200 OK
+INFO:     127.0.0.1:58081 - "GET /health HTTP/1.1" 200 OK
+INFO:     127.0.0.1:58082 - "GET /health HTTP/1.1" 200 OK
+INFO:     127.0.0.1:58111 - "GET /health HTTP/1.1" 200 OK
+INFO:     127.0.0.1:58112 - "GET /health HTTP/1.1" 200 OK
+INFO:     127.0.0.1:58113 - "GET / HTTP/1.1" 200 OK
+INFO:     127.0.0.1:58113 - "GET /flutter_bootstrap.js HTTP/1.1" 304 Not Modified
+INFO:     127.0.0.1:58113 - "GET /flutter_service_worker.js?v=1717064320 HTTP/1.1" 304 Not Modified
+INFO:     127.0.0.1:58113 - "GET /main.dart.mjs HTTP/1.1" 304 Not Modified
+INFO:     127.0.0.1:58126 - "GET /.well-known/appspecific/com.chrome.devtools.json HTTP/1.1" 404 Not Found
+INFO:     127.0.0.1:58126 - "GET /flutter.js.map HTTP/1.1" 404 Not Found
+INFO:     127.0.0.1:58166 - "GET /health HTTP/1.1" 200 OK
+INFO:     127.0.0.1:58167 - "GET /health HTTP/1.1" 200 OK
+INFO:     127.0.0.1:58249 - "GET /health HTTP/1.1" 200 OK
+INFO:     127.0.0.1:58250 - "GET /health HTTP/1.1" 200 OK
+INFO:     127.0.0.1:58436 - "GET /health HTTP/1.1" 200 OK
+INFO:     127.0.0.1:58437 - "GET /health HTTP/1.1" 200 OK
+INFO:     127.0.0.1:58614 - "GET /health HTTP/1.1" 200 OK
+INFO:     127.0.0.1:58615 - "GET /health HTTP/1.1" 200 OK
+INFO:     127.0.0.1:58826 - "GET /health HTTP/1.1" 200 OK
+INFO:     127.0.0.1:58827 - "GET /health HTTP/1.1" 200 OK
+INFO:     127.0.0.1:65049 - "GET /health HTTP/1.1" 200 OK
+INFO:     127.0.0.1:65050 - "GET /health HTTP/1.1" 200 OK
+INFO:     127.0.0.1:65299 - "GET /health HTTP/1.1" 200 OK
+INFO:     127.0.0.1:65300 - "GET /health HTTP/1.1" 200 OK
+INFO:     Started server process [64372]
+INFO:     Waiting for application startup.
+INFO:     Application startup complete.
+INFO:     Uvicorn running on http://127.0.0.1:8000 (Press CTRL+C to quit)
+INFO:     127.0.0.1:65389 - "GET /health HTTP/1.1" 200 OK
+INFO:     127.0.0.1:65390 - "GET /health HTTP/1.1" 200 OK
+INFO:     127.0.0.1:65401 - "GET / HTTP/1.1" 200 OK
+INFO:     127.0.0.1:65401 - "GET /.well-known/appspecific/com.chrome.devtools.json HTTP/1.1" 404 Not Found
+INFO:     127.0.0.1:65401 - "GET /flutter_bootstrap.js HTTP/1.1" 200 OK
+INFO:     127.0.0.1:65405 - "GET /health HTTP/1.1" 200 OK
+INFO:     127.0.0.1:65406 - "GET /health HTTP/1.1" 200 OK
+INFO:     127.0.0.1:65401 - "GET /flutter.js.map HTTP/1.1" 404 Not Found
+INFO:     127.0.0.1:65420 - "GET /manifest.json HTTP/1.1" 304 Not Modified
+INFO:     127.0.0.1:65421 - "GET /flutter_service_worker.js?v=1776677354 HTTP/1.1" 200 OK
+INFO:     127.0.0.1:65422 - "GET /main.dart.mjs HTTP/1.1" 200 OK
+INFO:     127.0.0.1:65401 - "GET /main.dart.wasm HTTP/1.1" 200 OK
+INFO:     127.0.0.1:65421 - "GET /main.dart.js HTTP/1.1" 200 OK
+INFO:     127.0.0.1:65422 - "GET /index.html HTTP/1.1" 200 OK
+INFO:     127.0.0.1:65422 - "GET /flutter_bootstrap.js HTTP/1.1" 200 OK
+INFO:     127.0.0.1:65422 - "GET /assets/AssetManifest.bin.json HTTP/1.1" 200 OK
+INFO:     127.0.0.1:65422 - "GET /assets/FontManifest.json HTTP/1.1" 200 OK
+INFO:     127.0.0.1:65422 - "GET /assets/fonts/MaterialIcons-Regular.otf HTTP/1.1" 200 OK
+INFO:     127.0.0.1:65422 - "GET /api/portfolio/summary HTTP/1.1" 200 OK
+INFO:     127.0.0.1:65437 - "GET /health HTTP/1.1" 200 OK
+INFO:     127.0.0.1:65438 - "GET /health HTTP/1.1" 200 OK
+INFO:     127.0.0.1:65422 - "GET /api/accounts HTTP/1.1" 200 OK
+INFO:     127.0.0.1:65422 - "GET /api/assets HTTP/1.1" 200 OK
+INFO:     127.0.0.1:65422 - "GET /system/status HTTP/1.1" 200 OK
+INFO:     127.0.0.1:65422 - "GET /api/portfolio/summary HTTP/1.1" 200 OK
+INFO:     127.0.0.1:65453 - "GET /health HTTP/1.1" 200 OK
+INFO:     127.0.0.1:65454 - "GET /health HTTP/1.1" 200 OK
+INFO:     127.0.0.1:65469 - "GET /api/accounts HTTP/1.1" 200 OK
+INFO:     127.0.0.1:65469 - "GET /api/assets HTTP/1.1" 200 OK
+INFO:     127.0.0.1:65469 - "GET /api/accounts HTTP/1.1" 200 OK
+INFO:     127.0.0.1:65479 - "GET /health HTTP/1.1" 200 OK
+INFO:     127.0.0.1:65480 - "GET /health HTTP/1.1" 200 OK
+INFO:     127.0.0.1:65469 - "GET /system/status HTTP/1.1" 200 OK
+INFO:     127.0.0.1:65469 - "GET /system/status HTTP/1.1" 200 OK
+INFO:     127.0.0.1:65499 - "POST /system/control HTTP/1.1" 200 OK
+INFO:     127.0.0.1:65499 - "GET /system/status HTTP/1.1" 200 OK
+INFO:     127.0.0.1:65499 - "GET /system/status HTTP/1.1" 200 OK
+INFO:     127.0.0.1:61769 - "GET /system/status HTTP/1.1" 200 OK
+INFO:     127.0.0.1:61785 - "GET /health HTTP/1.1" 200 OK
+INFO:     127.0.0.1:61786 - "GET /health HTTP/1.1" 200 OK
+INFO:     127.0.0.1:61808 - "GET /system/status HTTP/1.1" 200 OK
+INFO:     127.0.0.1:61836 - "GET /system/status HTTP/1.1" 200 OK
+INFO:     127.0.0.1:61851 - "GET /system/status HTTP/1.1" 200 OK
+INFO:     127.0.0.1:61851 - "POST /system/control HTTP/1.1" 200 OK
+INFO:     127.0.0.1:61851 - "GET /system/status HTTP/1.1" 200 OK
+INFO:     127.0.0.1:61863 - "GET /system/status HTTP/1.1" 200 OK
+INFO:     127.0.0.1:61878 - "GET /system/status HTTP/1.1" 200 OK
+INFO:     127.0.0.1:61903 - "GET /system/status HTTP/1.1" 200 OK
+INFO:     127.0.0.1:61910 - "GET /health HTTP/1.1" 200 OK
+INFO:     127.0.0.1:61911 - "GET /health HTTP/1.1" 200 OK
+INFO:     127.0.0.1:61927 - "GET /system/status HTTP/1.1" 200 OK
+INFO:     127.0.0.1:61956 - "GET /system/status HTTP/1.1" 200 OK
+INFO:     127.0.0.1:61971 - "GET /system/status HTTP/1.1" 200 OK
+INFO:     127.0.0.1:61984 - "GET /system/status HTTP/1.1" 200 OK
+INFO:     127.0.0.1:62051 - "GET /health HTTP/1.1" 200 OK
+INFO:     127.0.0.1:62052 - "GET /health HTTP/1.1" 200 OK
+INFO:     127.0.0.1:62059 - "GET /system/status HTTP/1.1" 200 OK
+INFO:     127.0.0.1:62200 - "GET /health HTTP/1.1" 200 OK
+INFO:     127.0.0.1:62201 - "GET /health HTTP/1.1" 200 OK
+INFO:     127.0.0.1:62210 - "GET /system/status HTTP/1.1" 200 OK
+INFO:     127.0.0.1:62338 - "GET /health HTTP/1.1" 200 OK
+INFO:     127.0.0.1:62339 - "GET /health HTTP/1.1" 200 OK
+INFO:     127.0.0.1:62346 - "GET /system/status HTTP/1.1" 200 OK
+INFO:     127.0.0.1:62428 - "GET /health HTTP/1.1" 200 OK
+INFO:     127.0.0.1:62429 - "GET /health HTTP/1.1" 200 OK
+INFO:     127.0.0.1:62436 - "GET /system/status HTTP/1.1" 200 OK
+INFO:     127.0.0.1:62549 - "GET /health HTTP/1.1" 200 OK
+INFO:     127.0.0.1:62550 - "GET /health HTTP/1.1" 200 OK
+INFO:     127.0.0.1:62558 - "GET /system/status HTTP/1.1" 200 OK
+INFO:     127.0.0.1:62714 - "GET /health HTTP/1.1" 200 OK
+INFO:     127.0.0.1:62715 - "GET /health HTTP/1.1" 200 OK
+INFO:     127.0.0.1:62724 - "GET /system/status HTTP/1.1" 200 OK
+INFO:     127.0.0.1:62895 - "GET /health HTTP/1.1" 200 OK
+INFO:     127.0.0.1:62896 - "GET /health HTTP/1.1" 200 OK
+INFO:     127.0.0.1:62909 - "GET /system/status HTTP/1.1" 200 OK
+INFO:     127.0.0.1:63020 - "GET /health HTTP/1.1" 200 OK
+INFO:     127.0.0.1:63021 - "GET /health HTTP/1.1" 200 OK
+INFO:     127.0.0.1:63030 - "GET /system/status HTTP/1.1" 200 OK
+INFO:     127.0.0.1:64607 - "GET /system/status HTTP/1.1" 200 OK
+INFO:     127.0.0.1:64607 - "GET /system/status HTTP/1.1" 200 OK
+INFO:     127.0.0.1:64607 - "GET /system/status HTTP/1.1" 200 OK
+INFO:     127.0.0.1:64607 - "GET /api/assets HTTP/1.1" 200 OK
+INFO:     127.0.0.1:64607 - "GET /api/accounts HTTP/1.1" 200 OK
+INFO:     127.0.0.1:64607 - "GET /api/portfolio/summary HTTP/1.1" 200 OK
+INFO:     127.0.0.1:64607 - "GET /system/status HTTP/1.1" 200 OK
+INFO:     127.0.0.1:64638 - "GET /system/status HTTP/1.1" 200 OK
+INFO:     127.0.0.1:64655 - "GET /system/status HTTP/1.1" 200 OK
+INFO:     127.0.0.1:64658 - "GET /health HTTP/1.1" 200 OK
+INFO:     127.0.0.1:64659 - "GET /health HTTP/1.1" 200 OK
+INFO:     127.0.0.1:64683 - "GET /system/status HTTP/1.1" 200 OK
+INFO:     127.0.0.1:64711 - "GET /system/status HTTP/1.1" 200 OK
+INFO:     127.0.0.1:64735 - "GET /system/status HTTP/1.1" 200 OK
+INFO:     127.0.0.1:64761 - "GET /system/status HTTP/1.1" 200 OK
+INFO:     127.0.0.1:64851 - "GET /health HTTP/1.1" 200 OK
+INFO:     127.0.0.1:64852 - "GET /health HTTP/1.1" 200 OK
+INFO:     127.0.0.1:64862 - "GET /system/status HTTP/1.1" 200 OK
+INFO:     127.0.0.1:63873 - "GET /health HTTP/1.1" 200 OK
+INFO:     127.0.0.1:63874 - "GET /health HTTP/1.1" 200 OK
+INFO:     127.0.0.1:63884 - "GET /system/status HTTP/1.1" 200 OK
+INFO:     127.0.0.1:64020 - "GET /health HTTP/1.1" 200 OK
+INFO:     127.0.0.1:64021 - "GET /health HTTP/1.1" 200 OK
+INFO:     127.0.0.1:64026 - "GET /system/status HTTP/1.1" 200 OK
+INFO:     127.0.0.1:64142 - "GET /health HTTP/1.1" 200 OK
+INFO:     127.0.0.1:64143 - "GET /health HTTP/1.1" 200 OK
+INFO:     127.0.0.1:64152 - "GET /system/status HTTP/1.1" 200 OK
+INFO:     127.0.0.1:64271 - "GET /health HTTP/1.1" 200 OK
+INFO:     127.0.0.1:64272 - "GET /health HTTP/1.1" 200 OK
+INFO:     127.0.0.1:64280 - "GET /system/status HTTP/1.1" 200 OK
+INFO:     127.0.0.1:64410 - "GET /health HTTP/1.1" 200 OK
+INFO:     127.0.0.1:64411 - "GET /health HTTP/1.1" 200 OK
+INFO:     127.0.0.1:64418 - "GET /system/status HTTP/1.1" 200 OK
+INFO:     127.0.0.1:64551 - "GET /health HTTP/1.1" 200 OK
+INFO:     127.0.0.1:64552 - "GET /health HTTP/1.1" 200 OK
+INFO:     127.0.0.1:64559 - "GET /system/status HTTP/1.1" 200 OK
+INFO:     127.0.0.1:64695 - "GET /health HTTP/1.1" 200 OK
+INFO:     127.0.0.1:64696 - "GET /health HTTP/1.1" 200 OK
+INFO:     127.0.0.1:64702 - "GET /system/status HTTP/1.1" 200 OK
+INFO:     127.0.0.1:64844 - "GET /health HTTP/1.1" 200 OK
+INFO:     127.0.0.1:64845 - "GET /health HTTP/1.1" 200 OK
+INFO:     127.0.0.1:64851 - "GET /system/status HTTP/1.1" 200 OK
+INFO:     127.0.0.1:64990 - "GET /health HTTP/1.1" 200 OK
+INFO:     127.0.0.1:64991 - "GET /health HTTP/1.1" 200 OK
+INFO:     127.0.0.1:64995 - "GET /system/status HTTP/1.1" 200 OK
+INFO:     127.0.0.1:65215 - "GET /health HTTP/1.1" 200 OK
+INFO:     127.0.0.1:65216 - "GET /health HTTP/1.1" 200 OK
+INFO:     127.0.0.1:65223 - "GET /system/status HTTP/1.1" 200 OK
+INFO:     127.0.0.1:65372 - "GET /health HTTP/1.1" 200 OK
+INFO:     127.0.0.1:65373 - "GET /health HTTP/1.1" 200 OK
+INFO:     127.0.0.1:65382 - "GET /system/status HTTP/1.1" 200 OK
+INFO:     127.0.0.1:65492 - "GET /health HTTP/1.1" 200 OK
+INFO:     127.0.0.1:65493 - "GET /health HTTP/1.1" 200 OK
+INFO:     127.0.0.1:65505 - "GET /system/status HTTP/1.1" 200 OK
+INFO:     127.0.0.1:49271 - "GET /health HTTP/1.1" 200 OK
+INFO:     127.0.0.1:49272 - "GET /health HTTP/1.1" 200 OK
+INFO:     127.0.0.1:49279 - "GET /system/status HTTP/1.1" 200 OK
+INFO:     127.0.0.1:49407 - "GET /health HTTP/1.1" 200 OK
+INFO:     127.0.0.1:49408 - "GET /health HTTP/1.1" 200 OK
+INFO:     127.0.0.1:49413 - "GET /system/status HTTP/1.1" 200 OK
+INFO:     127.0.0.1:49547 - "GET /health HTTP/1.1" 200 OK
+INFO:     127.0.0.1:49548 - "GET /health HTTP/1.1" 200 OK
+INFO:     127.0.0.1:49554 - "GET /system/status HTTP/1.1" 200 OK
+INFO:     127.0.0.1:49704 - "GET /health HTTP/1.1" 200 OK
+INFO:     127.0.0.1:49705 - "GET /health HTTP/1.1" 200 OK
+INFO:     127.0.0.1:49711 - "GET /system/status HTTP/1.1" 200 OK
+INFO:     127.0.0.1:49850 - "GET /health HTTP/1.1" 200 OK
+INFO:     127.0.0.1:49851 - "GET /health HTTP/1.1" 200 OK
+INFO:     127.0.0.1:49858 - "GET /system/status HTTP/1.1" 200 OK
+INFO:     127.0.0.1:59361 - "GET /health HTTP/1.1" 200 OK
+INFO:     127.0.0.1:59362 - "GET /health HTTP/1.1" 200 OK
+INFO:     127.0.0.1:59369 - "GET /system/status HTTP/1.1" 200 OK
+INFO:     127.0.0.1:59483 - "GET /health HTTP/1.1" 200 OK
+INFO:     127.0.0.1:59484 - "GET /health HTTP/1.1" 200 OK
+INFO:     127.0.0.1:59493 - "GET /system/status HTTP/1.1" 200 OK
+INFO:     127.0.0.1:59526 - "GET /system/status HTTP/1.1" 200 OK
+INFO:     127.0.0.1:59526 - "GET /system/status HTTP/1.1" 200 OK
+INFO:     127.0.0.1:59543 - "GET /system/status HTTP/1.1" 200 OK
+INFO:     127.0.0.1:59557 - "GET /system/status HTTP/1.1" 200 OK
+INFO:     127.0.0.1:59583 - "GET /system/status HTTP/1.1" 200 OK
+INFO:     127.0.0.1:58810 - "GET /system/status HTTP/1.1" 200 OK
+INFO:     127.0.0.1:58815 - "GET /health HTTP/1.1" 200 OK
+INFO:     127.0.0.1:58816 - "GET /health HTTP/1.1" 200 OK
+INFO:     127.0.0.1:58843 - "GET /system/status HTTP/1.1" 200 OK
+INFO:     127.0.0.1:58877 - "GET /system/status HTTP/1.1" 200 OK
+INFO:     127.0.0.1:58949 - "GET /health HTTP/1.1" 200 OK
+INFO:     127.0.0.1:58950 - "GET /health HTTP/1.1" 200 OK
+INFO:     127.0.0.1:58958 - "GET /system/status HTTP/1.1" 200 OK
+INFO:     127.0.0.1:59077 - "GET /health HTTP/1.1" 200 OK
+INFO:     127.0.0.1:59078 - "GET /health HTTP/1.1" 200 OK
+INFO:     127.0.0.1:59084 - "GET /system/status HTTP/1.1" 200 OK
+INFO:     127.0.0.1:59238 - "GET /health HTTP/1.1" 200 OK
+INFO:     127.0.0.1:59239 - "GET /health HTTP/1.1" 200 OK
+INFO:     127.0.0.1:59245 - "GET /system/status HTTP/1.1" 200 OK
+INFO:     127.0.0.1:59302 - "GET /system/status HTTP/1.1" 200 OK
+INFO:     127.0.0.1:59319 - "GET /system/status HTTP/1.1" 200 OK
+INFO:     127.0.0.1:59337 - "GET /system/status HTTP/1.1" 200 OK
+INFO:     127.0.0.1:59370 - "GET /system/status HTTP/1.1" 200 OK
+INFO:     127.0.0.1:59371 - "GET /health HTTP/1.1" 200 OK
+INFO:     127.0.0.1:59372 - "GET /health HTTP/1.1" 200 OK
+INFO:     127.0.0.1:59401 - "GET /system/status HTTP/1.1" 200 OK
+INFO:     127.0.0.1:59439 - "GET /system/status HTTP/1.1" 200 OK
+INFO:     127.0.0.1:59452 - "GET /system/status HTTP/1.1" 200 OK
+INFO:     127.0.0.1:59464 - "GET /system/status HTTP/1.1" 200 OK
+INFO:     127.0.0.1:59507 - "GET /health HTTP/1.1" 200 OK
+INFO:     127.0.0.1:59508 - "GET /health HTTP/1.1" 200 OK
+INFO:     127.0.0.1:59517 - "GET /system/status HTTP/1.1" 200 OK
+INFO:     127.0.0.1:59717 - "GET /health HTTP/1.1" 200 OK
+INFO:     127.0.0.1:59718 - "GET /health HTTP/1.1" 200 OK
+INFO:     127.0.0.1:59726 - "GET /health HTTP/1.1" 200 OK
+INFO:     127.0.0.1:59727 - "GET /health HTTP/1.1" 200 OK
+INFO:     127.0.0.1:59728 - "GET /system/status HTTP/1.1" 200 OK
+INFO:     127.0.0.1:59778 - "GET /system/status HTTP/1.1" 200 OK
+INFO:     127.0.0.1:59796 - "GET /system/status HTTP/1.1" 200 OK
+INFO:     127.0.0.1:59818 - "GET /system/status HTTP/1.1" 200 OK
+INFO:     127.0.0.1:59835 - "GET /system/status HTTP/1.1" 200 OK
+INFO:     127.0.0.1:59872 - "GET /system/status HTTP/1.1" 200 OK
+INFO:     127.0.0.1:59894 - "GET /health HTTP/1.1" 200 OK
+INFO:     127.0.0.1:59895 - "GET /health HTTP/1.1" 200 OK
+INFO:     127.0.0.1:59918 - "GET /system/status HTTP/1.1" 200 OK
+INFO:     127.0.0.1:59939 - "GET /system/status HTTP/1.1" 200 OK
+INFO:     127.0.0.1:59966 - "GET /system/status HTTP/1.1" 200 OK
+INFO:     127.0.0.1:60013 - "GET /system/status HTTP/1.1" 200 OK
+INFO:     127.0.0.1:60037 - "GET /health HTTP/1.1" 200 OK
+INFO:     127.0.0.1:60038 - "GET /health HTTP/1.1" 200 OK
+INFO:     Started server process [18748]
+INFO:     Waiting for application startup.
+INFO:     Application startup complete.
+INFO:     Uvicorn running on http://127.0.0.1:8000 (Press CTRL+C to quit)
+INFO:     127.0.0.1:60062 - "GET /health HTTP/1.1" 200 OK
+INFO:     127.0.0.1:60063 - "GET /health HTTP/1.1" 200 OK
+INFO:     127.0.0.1:60067 - "GET /health HTTP/1.1" 200 OK
+INFO:     127.0.0.1:60068 - "GET /health HTTP/1.1" 200 OK
+INFO:     127.0.0.1:60071 - "GET /health HTTP/1.1" 200 OK
+INFO:     127.0.0.1:60072 - "GET /health HTTP/1.1" 200 OK
+INFO:     127.0.0.1:60076 - "GET /health HTTP/1.1" 200 OK
+INFO:     127.0.0.1:60077 - "GET /health HTTP/1.1" 200 OK
+INFO:     127.0.0.1:60084 - "GET /health HTTP/1.1" 200 OK
+INFO:     127.0.0.1:60085 - "GET /health HTTP/1.1" 200 OK
+INFO:     127.0.0.1:60087 - "GET /health HTTP/1.1" 200 OK
+INFO:     127.0.0.1:60088 - "GET /health HTTP/1.1" 200 OK
+INFO:     127.0.0.1:60110 - "GET /health HTTP/1.1" 200 OK
+INFO:     127.0.0.1:60111 - "GET /health HTTP/1.1" 200 OK
+INFO:     127.0.0.1:60112 - "GET /health HTTP/1.1" 200 OK
+INFO:     127.0.0.1:60113 - "GET /health HTTP/1.1" 200 OK
+INFO:     127.0.0.1:50310 - "GET /system/status HTTP/1.1" 200 OK
+INFO:     127.0.0.1:50310 - "GET / HTTP/1.1" 200 OK
+INFO:     127.0.0.1:50310 - "GET /api/portfolio/summary HTTP/1.1" 200 OK
+INFO:     127.0.0.1:50318 - "GET /health HTTP/1.1" 200 OK
+INFO:     127.0.0.1:50319 - "GET /health HTTP/1.1" 200 OK
+INFO:     127.0.0.1:50310 - "GET /flutter_service_worker.js?v=1776677354 HTTP/1.1" 200 OK
+INFO:     127.0.0.1:50310 - "GET /main.dart.js HTTP/1.1" 200 OK
+INFO:     127.0.0.1:50325 - "GET /main.dart.mjs HTTP/1.1" 200 OK
+INFO:     127.0.0.1:50324 - "GET /main.dart.wasm HTTP/1.1" 200 OK
+INFO:     127.0.0.1:50325 - "GET /index.html HTTP/1.1" 200 OK
+INFO:     127.0.0.1:50325 - "GET /flutter_bootstrap.js HTTP/1.1" 200 OK
+INFO:     127.0.0.1:50325 - "GET /assets/AssetManifest.bin.json HTTP/1.1" 200 OK
+INFO:     127.0.0.1:50324 - "GET /assets/FontManifest.json HTTP/1.1" 200 OK
+INFO:     127.0.0.1:50324 - "GET /system/status HTTP/1.1" 200 OK
+INFO:     127.0.0.1:50344 - "POST /system/control HTTP/1.1" 200 OK
+INFO:     127.0.0.1:50344 - "GET /system/status HTTP/1.1" 200 OK
+INFO:     127.0.0.1:50344 - "GET /system/status HTTP/1.1" 200 OK
+INFO:     127.0.0.1:50360 - "GET /system/status HTTP/1.1" 200 OK
+INFO:     127.0.0.1:50380 - "GET /health HTTP/1.1" 200 OK
+INFO:     127.0.0.1:50381 - "GET /health HTTP/1.1" 200 OK
+INFO:     127.0.0.1:50385 - "GET /system/status HTTP/1.1" 200 OK
+INFO:     127.0.0.1:50414 - "GET /system/status HTTP/1.1" 200 OK
+INFO:     127.0.0.1:50440 - "GET /system/status HTTP/1.1" 200 OK
+INFO:     127.0.0.1:50469 - "GET /system/status HTTP/1.1" 200 OK
+INFO:     Started server process [6184]
+INFO:     Waiting for application startup.
+INFO:     Application startup complete.
+INFO:     Uvicorn running on http://127.0.0.1:8000 (Press CTRL+C to quit)
+INFO:     127.0.0.1:56302 - "GET /system/status HTTP/1.1" 200 OK
+INFO:     127.0.0.1:56302 - "GET / HTTP/1.1" 200 OK
+INFO:     127.0.0.1:56302 - "GET /flutter_service_worker.js?v=3423240995 HTTP/1.1" 200 OK
+INFO:     127.0.0.1:56297 - "GET /main.dart.wasm HTTP/1.1" 200 OK
+INFO:     127.0.0.1:56302 - "GET /main.dart.js HTTP/1.1" 200 OK
+INFO:     127.0.0.1:56316 - "GET /main.dart.mjs HTTP/1.1" 200 OK
+INFO:     127.0.0.1:56316 - "GET /index.html HTTP/1.1" 200 OK
+INFO:     127.0.0.1:56316 - "GET /flutter_bootstrap.js HTTP/1.1" 200 OK
+INFO:     127.0.0.1:56316 - "GET /assets/FontManifest.json HTTP/1.1" 200 OK
+INFO:     127.0.0.1:56297 - "GET /assets/AssetManifest.bin.json HTTP/1.1" 200 OK
+INFO:     127.0.0.1:56302 - "GET /flutter_service_worker.js?v=3423240995 HTTP/1.1" 304 Not Modified
+INFO:     127.0.0.1:56302 - "GET /api/portfolio/summary HTTP/1.1" 200 OK
+INFO:     127.0.0.1:56320 - "GET /health HTTP/1.1" 200 OK
+INFO:     127.0.0.1:56321 - "GET /health HTTP/1.1" 200 OK
+INFO:     127.0.0.1:56302 - "GET /system/status HTTP/1.1" 200 OK
+INFO:     127.0.0.1:56328 - "GET /health HTTP/1.1" 200 OK
+INFO:     127.0.0.1:56329 - "GET /health HTTP/1.1" 200 OK
+INFO:     127.0.0.1:56302 - "GET /system/status HTTP/1.1" 200 OK
+INFO:     127.0.0.1:56302 - "GET /api/assets HTTP/1.1" 200 OK
+INFO:     127.0.0.1:56302 - "GET /api/accounts HTTP/1.1" 200 OK
+INFO:     127.0.0.1:56302 - "GET /api/portfolio/summary HTTP/1.1" 200 OK
+INFO:     127.0.0.1:56334 - "GET /health HTTP/1.1" 200 OK
+INFO:     127.0.0.1:56335 - "GET /health HTTP/1.1" 200 OK
+INFO:     127.0.0.1:56302 - "GET /system/status HTTP/1.1" 200 OK
+INFO:     Started server process [63796]
+INFO:     Waiting for application startup.
+INFO:     Application startup complete.
+INFO:     Uvicorn running on http://127.0.0.1:8000 (Press CTRL+C to quit)
+INFO:     127.0.0.1:54425 - "GET /system/status HTTP/1.1" 200 OK
+INFO:     127.0.0.1:54425 - "GET / HTTP/1.1" 200 OK
+INFO:     127.0.0.1:54429 - "GET /health HTTP/1.1" 200 OK
+INFO:     127.0.0.1:54430 - "GET /health HTTP/1.1" 200 OK
+INFO:     127.0.0.1:54425 - "GET /flutter_service_worker.js?v=2768202140 HTTP/1.1" 200 OK
+INFO:     127.0.0.1:54425 - "GET /main.dart.js HTTP/1.1" 200 OK
+INFO:     127.0.0.1:54431 - "GET /main.dart.wasm HTTP/1.1" 200 OK
+INFO:     127.0.0.1:54432 - "GET /main.dart.mjs HTTP/1.1" 200 OK
+INFO:     127.0.0.1:54432 - "GET /index.html HTTP/1.1" 200 OK
+INFO:     127.0.0.1:54432 - "GET /flutter_bootstrap.js HTTP/1.1" 200 OK
+INFO:     127.0.0.1:54431 - "GET /assets/AssetManifest.bin.json HTTP/1.1" 200 OK
+INFO:     127.0.0.1:54432 - "GET /assets/FontManifest.json HTTP/1.1" 200 OK
+INFO:     127.0.0.1:54432 - "GET /flutter_service_worker.js?v=2768202140 HTTP/1.1" 304 Not Modified
+INFO:     127.0.0.1:54432 - "GET /api/portfolio/summary HTTP/1.1" 200 OK
+INFO:     127.0.0.1:54432 - "GET /system/status HTTP/1.1" 200 OK
+INFO:     127.0.0.1:54437 - "GET /health HTTP/1.1" 200 OK
+INFO:     127.0.0.1:54438 - "GET /health HTTP/1.1" 200 OK
+INFO:     127.0.0.1:54445 - "GET /health HTTP/1.1" 200 OK
+INFO:     127.0.0.1:54446 - "GET /health HTTP/1.1" 200 OK
+INFO:     127.0.0.1:54448 - "GET /system/status HTTP/1.1" 200 OK
+INFO:     127.0.0.1:54448 - "POST /system/control HTTP/1.1" 200 OK
+INFO:     127.0.0.1:54448 - "GET /system/status HTTP/1.1" 200 OK
+INFO:     127.0.0.1:54448 - "GET /system/status HTTP/1.1" 200 OK
+INFO:     127.0.0.1:54448 - "GET /system/status HTTP/1.1" 200 OK
+INFO:     127.0.0.1:54448 - "GET /system/status HTTP/1.1" 200 OK
+INFO:     127.0.0.1:54448 - "GET /system/status HTTP/1.1" 200 OK
+INFO:     127.0.0.1:54448 - "GET /system/status HTTP/1.1" 200 OK
+INFO:     127.0.0.1:54463 - "GET /health HTTP/1.1" 200 OK
+INFO:     127.0.0.1:54464 - "GET /health HTTP/1.1" 200 OK
+INFO:     127.0.0.1:54448 - "GET /system/status HTTP/1.1" 200 OK
+INFO:     127.0.0.1:54448 - "GET /system/status HTTP/1.1" 200 OK
+INFO:     127.0.0.1:54448 - "GET /system/status HTTP/1.1" 200 OK
+INFO:     127.0.0.1:54448 - "GET /system/status HTTP/1.1" 200 OK
+INFO:     127.0.0.1:54448 - "POST /system/control HTTP/1.1" 200 OK
+INFO:     127.0.0.1:54448 - "GET /system/status HTTP/1.1" 200 OK
+INFO:     127.0.0.1:54448 - "GET /system/status HTTP/1.1" 200 OK
+INFO:     127.0.0.1:54448 - "GET /system/status HTTP/1.1" 200 OK
+INFO:     127.0.0.1:54448 - "GET /system/status HTTP/1.1" 200 OK
+INFO:     127.0.0.1:54448 - "GET /system/status HTTP/1.1" 200 OK
+INFO:     127.0.0.1:54448 - "GET /system/status HTTP/1.1" 200 OK
+INFO:     127.0.0.1:54448 - "GET /system/status HTTP/1.1" 200 OK
+INFO:     127.0.0.1:52739 - "GET /health HTTP/1.1" 200 OK
+INFO:     127.0.0.1:52740 - "GET /health HTTP/1.1" 200 OK
+INFO:     127.0.0.1:54448 - "GET /system/status HTTP/1.1" 200 OK
+INFO:     127.0.0.1:54448 - "GET /system/status HTTP/1.1" 200 OK
+INFO:     127.0.0.1:54448 - "GET /system/status HTTP/1.1" 200 OK
+INFO:     127.0.0.1:54448 - "GET /system/status HTTP/1.1" 200 OK
+INFO:     127.0.0.1:54448 - "POST /system/control HTTP/1.1" 200 OK
+INFO:     127.0.0.1:54448 - "GET /system/status HTTP/1.1" 200 OK
+INFO:     127.0.0.1:54448 - "GET /system/status HTTP/1.1" 200 OK
+INFO:     127.0.0.1:54448 - "GET /system/status HTTP/1.1" 200 OK
+INFO:     127.0.0.1:54448 - "GET /system/status HTTP/1.1" 200 OK
+INFO:     127.0.0.1:54448 - "GET /system/status HTTP/1.1" 200 OK
+INFO:     127.0.0.1:54448 - "GET /system/status HTTP/1.1" 200 OK
+INFO:     127.0.0.1:54448 - "GET /system/status HTTP/1.1" 200 OK
+INFO:     127.0.0.1:54448 - "GET /system/status HTTP/1.1" 200 OK
+INFO:     127.0.0.1:54448 - "GET /system/status HTTP/1.1" 200 OK
+INFO:     127.0.0.1:54448 - "GET /system/status HTTP/1.1" 200 OK
+INFO:     127.0.0.1:54448 - "GET /system/status HTTP/1.1" 200 OK
+INFO:     127.0.0.1:54448 - "GET /system/status HTTP/1.1" 200 OK
+INFO:     127.0.0.1:54448 - "GET /system/status HTTP/1.1" 200 OK
+INFO:     127.0.0.1:54448 - "GET /system/status HTTP/1.1" 200 OK
+INFO:     127.0.0.1:54448 - "GET /system/status HTTP/1.1" 200 OK
+INFO:     127.0.0.1:54448 - "GET /system/status HTTP/1.1" 200 OK
+INFO:     127.0.0.1:54448 - "GET /system/status HTTP/1.1" 200 OK
+INFO:     127.0.0.1:54448 - "GET /system/status HTTP/1.1" 200 OK
+INFO:     127.0.0.1:54448 - "GET /system/status HTTP/1.1" 200 OK
+INFO:     127.0.0.1:54448 - "GET /system/status HTTP/1.1" 200 OK
+INFO:     127.0.0.1:54448 - "GET /system/status HTTP/1.1" 200 OK
+INFO:     127.0.0.1:54448 - "GET /system/status HTTP/1.1" 200 OK
+INFO:     127.0.0.1:54448 - "GET /system/status HTTP/1.1" 200 OK
+INFO:     127.0.0.1:54448 - "GET /system/status HTTP/1.1" 200 OK
+INFO:     127.0.0.1:54448 - "GET /system/status HTTP/1.1" 200 OK
+INFO:     127.0.0.1:54448 - "GET /system/status HTTP/1.1" 200 OK
+INFO:     127.0.0.1:54448 - "GET /system/status HTTP/1.1" 200 OK
+INFO:     127.0.0.1:54448 - "GET /system/status HTTP/1.1" 200 OK
+INFO:     127.0.0.1:54448 - "GET /system/status HTTP/1.1" 200 OK
+INFO:     127.0.0.1:54448 - "GET /system/status HTTP/1.1" 200 OK
+INFO:     127.0.0.1:54448 - "GET /system/status HTTP/1.1" 200 OK
+INFO:     127.0.0.1:54448 - "GET /system/status HTTP/1.1" 200 OK
+INFO:     127.0.0.1:54448 - "GET /system/status HTTP/1.1" 200 OK
+INFO:     127.0.0.1:54448 - "GET /system/status HTTP/1.1" 200 OK
+INFO:     127.0.0.1:54448 - "GET /system/status HTTP/1.1" 200 OK
+INFO:     127.0.0.1:54448 - "GET /system/status HTTP/1.1" 200 OK
+INFO:     127.0.0.1:54448 - "GET /system/status HTTP/1.1" 200 OK
+INFO:     127.0.0.1:52831 - "GET /health HTTP/1.1" 200 OK
+INFO:     127.0.0.1:52832 - "GET /health HTTP/1.1" 200 OK
+INFO:     127.0.0.1:52838 - "GET /system/status HTTP/1.1" 200 OK
+INFO:     127.0.0.1:52838 - "GET /system/status HTTP/1.1" 200 OK
+INFO:     127.0.0.1:52838 - "GET /system/status HTTP/1.1" 200 OK

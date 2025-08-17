@@ -1,0 +1,750 @@
+[Sun 08/10/2025 15:21:26.79] [OK] ZIP size stabilized.
+[Sun 08/10/2025 15:21:26.80] [CHECK] Validating ZIP readability...
+tar: Error opening archive: Failed to open 'D:\Downloads" '
+[Sun 08/10/2025 15:21:26.83] [ERROR] ZIP cannot be read (tar failed): 
+[Sun 08/10/2025 15:22:52.67] ======== watcher start ======== 
+[Sun 08/10/2025 15:22:52.68] Press Q at any time to quit. 
+[Sun 08/10/2025 15:22:52.68] BOTDIR=D:\tradingbot 
+[Sun 08/10/2025 15:22:52.69] ZIPDIR=D:\Downloads 
+[Sun 08/10/2025 15:22:52.70] ZIPPAT=binance-spot-bot-*.zip 
+[Sun 08/10/2025 15:22:52.70] ENVNAME=tradingbot 
+[Sun 08/10/2025 15:22:52.71] PYEXE=C:\Users\Robert\miniconda3\envs\tradingbot\python.exe 
+[Sun 08/10/2025 15:22:52.72] [BOT] Starting headless bot... 
+[Sun 08/10/2025 15:22:53.09] [BOT] PID 40120 
+[Sun 08/10/2025 15:24:32.61] ======== watcher start ========
+[Sun 08/10/2025 15:24:32.62] Press q to quit, r to restart (works anytime).
+[Sun 08/10/2025 15:24:32.62] BOTDIR=D:\tradingbot
+[Sun 08/10/2025 15:24:32.63] ZIPDIR=D:\Downloads
+[Sun 08/10/2025 15:24:32.64] ZIPPAT=binance-spot-bot-*.zip
+[Sun 08/10/2025 15:24:32.64] ENVNAME=tradingbot
+[Sun 08/10/2025 15:24:32.65] PYEXE=C:\Users\Robert\miniconda3\envs\tradingbot\python.exe
+[Sun 08/10/2025 15:24:32.66] [BOT] Starting headless bot...
+[Sun 08/10/2025 15:24:33.06] [BOT] PID 33600
+[Sun 08/10/2025 15:24:58.01] [RESTART] Manual restart requested.
+[Sun 08/10/2025 15:24:58.03] [BOT] Stopping PID 33600 (tree) ...
+[Sun 08/10/2025 15:24:59.20] [RESTART] Restarting bot now (no new ZIP).
+[Sun 08/10/2025 15:24:59.21] [BOT] Starting headless bot...
+[Sun 08/10/2025 15:24:59.63] [BOT] PID 24516
+[Sun 08/10/2025 15:25:54.18] [UPDATE] Detected new ZIP: binance-spot-bot-20250810-1012.zip (prev: NONE)
+[Sun 08/10/2025 15:25:56.28] [CHECK] Validating ZIP readability...
+[Sun 08/10/2025 15:25:56.39] [OK] ZIP structure looks valid.
+[Sun 08/10/2025 15:25:56.42] [BOT] Stopping PID 24516 (tree) ...
+[Sun 08/10/2025 15:25:57.21] [OK] ZIP structure looks valid.
+[Sun 08/10/2025 15:25:57.32] [OK] ZIP structure looks valid.
+[Sun 08/10/2025 15:25:57.42] [OK] ZIP structure looks valid.
+[Sun 08/10/2025 15:25:57.53] [OK] ZIP structure looks valid.
+[Sun 08/10/2025 15:25:57.64] [OK] ZIP structure looks valid.
+[Sun 08/10/2025 15:25:57.75] [OK] ZIP structure looks valid.
+[Sun 08/10/2025 15:25:57.86] [OK] ZIP structure looks valid.
+[Sun 08/10/2025 15:25:57.96] [OK] ZIP structure looks valid.
+[Sun 08/10/2025 15:25:58.07] [OK] ZIP structure looks valid.
+[Sun 08/10/2025 15:25:58.17] [OK] ZIP structure looks valid.
+[Sun 08/10/2025 15:25:58.28] [OK] ZIP structure looks valid.
+[Sun 08/10/2025 15:25:58.38] [OK] ZIP structure looks valid.
+[Sun 08/10/2025 15:25:58.48] [OK] ZIP structure looks valid.
+[Sun 08/10/2025 15:25:58.58] [OK] ZIP structure looks valid.
+[Sun 08/10/2025 15:25:58.69] [OK] ZIP structure looks valid.
+[Sun 08/10/2025 15:25:58.81] [OK] ZIP structure looks valid.
+[Sun 08/10/2025 15:25:58.92] [OK] ZIP structure looks valid.
+[Sun 08/10/2025 15:25:59.03] [OK] ZIP structure looks valid.
+[Sun 08/10/2025 15:25:59.14] [OK] ZIP structure looks valid.
+[Sun 08/10/2025 15:25:59.26] [OK] ZIP structure looks valid.
+[Sun 08/10/2025 15:25:59.36] [OK] ZIP structure looks valid.
+[Sun 08/10/2025 15:25:59.46] [OK] ZIP structure looks valid.
+[Sun 08/10/2025 15:25:59.56] [OK] ZIP structure looks valid.
+[Sun 08/10/2025 15:25:59.67] [OK] ZIP structure looks valid.
+[Sun 08/10/2025 15:25:59.79] [OK] ZIP structure looks valid.
+[Sun 08/10/2025 15:25:59.89] [OK] ZIP structure looks valid.
+[Sun 08/10/2025 15:26:00.00] [OK] ZIP structure looks valid.
+[Sun 08/10/2025 15:26:00.11] [OK] ZIP structure looks valid.
+[Sun 08/10/2025 15:26:00.22] [OK] ZIP structure looks valid.
+[Sun 08/10/2025 15:26:00.34] [OK] ZIP structure looks valid.
+[Sun 08/10/2025 15:26:00.45] [OK] ZIP structure looks valid.
+[Sun 08/10/2025 15:26:00.56] [OK] ZIP structure looks valid.
+[Sun 08/10/2025 15:26:00.66] [OK] ZIP structure looks valid.
+[Sun 08/10/2025 15:26:00.77] [OK] ZIP structure looks valid.
+[Sun 08/10/2025 15:26:00.89] [OK] ZIP structure looks valid.
+[Sun 08/10/2025 15:26:01.00] [OK] ZIP structure looks valid.
+[Sun 08/10/2025 15:26:01.10] [OK] ZIP structure looks valid.
+[Sun 08/10/2025 15:26:01.22] [OK] ZIP structure looks valid.
+[Sun 08/10/2025 15:26:01.33] [OK] ZIP structure looks valid.
+[Sun 08/10/2025 15:26:01.43] [OK] ZIP structure looks valid.
+[Sun 08/10/2025 15:26:01.56] [OK] ZIP structure looks valid.
+^C[Sun 08/10/2025 15:26:56.23] ======== watcher start ========
+[Sun 08/10/2025 15:26:56.25] Press q to quit, r to restart (works anytime).
+[Sun 08/10/2025 15:26:56.26] BOTDIR=D:\tradingbot
+[Sun 08/10/2025 15:26:56.26] ZIPDIR=D:\Downloads
+[Sun 08/10/2025 15:26:56.27] ZIPPAT=binance-spot-bot-*.zip
+[Sun 08/10/2025 15:26:56.28] ENVNAME=tradingbot
+[Sun 08/10/2025 15:26:56.29] PYEXE=C:\Users\Robert\miniconda3\envs\tradingbot\python.exe
+[Sun 08/10/2025 15:26:56.29] [BOT] Starting headless bot...
+[Sun 08/10/2025 15:26:56.67] [BOT] PID 60468
+[Sun 08/10/2025 15:27:38.62] [UPDATE] Detected new ZIP: binance-spot-bot-20250810-10112.zip (prev: binance-spot-bot-20250810-1012.zip)
+[Sun 08/10/2025 15:27:40.72] [OK] ZIP size stabilized.
+[Sun 08/10/2025 15:27:40.73] [CHECK] Validating ZIP readability...
+[Sun 08/10/2025 15:27:40.83] [OK] ZIP structure looks valid.
+[Sun 08/10/2025 15:27:40.86] [MARK] Registered binance-spot-bot-20250810-10112.zip as processed; deploying next.
+[Sun 08/10/2025 15:27:40.88] [BOT] Stopping PID 60468 (tree) ...
+[Sun 08/10/2025 15:27:42.15] [UNPACK] Expanding D:\Downloads\binance-spot-bot-20250810-10112.zip into D:\tradingbot ...
+[Sun 08/10/2025 15:27:44.72] [DONE] Updated from binance-spot-bot-20250810-10112.zip, restarting bot.
+[Sun 08/10/2025 15:27:44.74] [BOT] Starting headless bot...
+[Sun 08/10/2025 15:27:45.17] [BOT] PID 51756
+[Sun 08/10/2025 15:29:24.80] [RESTART] Manual restart requested.
+[Sun 08/10/2025 15:29:24.82] [BOT] Stopping PID 51756 (tree) ...
+[Sun 08/10/2025 15:29:26.18] [RESTART] Restarting bot now (no new ZIP).
+[Sun 08/10/2025 15:29:26.20] [BOT] Starting headless bot...
+[Sun 08/10/2025 15:29:26.61] [BOT] PID 40712
+[Sun 08/10/2025 15:29:47.64] [UPDATE] Detected new ZIP: binance-spot-bot-20250810-1012.zip (prev: binance-spot-bot-20250810-10112.zip)
+[Sun 08/10/2025 15:29:49.73] [OK] ZIP size stabilized.
+[Sun 08/10/2025 15:29:49.75] [CHECK] Validating ZIP readability...
+[Sun 08/10/2025 15:29:49.85] [OK] ZIP structure looks valid.
+[Sun 08/10/2025 15:29:49.87] [MARK] Registered binance-spot-bot-20250810-1012.zip as processed; deploying next.
+[Sun 08/10/2025 15:29:49.89] [BOT] Stopping PID 40712 (tree) ...
+[Sun 08/10/2025 15:29:51.18] [UNPACK] Expanding D:\Downloads\binance-spot-bot-20250810-1012.zip into D:\tradingbot ...
+[Sun 08/10/2025 15:29:53.32] [DONE] Updated from binance-spot-bot-20250810-1012.zip, restarting bot.
+[Sun 08/10/2025 15:29:53.34] [BOT] Starting headless bot...
+[Sun 08/10/2025 15:29:53.74] [BOT] PID 67236
+[Sun 08/10/2025 15:38:53.28] [UPDATE] Detected new ZIP: binance-spot-bot-20250810-1234.zip (prev: binance-spot-bot-20250810-1012.zip)
+[Sun 08/10/2025 15:38:55.36] [OK] ZIP size stabilized.
+[Sun 08/10/2025 15:38:55.38] [CHECK] Validating ZIP readability...
+[Sun 08/10/2025 15:38:56.04] [OK] ZIP structure looks valid.
+[Sun 08/10/2025 15:38:56.06] [MARK] Registered binance-spot-bot-20250810-1234.zip as processed; deploying next.
+[Sun 08/10/2025 15:38:56.08] [BOT] Stopping PID 67236 (tree) ...
+[Sun 08/10/2025 15:38:57.15] [UNPACK] Expanding D:\Downloads\binance-spot-bot-20250810-1234.zip into D:\tradingbot ...
+[Sun 08/10/2025 15:38:59.29] [DONE] Updated from binance-spot-bot-20250810-1234.zip, restarting bot.
+[Sun 08/10/2025 15:38:59.30] [BOT] Starting headless bot...
+[Sun 08/10/2025 15:38:59.71] [BOT] PID 52584
+[Sun 08/10/2025 15:45:41.96] [RESTART] Manual restart requested.
+[Sun 08/10/2025 15:45:41.97] [BOT] Stopping PID 52584 (tree) ...
+[Sun 08/10/2025 15:45:43.20] [RESTART] Restarting bot now (no new ZIP).
+[Sun 08/10/2025 15:45:43.22] [BOT] Starting headless bot...
+[Sun 08/10/2025 15:45:43.71] [BOT] PID 15464
+[Sun 08/10/2025 15:45:43.77] [UPDATE] Detected new ZIP: binance-spot-bot-20250810-1241.zip (prev: binance-spot-bot-20250810-1234.zip)
+[Sun 08/10/2025 15:45:45.88] [OK] ZIP size stabilized.
+[Sun 08/10/2025 15:45:45.89] [CHECK] Validating ZIP readability...
+[Sun 08/10/2025 15:45:46.55] [OK] ZIP structure looks valid.
+[Sun 08/10/2025 15:45:46.57] [MARK] Registered binance-spot-bot-20250810-1241.zip as processed; deploying next.
+[Sun 08/10/2025 15:45:46.59] [BOT] Stopping PID 15464 (tree) ...
+[Sun 08/10/2025 15:45:48.20] [UNPACK] Expanding D:\Downloads\binance-spot-bot-20250810-1241.zip into D:\tradingbot ...
+[Sun 08/10/2025 15:45:50.26] [DONE] Updated from binance-spot-bot-20250810-1241.zip, restarting bot.
+[Sun 08/10/2025 15:45:50.27] [BOT] Starting headless bot...
+[Sun 08/10/2025 15:45:50.66] [BOT] PID 71872
+[Sun 08/10/2025 15:47:38.29] [RESTART] Manual restart requested.
+[Sun 08/10/2025 15:47:38.31] [BOT] Stopping PID 71872 (tree) ...
+[Sun 08/10/2025 15:47:39.12] [RESTART] Restarting bot now (no new ZIP).
+[Sun 08/10/2025 15:47:39.13] [BOT] Starting headless bot...
+[Sun 08/10/2025 15:47:39.51] [BOT] PID 35824
+[Sun 08/10/2025 15:49:25.50] [UPDATE] Detected new ZIP: binance-spot-bot-20250810-1248.zip (prev: binance-spot-bot-20250810-1241.zip)
+[Sun 08/10/2025 15:49:27.61] [OK] ZIP size stabilized.
+[Sun 08/10/2025 15:49:27.62] [CHECK] Validating ZIP readability...
+[Sun 08/10/2025 15:49:28.28] [OK] ZIP structure looks valid.
+[Sun 08/10/2025 15:49:28.30] [MARK] Registered binance-spot-bot-20250810-1248.zip as processed; deploying next.
+[Sun 08/10/2025 15:49:28.33] [BOT] Stopping PID 35824 (tree) ...
+[Sun 08/10/2025 15:49:29.12] [UNPACK] Expanding D:\Downloads\binance-spot-bot-20250810-1248.zip into D:\tradingbot ...
+[Sun 08/10/2025 15:49:31.19] [DONE] Updated from binance-spot-bot-20250810-1248.zip, restarting bot.
+[Sun 08/10/2025 15:49:31.21] [BOT] Starting headless bot...
+[Sun 08/10/2025 15:49:31.59] [BOT] PID 62320
+[Sun 08/10/2025 15:51:53.09] [RESTART] Manual restart requested.
+[Sun 08/10/2025 15:51:53.11] [BOT] Stopping PID 62320 (tree) ...
+[Sun 08/10/2025 15:51:54.16] [RESTART] Restarting bot now (no new ZIP).
+[Sun 08/10/2025 15:51:54.18] [BOT] Starting headless bot...
+[Sun 08/10/2025 15:51:54.59] [BOT] PID 50056
+[Sun 08/10/2025 15:54:59.68] [RESTART] Manual restart requested.
+[Sun 08/10/2025 15:54:59.69] [BOT] Stopping PID 50056 (tree) ...
+[Sun 08/10/2025 15:55:01.18] [RESTART] Restarting bot now (no new ZIP).
+[Sun 08/10/2025 15:55:01.20] [BOT] Starting headless bot...
+[Sun 08/10/2025 15:55:01.60] [BOT] PID 54672
+[Sun 08/10/2025 15:55:23.20] [UPDATE] Detected new ZIP: binance-spot-bot-20250810-1254.zip (prev: binance-spot-bot-20250810-1248.zip)
+[Sun 08/10/2025 15:55:25.31] [OK] ZIP size stabilized.
+[Sun 08/10/2025 15:55:25.32] [CHECK] Validating ZIP readability...
+[Sun 08/10/2025 15:55:25.99] [OK] ZIP structure looks valid.
+[Sun 08/10/2025 15:55:26.02] [MARK] Registered binance-spot-bot-20250810-1254.zip as processed; deploying next.
+[Sun 08/10/2025 15:55:26.04] [BOT] Stopping PID 54672 (tree) ...
+[Sun 08/10/2025 15:55:27.18] [UNPACK] Expanding D:\Downloads\binance-spot-bot-20250810-1254.zip into D:\tradingbot ...
+[Sun 08/10/2025 15:55:29.23] [DONE] Updated from binance-spot-bot-20250810-1254.zip, restarting bot.
+[Sun 08/10/2025 15:55:29.25] [BOT] Starting headless bot...
+[Sun 08/10/2025 15:55:29.64] [BOT] PID 10476
+[Sun 08/10/2025 16:01:05.28] [UPDATE] Detected new ZIP:  (prev: binance-spot-bot-20250810-1254.zip)
+[Sun 08/10/2025 16:01:07.44] [OK] ZIP size stabilized.
+[Sun 08/10/2025 16:01:07.46] [CHECK] Validating ZIP readability...
+tar: Error opening archive: Failed to open 'D:\Downloads" '
+[Sun 08/10/2025 16:01:07.53] [ERROR] ZIP cannot be read (tar failed): 
+[Sun 08/10/2025 16:01:12.81] [ERROR] Could not start bot or capture PID. Check D:\tradingbot\logs\bot.err
+[Sun 08/10/2025 16:01:18.07] [BOT] Starting headless bot...
+[Sun 08/10/2025 16:01:18.49] [BOT] PID 53004
+[Sun 08/10/2025 16:02:17.52] ======== watcher start ========
+[Sun 08/10/2025 16:02:17.52] Press q to quit, r to restart (works anytime).
+[Sun 08/10/2025 16:02:17.53] BOTDIR=D:\tradingbot
+[Sun 08/10/2025 16:02:17.54] ZIPDIR=D:\Downloads
+[Sun 08/10/2025 16:02:17.55] ZIPPAT=binance-spot-bot-*.zip
+[Sun 08/10/2025 16:02:17.56] PYEXE=C:\Users\Robert\miniconda3\envs\tradingbot\python.exe
+[Sun 08/10/2025 16:02:17.57] [BOT] Starting headless bot...
+[Sun 08/10/2025 16:02:17.96] [BOT] PID 6688
+[Sun 08/10/2025 16:02:45.17] [UPDATE] Detected new ZIP: binance-spot-bot-polished-20250810-1301.zip (prev: binance-spot-bot-20250810-1254.zip)
+[Sun 08/10/2025 16:02:47.27] [OK] ZIP size stabilized.
+[Sun 08/10/2025 16:02:47.28] [CHECK] Validating ZIP readability...
+[Sun 08/10/2025 16:02:47.96] [OK] ZIP structure looks valid.
+[Sun 08/10/2025 16:02:47.98] [MARK] Registered binance-spot-bot-polished-20250810-1301.zip as processed; deploying next.
+[Sun 08/10/2025 16:02:48.01] [BOT] Stopping PID 6688 (tree) ...
+[Sun 08/10/2025 16:02:49.20] [UNPACK] Expanding D:\Downloads\binance-spot-bot-polished-20250810-1301.zip into D:\tradingbot ...
+[Sun 08/10/2025 16:02:52.03] [DONE] Updated from binance-spot-bot-polished-20250810-1301.zip, restarting bot.
+[Sun 08/10/2025 16:02:52.05] [BOT] Starting headless bot...
+[Sun 08/10/2025 16:02:52.46] [BOT] PID 71660
+[Sun 08/10/2025 16:03:14.46] [RESTART] Manual restart requested.
+[Sun 08/10/2025 16:03:14.48] [BOT] Stopping PID 71660 (tree) ...
+[Sun 08/10/2025 16:03:16.21] [RESTART] Restarting bot now (no new ZIP).
+[Sun 08/10/2025 16:03:16.23] [BOT] Starting headless bot...
+[Sun 08/10/2025 16:03:16.63] [BOT] PID 2156
+[Sun 08/10/2025 16:06:15.77] [UPDATE] Detected new ZIP: binance-spot-bot-clickfix-20250810-1305.zip (prev: binance-spot-bot-polished-20250810-1301.zip)
+[Sun 08/10/2025 16:06:17.90] [OK] ZIP size stabilized.
+[Sun 08/10/2025 16:06:17.91] [CHECK] Validating ZIP readability...
+[Sun 08/10/2025 16:06:18.58] [OK] ZIP structure looks valid.
+[Sun 08/10/2025 16:06:18.60] [MARK] Registered binance-spot-bot-clickfix-20250810-1305.zip as processed; deploying next.
+[Sun 08/10/2025 16:06:18.62] [BOT] Stopping PID 2156 (tree) ...
+[Sun 08/10/2025 16:06:20.18] [UNPACK] Expanding D:\Downloads\binance-spot-bot-clickfix-20250810-1305.zip into D:\tradingbot ...
+[Sun 08/10/2025 16:06:22.22] [DONE] Updated from binance-spot-bot-clickfix-20250810-1305.zip, restarting bot.
+[Sun 08/10/2025 16:06:22.23] [BOT] Starting headless bot...
+[Sun 08/10/2025 16:06:22.63] [BOT] PID 63688
+[Sun 08/10/2025 16:12:56.21] [UPDATE] Detected new ZIP: binance-spot-bot-enginefix-20250810-1312.zip (prev: binance-spot-bot-clickfix-20250810-1305.zip)
+[Sun 08/10/2025 16:12:58.31] [OK] ZIP size stabilized.
+[Sun 08/10/2025 16:12:58.33] [CHECK] Validating ZIP readability...
+[Sun 08/10/2025 16:12:59.00] [OK] ZIP structure looks valid.
+[Sun 08/10/2025 16:12:59.02] [MARK] Registered binance-spot-bot-enginefix-20250810-1312.zip as processed; deploying next.
+[Sun 08/10/2025 16:12:59.04] [BOT] Stopping PID 63688 (tree) ...
+[Sun 08/10/2025 16:13:00.18] [UNPACK] Expanding D:\Downloads\binance-spot-bot-enginefix-20250810-1312.zip into D:\tradingbot ...
+[Sun 08/10/2025 16:13:02.32] [DONE] Updated from binance-spot-bot-enginefix-20250810-1312.zip, restarting bot.
+[Sun 08/10/2025 16:13:02.34] [BOT] Starting headless bot...
+[Sun 08/10/2025 16:13:02.73] [BOT] PID 12264
+[Sun 08/10/2025 16:14:02.48] [RESTART] Manual restart requested.
+[Sun 08/10/2025 16:14:02.50] [BOT] Stopping PID 12264 (tree) ...
+[Sun 08/10/2025 16:14:03.17] [RESTART] Restarting bot now (no new ZIP).
+[Sun 08/10/2025 16:14:03.19] [BOT] Starting headless bot...
+[Sun 08/10/2025 16:14:03.58] [BOT] PID 69860
+[Sun 08/10/2025 16:16:24.50] [RESTART] Manual restart requested.
+[Sun 08/10/2025 16:16:24.53] [BOT] Stopping PID 69860 (tree) ...
+[Sun 08/10/2025 16:16:26.21] [RESTART] Restarting bot now (no new ZIP).
+[Sun 08/10/2025 16:16:26.23] [BOT] Starting headless bot...
+[Sun 08/10/2025 16:16:26.63] [BOT] PID 71772
+[Sun 08/10/2025 16:16:26.70] [UPDATE] Detected new ZIP: binance-spot-bot-enginefix-SEL-20250810-1315.zip (prev: binance-spot-bot-enginefix-20250810-1312.zip)
+[Sun 08/10/2025 16:16:28.80] [OK] ZIP size stabilized.
+[Sun 08/10/2025 16:16:28.81] [CHECK] Validating ZIP readability...
+[Sun 08/10/2025 16:16:29.47] [OK] ZIP structure looks valid.
+[Sun 08/10/2025 16:16:29.49] [MARK] Registered binance-spot-bot-enginefix-SEL-20250810-1315.zip as processed; deploying next.
+[Sun 08/10/2025 16:16:29.51] [BOT] Stopping PID 71772 (tree) ...
+[Sun 08/10/2025 16:16:30.20] [UNPACK] Expanding D:\Downloads\binance-spot-bot-enginefix-SEL-20250810-1315.zip into D:\tradingbot ...
+[Sun 08/10/2025 16:16:32.29] [DONE] Updated from binance-spot-bot-enginefix-SEL-20250810-1315.zip, restarting bot.
+[Sun 08/10/2025 16:16:32.31] [BOT] Starting headless bot...
+[Sun 08/10/2025 16:16:32.70] [BOT] PID 72700
+[Sun 08/10/2025 16:23:21.64] [RESTART] Manual restart requested.
+[Sun 08/10/2025 16:23:21.66] [BOT] Stopping PID 72700 (tree) ...
+[Sun 08/10/2025 16:23:23.13] [RESTART] Restarting bot now (no new ZIP).
+[Sun 08/10/2025 16:23:23.15] [BOT] Starting headless bot...
+[Sun 08/10/2025 16:23:23.53] [BOT] PID 43300
+[Sun 08/10/2025 16:24:29.82] [QUIT] Stopping bot and killing python processes from D:\tradingbot ...
+[Sun 08/10/2025 16:24:29.84] [BOT] Stopping PID 43300 (tree) ...
+[Sun 08/10/2025 16:24:31.97] [QUIT] Exiting watcher.
+[Sun 08/10/2025 16:24:37.41] ======== watcher start ========
+[Sun 08/10/2025 16:24:37.42] Press q to quit, r to restart (works anytime).
+[Sun 08/10/2025 16:24:37.43] BOTDIR=D:\tradingbot
+[Sun 08/10/2025 16:24:37.44] ZIPDIR=D:\Downloads
+[Sun 08/10/2025 16:24:37.45] ZIPPAT=binance-spot-bot-*.zip
+[Sun 08/10/2025 16:24:37.46] PYEXE=C:\Users\Robert\miniconda3\envs\tradingbot\python.exe
+[Sun 08/10/2025 16:24:37.47] [BOT] Starting headless bot...
+[Sun 08/10/2025 16:24:37.84] [BOT] PID 54776
+[Sun 08/10/2025 16:28:09.27] [QUIT] Stopping bot and killing python processes from D:\tradingbot ...
+[Sun 08/10/2025 16:28:09.29] [BOT] Stopping PID 54776 (tree) ...
+[Sun 08/10/2025 16:28:10.99] [QUIT] Exiting watcher.
+[Sun 08/10/2025 16:40:25.47] ======== watcher start ========
+[Sun 08/10/2025 16:40:25.48] Press q to quit, r to restart (works anytime).
+[Sun 08/10/2025 16:40:25.48] BOTDIR=D:\tradingbot
+[Sun 08/10/2025 16:40:25.49] ZIPDIR=D:\Downloads
+[Sun 08/10/2025 16:40:25.49] ZIPPAT=binance-spot-bot-*.zip
+[Sun 08/10/2025 16:40:25.51] PYEXE=C:\Users\Robert\miniconda3\envs\tradingbot\python.exe
+[Sun 08/10/2025 16:40:25.52] [BOT] Starting headless bot...
+[Sun 08/10/2025 16:40:25.89] [BOT] PID 60392
+[Sun 08/10/2025 16:44:54.39] [RESTART] Manual restart requested.
+[Sun 08/10/2025 16:44:54.41] [BOT] Stopping PID 60392 (tree) ...
+[Sun 08/10/2025 16:44:55.14] [RESTART] Restarting bot now (no new ZIP).
+[Sun 08/10/2025 16:44:55.16] [BOT] Starting headless bot...
+[Sun 08/10/2025 16:44:55.55] [BOT] PID 62112
+[Sun 08/10/2025 16:49:23.63] [QUIT] Stopping bot and killing python processes from D:\tradingbot ...
+[Sun 08/10/2025 16:49:23.65] [BOT] Stopping PID 62112 (tree) ...
+[Sun 08/10/2025 16:49:25.99] [QUIT] Exiting watcher.
+[Sun 08/10/2025 16:54:39.03] ======== watcher start ========
+[Sun 08/10/2025 16:54:39.05] Press q to quit, r to restart (works anytime).
+[Sun 08/10/2025 16:54:39.07] BOTDIR=D:\tradingbot
+[Sun 08/10/2025 16:54:39.08] ZIPDIR=D:\Downloads
+[Sun 08/10/2025 16:54:39.10] ZIPPAT=binance-spot-bot-*.zip
+[Sun 08/10/2025 16:54:39.13] PYEXE=C:\Users\Robert\miniconda3\envs\tradingbot\python.exe
+[Sun 08/10/2025 16:54:39.16] [BOT] Starting headless bot...
+[Sun 08/10/2025 16:54:39.58] [BOT] PID 63220
+[Sun 08/10/2025 16:54:41.79] [UPDATE] Detected new ZIP: binance-spot-bot-optionA-pkg-20250810-1354.zip (prev: binance-spot-bot-enginefix-SEL-20250810-1315.zip)
+[Sun 08/10/2025 16:54:43.87] [OK] ZIP size stabilized.
+[Sun 08/10/2025 16:54:43.88] [CHECK] Validating ZIP readability...
+[Sun 08/10/2025 16:54:44.57] [OK] ZIP structure looks valid.
+[Sun 08/10/2025 16:54:44.59] [MARK] Registered binance-spot-bot-optionA-pkg-20250810-1354.zip as processed; deploying next.
+[Sun 08/10/2025 16:54:44.61] [BOT] Stopping PID 63220 (tree) ...
+[Sun 08/10/2025 16:54:46.22] [UNPACK] Expanding D:\Downloads\binance-spot-bot-optionA-pkg-20250810-1354.zip into D:\tradingbot ...
+[Sun 08/10/2025 16:54:49.28] [DONE] Updated from binance-spot-bot-optionA-pkg-20250810-1354.zip, restarting bot.
+[Sun 08/10/2025 16:54:49.30] [BOT] Starting headless bot...
+[Sun 08/10/2025 16:54:49.71] [BOT] PID 59012
+[Sun 08/10/2025 16:57:21.90] [QUIT] Stopping bot and killing python processes from D:\tradingbot ...
+[Sun 08/10/2025 16:57:21.92] [BOT] Stopping PID 59012 (tree) ...
+[Sun 08/10/2025 16:57:23.99] [QUIT] Exiting watcher.
+[Sun 08/10/2025 16:59:08.50] ======== watcher start ========
+[Sun 08/10/2025 16:59:08.52] Press q to quit, r to restart (works anytime).
+[Sun 08/10/2025 16:59:08.53] BOTDIR=D:\tradingbot
+[Sun 08/10/2025 16:59:08.54] ZIPDIR=D:\Downloads
+[Sun 08/10/2025 16:59:08.56] ZIPPAT=binance-spot-bot-*.zip
+[Sun 08/10/2025 16:59:08.59] PYEXE=C:\Users\Robert\miniconda3\envs\tradingbot\python.exe
+[Sun 08/10/2025 16:59:08.61] [BOT] Starting headless bot...
+[Sun 08/10/2025 16:59:09.02] [BOT] PID 56136
+[Sun 08/10/2025 16:59:10.74] [UPDATE] Detected new ZIP: binance-spot-bot-uiwired-20250810-1358.zip (prev: binance-spot-bot-optionA-pkg-20250810-1354.zip)
+[Sun 08/10/2025 16:59:12.84] [OK] ZIP size stabilized.
+[Sun 08/10/2025 16:59:12.85] [CHECK] Validating ZIP readability...
+[Sun 08/10/2025 16:59:13.53] [OK] ZIP structure looks valid.
+[Sun 08/10/2025 16:59:13.55] [MARK] Registered binance-spot-bot-uiwired-20250810-1358.zip as processed; deploying next.
+[Sun 08/10/2025 16:59:13.57] [BOT] Stopping PID 56136 (tree) ...
+[Sun 08/10/2025 16:59:15.18] [UNPACK] Expanding D:\Downloads\binance-spot-bot-uiwired-20250810-1358.zip into D:\tradingbot ...
+[Sun 08/10/2025 16:59:17.50] [DONE] Updated from binance-spot-bot-uiwired-20250810-1358.zip, restarting bot.
+[Sun 08/10/2025 16:59:17.52] [BOT] Starting headless bot...
+[Sun 08/10/2025 16:59:17.90] [BOT] PID 24080
+[Mon 08/11/2025 18:28:10.45] [QUIT] Stopping bot and killing python processes from D:\tradingbot ...
+[Mon 08/11/2025 18:28:10.47] [BOT] Stopping PID 24080 (tree) ...
+[Mon 08/11/2025 18:28:13.22] [QUIT] Exiting watcher.
+[Mon 08/11/2025 18:56:28.84] [DONE] Updated from binance-spot-bot-wired-20250811-1555.zip, restarting bot.
+[Mon 08/11/2025 18:56:28.86] [BOT] Starting headless bot...
+[Mon 08/11/2025 18:56:29.28] [BOT] PID 61788
+[Mon 08/11/2025 19:06:46.09] [UPDATE] Detected new ZIP: binance-spot-bot-wired-20250811-1746.zip (prev: binance-spot-bot-uiwired-20250810-1358.zip)
+[Mon 08/11/2025 19:06:48.19] [OK] ZIP size stabilized.
+[Mon 08/11/2025 19:06:48.20] [CHECK] Validating ZIP readability...
+[Mon 08/11/2025 19:06:48.29] [ERROR] ZIP does not contain base.py: binance-spot-bot-wired-20250811-1746.zip
+[Mon 08/11/2025 19:06:54.45] [ERROR] Could not start bot or capture PID. Check D:\tradingbot\logs\bot.err
+[Mon 08/11/2025 19:07:00.13] [BOT] Starting headless bot...
+[Mon 08/11/2025 19:07:00.55] [BOT] PID 59232
+[Mon 08/11/2025 19:07:00.61] [UPDATE] Detected new ZIP: binance-spot-bot-wired-20250811-1746.zip (prev: binance-spot-bot-uiwired-20250810-1358.zip)
+[Mon 08/11/2025 19:07:02.70] [OK] ZIP size stabilized.
+[Mon 08/11/2025 19:07:02.71] [CHECK] Validating ZIP readability...
+[Mon 08/11/2025 19:07:02.80] [ERROR] ZIP does not contain base.py: binance-spot-bot-wired-20250811-1746.zip
+[Mon 08/11/2025 19:07:08.70] [ERROR] Could not start bot or capture PID. Check D:\tradingbot\logs\bot.err
+[Mon 08/11/2025 19:07:16.18] [BOT] Starting headless bot...
+[Mon 08/11/2025 19:07:16.60] [BOT] PID 54988
+[Mon 08/11/2025 19:07:16.67] [UPDATE] Detected new ZIP: binance-spot-bot-wired-20250811-1746.zip (prev: binance-spot-bot-uiwired-20250810-1358.zip)
+[Mon 08/11/2025 19:07:17.18] [QUIT] Stopping bot and killing python processes from D:\tradingbot ...
+[Mon 08/11/2025 19:07:17.19] [BOT] Stopping PID 54988 (tree) ...
+[Mon 08/11/2025 19:07:19.13] [QUIT] Exiting watcher.
+[Mon 08/11/2025 19:07:21.61] ======== watcher start ========
+[Mon 08/11/2025 19:07:21.63] Press q to quit, r to restart (works anytime).
+[Mon 08/11/2025 19:07:21.65] BOTDIR=D:\tradingbot
+[Mon 08/11/2025 19:07:21.66] ZIPDIR=D:\Downloads
+[Mon 08/11/2025 19:07:21.68] ZIPPAT=binance-spot-bot-*.zip
+[Mon 08/11/2025 19:07:21.71] PYEXE=C:\Users\Robert\miniconda3\envs\tradingbot\python.exe
+[Mon 08/11/2025 19:07:21.74] [BOT] Starting headless bot...
+[Mon 08/11/2025 19:07:22.16] [BOT] PID 10140
+[Mon 08/11/2025 19:07:22.22] [UPDATE] Detected new ZIP: binance-spot-bot-wired-20250811-1746.zip (prev: binance-spot-bot-uiwired-20250810-1358.zip)
+[Mon 08/11/2025 19:07:24.32] [OK] ZIP size stabilized.
+[Mon 08/11/2025 19:07:24.33] [CHECK] Validating ZIP readability...
+[Mon 08/11/2025 19:07:24.43] [ERROR] ZIP does not contain base.py: binance-spot-bot-wired-20250811-1746.zip
+[Mon 08/11/2025 19:07:29.70] [ERROR] Could not start bot or capture PID. Check D:\tradingbot\logs\bot.err
+[Mon 08/11/2025 19:07:34.93] [BOT] Starting headless bot...
+[Mon 08/11/2025 19:07:35.38] [BOT] PID 20220
+[Mon 08/11/2025 19:07:35.44] [UPDATE] Detected new ZIP: binance-spot-bot-wired-20250811-1746.zip (prev: binance-spot-bot-uiwired-20250810-1358.zip)
+[Mon 08/11/2025 19:07:37.54] [OK] ZIP size stabilized.
+[Mon 08/11/2025 19:07:37.56] [CHECK] Validating ZIP readability...
+[Mon 08/11/2025 19:07:37.66] [ERROR] ZIP does not contain base.py: binance-spot-bot-wired-20250811-1746.zip
+[Mon 08/11/2025 19:07:42.90] [ERROR] Could not start bot or capture PID. Check D:\tradingbot\logs\bot.err
+[Mon 08/11/2025 19:07:48.15] [BOT] Starting headless bot...
+[Mon 08/11/2025 19:07:48.62] [BOT] PID 54936
+[Mon 08/11/2025 19:07:48.68] [UPDATE] Detected new ZIP: binance-spot-bot-wired-20250811-1746.zip (prev: binance-spot-bot-uiwired-20250810-1358.zip)
+[Mon 08/11/2025 19:07:50.77] [OK] ZIP size stabilized.
+[Mon 08/11/2025 19:07:50.79] [CHECK] Validating ZIP readability...
+[Mon 08/11/2025 19:07:50.90] [ERROR] ZIP does not contain base.py: binance-spot-bot-wired-20250811-1746.zip
+[Mon 08/11/2025 19:07:56.78] [ERROR] Could not start bot or capture PID. Check D:\tradingbot\logs\bot.err
+[Mon 08/11/2025 19:07:58.80] [QUIT] Stopping bot and killing python processes from D:\tradingbot ...
+[Mon 08/11/2025 19:07:58.82] [BOT] Stopping PID 54936 (tree) ...
+[Mon 08/11/2025 19:08:01.14] [QUIT] Exiting watcher.
+[Mon 08/11/2025 19:12:47.76] ======== watcher start ========
+[Mon 08/11/2025 19:12:47.77] Press q to quit, r to restart (works anytime).
+[Mon 08/11/2025 19:12:53.14] [BOT] Starting headless bot...
+[Mon 08/11/2025 19:12:53.57] [BOT] PID 19692
+[Mon 08/11/2025 19:12:54.57] [BOT] Starting headless bot...
+[Mon 08/11/2025 19:12:55.01] [BOT] PID 60260
+[Mon 08/11/2025 19:12:56.10] [BOT] Starting headless bot...
+[Mon 08/11/2025 19:12:56.54] [BOT] PID 38752
+[Mon 08/11/2025 19:12:57.62] [BOT] Starting headless bot...
+[Mon 08/11/2025 19:12:58.08] [BOT] PID 32064
+[Mon 08/11/2025 19:12:59.18] [BOT] Starting headless bot...
+[Mon 08/11/2025 19:12:59.65] [BOT] PID 19532
+[Mon 08/11/2025 19:13:00.86] [BOT] Starting headless bot...
+[Mon 08/11/2025 19:13:01.37] [BOT] PID 58996
+[Mon 08/11/2025 19:17:15.45] ======== watcher start ========
+[Mon 08/11/2025 19:17:15.46] Press q to quit, r to restart (works anytime).
+[Mon 08/11/2025 19:17:16.31] [ERROR] Expand-Archive failed for . Rolling back mark to .
+[Mon 08/11/2025 19:17:22.43] [UPDATE] Detected new ZIP: binance-spot-bot-wired-20250811-1746.zip (prev: ECHO is off.)
+[Mon 08/11/2025 19:17:24.56] [OK] ZIP size stabilized.
+[Mon 08/11/2025 19:17:24.58] [CHECK] Validating ZIP readability...
+[Mon 08/11/2025 19:17:24.65] [OK] ZIP structure looks valid.
+[Mon 08/11/2025 19:17:24.67] [MARK] Registered binance-spot-bot-wired-20250811-1746.zip as processed; deploying next.
+[Mon 08/11/2025 19:17:24.70] [BOT] Stopping PID 58996 (tree) ...
+[Mon 08/11/2025 19:17:26.16] [UNPACK] Expanding D:\Downloads\binance-spot-bot-wired-20250811-1746.zip into D:\tradingbot ...
+[Mon 08/11/2025 19:17:27.51] [DONE] Updated from binance-spot-bot-wired-20250811-1746.zip, restarting bot.
+[Mon 08/11/2025 19:17:28.52] [BOT] Starting headless bot...
+[Mon 08/11/2025 19:17:28.97] [BOT] PID 5532
+[Mon 08/11/2025 19:17:29.03] [UPDATE] Detected new ZIP: binance-spot-bot-uiwired-20250810-1358.zip (prev: binance-spot-bot-wired-20250811-1746.zip)
+[Mon 08/11/2025 19:17:31.14] [OK] ZIP size stabilized.
+[Mon 08/11/2025 19:17:31.16] [CHECK] Validating ZIP readability...
+[Mon 08/11/2025 19:17:31.81] [OK] ZIP structure looks valid.
+[Mon 08/11/2025 19:17:31.83] [MARK] Registered binance-spot-bot-uiwired-20250810-1358.zip as processed; deploying next.
+[Mon 08/11/2025 19:17:31.86] [BOT] Stopping PID 5532 (tree) ...
+[Mon 08/11/2025 19:17:33.22] [UNPACK] Expanding D:\Downloads\binance-spot-bot-uiwired-20250810-1358.zip into D:\tradingbot ...
+[Mon 08/11/2025 19:17:35.55] [DONE] Updated from binance-spot-bot-uiwired-20250810-1358.zip, restarting bot.
+[Mon 08/11/2025 19:17:36.49] [BOT] Starting headless bot...
+[Mon 08/11/2025 19:17:36.93] [BOT] PID 52396
+[Mon 08/11/2025 19:18:12.09] ======== watcher start ========
+[Mon 08/11/2025 19:18:12.11] Press q to quit, r to restart (works anytime).
+[Mon 08/11/2025 19:18:13.01] [ERROR] Expand-Archive failed for . Rolling back mark to .
+[Mon 08/11/2025 19:26:42.45] ======== watcher start ========
+[Mon 08/11/2025 19:26:42.48] Press q to quit, r to restart (works anytime).
+[Mon 08/11/2025 19:26:42.50] BOTDIR=D:\tradingbot
+[Mon 08/11/2025 19:26:42.52] ZIPDIR=D:\Downloads
+[Mon 08/11/2025 19:26:43.63] [UPDATE] Detected new ZIP: binance-spot-bot-uiv3-20250811-1624.zip (prev: ECHO is off.)
+[Mon 08/11/2025 19:26:45.73] [OK] ZIP size stabilized.
+[Mon 08/11/2025 19:26:45.75] Press q to quit, r to restart (works anytime).
+[Mon 08/11/2025 19:26:45.77] BOTDIR=D:\tradingbot
+[Mon 08/11/2025 19:26:45.78] ZIPDIR=D:\Downloads
+[Mon 08/11/2025 19:26:46.90] [UPDATE] Detected new ZIP: binance-spot-bot-uiv3-20250811-1624.zip (prev: ECHO is off.)
+[Mon 08/11/2025 19:26:48.99] [OK] ZIP size stabilized.
+[Mon 08/11/2025 19:26:49.01] Press q to quit, r to restart (works anytime).
+[Mon 08/11/2025 19:26:49.03] BOTDIR=D:\tradingbot
+[Mon 08/11/2025 19:26:49.04] ZIPDIR=D:\Downloads
+[Mon 08/11/2025 19:26:50.16] [UPDATE] Detected new ZIP: binance-spot-bot-uiv3-20250811-1624.zip (prev: ECHO is off.)
+[Mon 08/11/2025 19:26:52.25] [OK] ZIP size stabilized.
+[Mon 08/11/2025 19:26:52.27] Press q to quit, r to restart (works anytime).
+[Mon 08/11/2025 19:26:52.29] BOTDIR=D:\tradingbot
+[Mon 08/11/2025 19:26:52.30] ZIPDIR=D:\Downloads
+[Mon 08/11/2025 19:26:53.41] [UPDATE] Detected new ZIP: binance-spot-bot-uiv3-20250811-1624.zip (prev: ECHO is off.)
+[Mon 08/11/2025 19:26:55.50] [OK] ZIP size stabilized.
+[Mon 08/11/2025 19:26:55.52] Press q to quit, r to restart (works anytime).
+[Mon 08/11/2025 19:26:55.54] BOTDIR=D:\tradingbot
+[Mon 08/11/2025 19:26:55.55] ZIPDIR=D:\Downloads
+[Mon 08/11/2025 19:34:08.06] ======== watcher start ========
+[Mon 08/11/2025 19:34:08.08] Press q to quit, r to restart (works anytime).
+[Mon 08/11/2025 19:34:08.10] BOTDIR=D:\tradingbot
+[Mon 08/11/2025 19:34:08.12] ZIPDIR=D:\Downloads
+[Mon 08/11/2025 19:34:49.63] ======== watcher start ========
+[Mon 08/11/2025 19:34:49.65] Press q to quit, r to restart (works anytime).
+[Mon 08/11/2025 19:34:49.68] BOTDIR=D:\tradingbot
+[Mon 08/11/2025 19:34:49.70] ZIPDIR=D:\Downloads
+[Mon 08/11/2025 19:34:51.24] [QUIT] Stopping bot and killing python processes from D:\tradingbot ...
+[Mon 08/11/2025 19:34:51.27] [BOT] Stopping PID 52396 (tree) ...
+[Mon 08/11/2025 19:34:54.15] [QUIT] Exiting watcher.
+[Mon 08/11/2025 19:34:54.17] ENVNAME=tradingbot
+[Mon 08/11/2025 19:34:54.19] PYEXE=C:\Users\Robert\miniconda3\envs\tradingbot\python.exe
+[Mon 08/11/2025 19:34:55.11] [BOT] Starting headless bot...
+[Mon 08/11/2025 19:34:55.53] [BOT] PID 24100
+[Mon 08/11/2025 19:35:00.92] [QUIT] Stopping bot and killing python processes from D:\tradingbot ...
+[Mon 08/11/2025 19:35:00.94] [BOT] Stopping PID 24100 (tree) ...
+[Mon 08/11/2025 19:35:04.07] [QUIT] Exiting watcher.
+[Mon 08/11/2025 19:35:06.41] ======== watcher start ========
+[Mon 08/11/2025 19:35:06.44] Press q to quit, r to restart (works anytime).
+[Mon 08/11/2025 19:35:06.46] BOTDIR=D:\tradingbot
+[Mon 08/11/2025 19:35:06.48] ZIPDIR=D:\Downloads
+[Mon 08/11/2025 19:41:20.73] ======== watcher start ========
+[Mon 08/11/2025 19:41:20.75] Press q to quit, r to restart (works anytime).
+[Mon 08/11/2025 19:41:20.77] BOTDIR=D:\tradingbot
+[Mon 08/11/2025 19:41:20.79] ZIPDIR=D:\Downloads
+[Mon 08/11/2025 19:41:20.81] ZIPPAT=binance-spot-bot-*.zip
+[Mon 08/11/2025 19:41:20.83] ENVNAME=tradingbot
+[Mon 08/11/2025 19:41:20.84] PYEXE=C:\Users\Robert\miniconda3\envs\tradingbot\python.exe
+[Mon 08/11/2025 19:41:22.16] [BOT] Starting headless bot...
+[Mon 08/11/2025 19:41:22.58] [BOT] PID 6744
+[Mon 08/11/2025 19:41:34.10] [UPDATE] Detected new ZIP: binance-spot-bot-uiv3-20250811-1624.zip (prev: ECHO is off.)
+[Mon 08/11/2025 19:41:36.75] [OK] ZIP size stabilized.
+[Mon 08/11/2025 19:41:36.77] [CHECK] Validating ZIP readability...
+[Mon 08/11/2025 19:41:36.83] [OK] ZIP structure looks valid.
+[Mon 08/11/2025 19:41:37.14] [BOT] Stopping PID 6744 (tree) ...
+[Mon 08/11/2025 19:41:39.22] [UNPACK] Expanding D:\Downloads\binance-spot-bot-uiv3-20250811-1624.zip.deploying into D:\tradingbot ...
+[Mon 08/11/2025 19:41:40.03] [ERROR] Expand-Archive failed. Restoring original ZIP name so it can retry.
+[Mon 08/11/2025 19:41:40.06] [QUIT] Stopping bot and killing python processes from D:\tradingbot ...
+[Mon 08/11/2025 19:41:41.29] [QUIT] Exiting watcher.
+[Mon 08/11/2025 19:51:26.89] ======== watcher start ========
+[Mon 08/11/2025 19:51:26.91] Press q to quit, r to restart (works anytime).
+[Mon 08/11/2025 19:51:26.93] BOTDIR=D:\tradingbot
+[Mon 08/11/2025 19:51:26.95] ZIPDIR=D:\Downloads
+[Mon 08/11/2025 19:51:26.97] ZIPPAT=binance-spot-bot-*.zip
+[Mon 08/11/2025 19:51:28.18] [QUIT] Exiting watcher.
+[Mon 08/11/2025 19:51:31.40] [UPDATE] Detected new ZIP: binance-spot-bot-uiv3-20250811-1624.zip (prev: NONE)
+[Mon 08/11/2025 19:51:33.52] [OK] ZIP size stabilized.
+[Mon 08/11/2025 19:51:33.53] [CHECK] Validating ZIP readability...
+[Mon 08/11/2025 19:51:33.59] [OK] ZIP structure looks valid.
+[Mon 08/11/2025 19:51:33.62] [UNPACK] Expanding D:\Downloads\binance-spot-bot-uiv3-20250811-1624.deploying.zip into D:\tradingbot ...
+[Mon 08/11/2025 19:51:34.57] [DONE] Updated from binance-spot-bot-uiv3-20250811-1624.zip, restarting bot.
+[Mon 08/11/2025 19:51:35.77] [BOT] Starting headless bot...
+[Mon 08/11/2025 19:51:36.20] [BOT] PID 22420
+[Mon 08/11/2025 19:51:36.27] [UPDATE] Detected new ZIP: binance-spot-bot-uiv3-20250811-1624.processed.zip (prev: binance-spot-bot-uiv3-20250811-1624.zip)
+[Mon 08/11/2025 19:51:38.38] [OK] ZIP size stabilized.
+[Mon 08/11/2025 19:51:38.39] [CHECK] Validating ZIP readability...
+[Mon 08/11/2025 19:51:38.45] [OK] ZIP structure looks valid.
+[Mon 08/11/2025 19:51:38.48] [BOT] Stopping PID 22420 (tree) ...
+[Mon 08/11/2025 19:51:41.16] [UNPACK] Expanding D:\Downloads\binance-spot-bot-uiv3-20250811-1624.processed.deploying.zip into D:\tradingbot ...
+[Mon 08/11/2025 19:51:42.12] [DONE] Updated from binance-spot-bot-uiv3-20250811-1624.processed.zip, restarting bot.
+[Mon 08/11/2025 19:51:43.30] [BOT] Starting headless bot...
+[Mon 08/11/2025 19:51:52.71] ======== watcher start ========
+[Mon 08/11/2025 19:51:52.73] Press q to quit, r to restart (works anytime).
+[Mon 08/11/2025 19:51:52.74] BOTDIR=D:\tradingbot
+[Mon 08/11/2025 19:51:52.76] ZIPDIR=D:\Downloads
+[Mon 08/11/2025 19:51:52.78] ZIPPAT=binance-spot-bot-*.zip
+[Mon 08/11/2025 19:51:52.81] [BOT] Stopping PID 50100 (tree) ...
+[Mon 08/11/2025 19:51:56.42] [QUIT] Exiting watcher.
+[Mon 08/11/2025 19:51:59.63] [UPDATE] Detected new ZIP: binance-spot-bot-uiv3-20250811-1624.processed.processed.zip (prev: binance-spot-bot-uiv3-20250811-1624.processed.zip)
+[Mon 08/11/2025 19:52:01.74] [OK] ZIP size stabilized.
+[Mon 08/11/2025 19:52:01.75] [CHECK] Validating ZIP readability...
+[Mon 08/11/2025 19:52:01.81] [OK] ZIP structure looks valid.
+[Mon 08/11/2025 19:52:01.84] [UNPACK] Expanding D:\Downloads\binance-spot-bot-uiv3-20250811-1624.processed.processed.deploying.zip into D:\tradingbot ...
+[Mon 08/11/2025 19:52:02.81] [DONE] Updated from binance-spot-bot-uiv3-20250811-1624.processed.processed.zip, restarting bot.
+[Mon 08/11/2025 19:52:04.05] [BOT] Starting headless bot...
+[Mon 08/11/2025 19:52:04.50] [BOT] PID 33916
+[Mon 08/11/2025 19:52:04.56] [UPDATE] Detected new ZIP: binance-spot-bot-uiv3-20250811-1624.processed.processed.processed.zip (prev: binance-spot-bot-uiv3-20250811-1624.processed.processed.zip)
+[Mon 08/11/2025 19:52:06.66] [OK] ZIP size stabilized.
+[Mon 08/11/2025 19:52:06.68] [CHECK] Validating ZIP readability...
+[Mon 08/11/2025 19:52:06.74] [OK] ZIP structure looks valid.
+[Mon 08/11/2025 19:52:06.77] [BOT] Stopping PID 33916 (tree) ...
+[Mon 08/11/2025 19:52:09.16] [UNPACK] Expanding D:\Downloads\binance-spot-bot-uiv3-20250811-1624.processed.processed.processed.deploying.zip into D:\tradingbot ...
+[Mon 08/11/2025 19:52:10.15] [DONE] Updated from binance-spot-bot-uiv3-20250811-1624.processed.processed.processed.zip, restarting bot.
+[Mon 08/11/2025 19:52:11.34] [BOT] Starting headless bot...
+[Mon 08/11/2025 19:52:11.78] [BOT] PID 64696
+[Mon 08/11/2025 19:52:11.84] [UPDATE] Detected new ZIP: binance-spot-bot-uiv3-20250811-1624.processed.processed.processed.processed.zip (prev: binance-spot-bot-uiv3-20250811-1624.processed.processed.processed.zip)
+[Mon 08/11/2025 19:52:12.88] [QUIT] Stopping bot and killing python processes from D:\tradingbot ...
+[Mon 08/11/2025 19:52:12.90] [BOT] Stopping PID 64696 (tree) ...
+[Mon 08/11/2025 19:52:16.36] [QUIT] Exiting watcher.
+[Mon 08/11/2025 19:52:17.58] [BOT] Starting headless bot...
+[Mon 08/11/2025 19:52:18.01] [BOT] PID 63820
+[Mon 08/11/2025 19:52:18.07] [UPDATE] Detected new ZIP: binance-spot-bot-uiv3-20250811-1624.processed.processed.processed.processed.zip (prev: binance-spot-bot-uiv3-20250811-1624.processed.processed.processed.zip)
+[Mon 08/11/2025 19:52:20.18] [OK] ZIP size stabilized.
+[Mon 08/11/2025 19:52:20.20] [CHECK] Validating ZIP readability...
+[Mon 08/11/2025 19:52:20.26] [OK] ZIP structure looks valid.
+[Mon 08/11/2025 19:52:20.29] [BOT] Stopping PID 63820 (tree) ...
+[Mon 08/11/2025 19:52:23.20] [UNPACK] Expanding D:\Downloads\binance-spot-bot-uiv3-20250811-1624.processed.processed.processed.processed.deploying.zip into D:\tradingbot ...
+[Mon 08/11/2025 19:52:24.15] [DONE] Updated from binance-spot-bot-uiv3-20250811-1624.processed.processed.processed.processed.zip, restarting bot.
+[Mon 08/11/2025 19:52:25.40] [BOT] Starting headless bot...
+[Mon 08/11/2025 19:52:25.84] [BOT] PID 27684
+[Mon 08/11/2025 19:52:25.90] [UPDATE] Detected new ZIP: binance-spot-bot-uiv3-20250811-1624.processed.processed.processed.processed.processed.zip (prev: binance-spot-bot-uiv3-20250811-1624.processed.processed.processed.processed.zip)
+[Mon 08/11/2025 19:52:27.27] [QUIT] Stopping bot and killing python processes from D:\tradingbot ...
+[Mon 08/11/2025 19:52:27.29] [BOT] Stopping PID 27684 (tree) ...
+[Mon 08/11/2025 19:52:31.34] [QUIT] Exiting watcher.
+[Mon 08/11/2025 20:07:40.84] ======== watcher start ========
+[Mon 08/11/2025 20:07:40.86] Press q to quit, r to restart (works anytime).
+[Mon 08/11/2025 20:07:40.88] BOTDIR=D:\tradingbot
+[Mon 08/11/2025 20:07:40.90] ZIPDIR=D:\Downloads
+[Mon 08/11/2025 20:07:40.91] ZIPPAT=binance-spot-bot-*.zip
+[Mon 08/11/2025 20:07:40.93] ENVNAME=tradingbot
+[Mon 08/11/2025 20:07:40.94] PYEXE=C:\Users\Robert\miniconda3\envs\tradingbot\python.exe
+[Mon 08/11/2025 20:07:42.20] [BOT] Starting headless bot...
+[Mon 08/11/2025 20:07:58.11] ======== watcher start ========
+[Mon 08/11/2025 20:07:58.13] Press q to quit, r to restart (works anytime).
+[Mon 08/11/2025 20:07:58.15] BOTDIR=D:\tradingbot
+[Mon 08/11/2025 20:07:58.16] ZIPDIR=D:\Downloads
+[Mon 08/11/2025 20:07:58.18] ZIPPAT=binance-spot-bot-*.zip
+[Mon 08/11/2025 20:07:58.19] ENVNAME=tradingbot
+[Mon 08/11/2025 20:07:58.21] PYEXE=C:\Users\Robert\miniconda3\envs\tradingbot\python.exe
+[Mon 08/11/2025 20:07:59.41] [BOT] Starting headless bot...
+[Mon 08/11/2025 20:08:08.83] ======== watcher start ========
+[Mon 08/11/2025 20:08:08.85] Press q to quit, r to restart (works anytime).
+[Mon 08/11/2025 20:08:08.88] BOTDIR=D:\tradingbot
+[Mon 08/11/2025 20:08:08.89] ZIPDIR=D:\Downloads
+[Mon 08/11/2025 20:08:08.91] ZIPPAT=binance-spot-bot-*.zip
+[Mon 08/11/2025 20:08:08.92] ENVNAME=tradingbot
+[Mon 08/11/2025 20:08:08.94] PYEXE=C:\Users\Robert\miniconda3\envs\tradingbot\python.exe
+[Mon 08/11/2025 20:08:10.14] [BOT] Starting headless bot...
+[Mon 08/11/2025 20:12:15.29] ======== watcher start ========
+[Mon 08/11/2025 20:12:15.31] Press q to quit, r to restart (works anytime).
+[Mon 08/11/2025 20:12:15.33] BOTDIR=D:\tradingbot
+[Mon 08/11/2025 20:12:15.35] ZIPDIR=D:\Downloads
+[Mon 08/11/2025 20:12:15.37] ZIPPAT=binance-spot-bot-*.zip
+[Mon 08/11/2025 20:12:15.38] ENVNAME=tradingbot
+[Mon 08/11/2025 20:12:15.40] PYEXE=C:\Users\Robert\miniconda3\envs\tradingbot\python.exe
+[Mon 08/11/2025 20:12:16.63] [BOT] Starting headless bot...
+[Mon 08/11/2025 20:12:30.10] ======== watcher start ========
+[Mon 08/11/2025 20:12:30.11] Press q to quit, r to restart (works anytime).
+[Mon 08/11/2025 20:12:30.13] BOTDIR=D:\tradingbot
+[Mon 08/11/2025 20:12:30.16] ZIPDIR=D:\Downloads
+[Mon 08/11/2025 20:12:30.18] ZIPPAT=binance-spot-bot-*.zip
+[Mon 08/11/2025 20:12:30.20] ENVNAME=tradingbot
+[Mon 08/11/2025 20:12:30.21] PYEXE=C:\Users\Robert\miniconda3\envs\tradingbot\python.exe
+[Mon 08/11/2025 20:12:31.46] [BOT] Starting headless bot...
+[Mon 08/11/2025 20:12:34.43] [RESTART] Manual restart requested.
+[Mon 08/11/2025 20:12:34.45] [BOT] Stopping PID 64156 (tree) ...
+[Mon 08/11/2025 20:12:37.21] [RESTART] Restarting bot now (no new ZIP).
+[Mon 08/11/2025 20:12:38.41] [BOT] Starting headless bot...
+[Mon 08/11/2025 20:18:15.64] ======== watcher start ========
+[Mon 08/11/2025 20:18:15.66] Press q to quit, r to restart (works anytime).
+[Mon 08/11/2025 20:18:15.68] BOTDIR=D:\tradingbot
+[Mon 08/11/2025 20:18:15.71] ZIPDIR=D:\Downloads
+[Mon 08/11/2025 20:18:15.72] ZIPPAT=binance-spot-bot-*.zip
+[Mon 08/11/2025 20:18:15.74] ENVNAME=tradingbot
+[Mon 08/11/2025 20:18:15.75] PYEXE=C:\Users\Robert\miniconda3\envs\tradingbot\python.exe
+[Mon 08/11/2025 20:18:17.04] [BOT] Starting headless bot...
+[Mon 08/11/2025 20:18:17.49] [BOT] PID 55336
+[Mon 08/11/2025 20:18:27.18] ======== watcher start ========
+[Mon 08/11/2025 20:18:27.20] Press q to quit, r to restart (works anytime).
+[Mon 08/11/2025 20:18:27.21] BOTDIR=D:\tradingbot
+[Mon 08/11/2025 20:18:27.23] ZIPDIR=D:\Downloads
+[Mon 08/11/2025 20:18:27.24] ZIPPAT=binance-spot-bot-*.zip
+[Mon 08/11/2025 20:18:27.26] ENVNAME=tradingbot
+[Mon 08/11/2025 20:18:27.27] PYEXE=C:\Users\Robert\miniconda3\envs\tradingbot\python.exe
+[Mon 08/11/2025 20:18:28.62] [BOT] Starting headless bot...
+[Mon 08/11/2025 20:18:29.05] [BOT] PID 18988
+[Mon 08/11/2025 20:18:35.88] ======== watcher start ========
+[Mon 08/11/2025 20:18:35.89] Press q to quit, r to restart (works anytime).
+[Mon 08/11/2025 20:18:35.91] BOTDIR=D:\tradingbot
+[Mon 08/11/2025 20:18:35.93] ZIPDIR=D:\Downloads
+[Mon 08/11/2025 20:18:35.94] ZIPPAT=binance-spot-bot-*.zip
+[Mon 08/11/2025 20:18:35.96] ENVNAME=tradingbot
+[Mon 08/11/2025 20:18:35.98] PYEXE=C:\Users\Robert\miniconda3\envs\tradingbot\python.exe
+[Mon 08/11/2025 20:18:37.24] [BOT] Starting headless bot...
+[Mon 08/11/2025 20:18:37.68] [BOT] PID 16672
+[Mon 08/11/2025 20:18:46.07] ======== watcher start ========
+[Mon 08/11/2025 20:18:46.09] Press q to quit, r to restart (works anytime).
+[Mon 08/11/2025 20:18:46.10] BOTDIR=D:\tradingbot
+[Mon 08/11/2025 20:18:46.12] ZIPDIR=D:\Downloads
+[Mon 08/11/2025 20:18:46.14] ZIPPAT=binance-spot-bot-*.zip
+[Mon 08/11/2025 20:18:46.15] ENVNAME=tradingbot
+[Mon 08/11/2025 20:18:46.16] PYEXE=C:\Users\Robert\miniconda3\envs\tradingbot\python.exe
+[Mon 08/11/2025 20:18:47.43] [BOT] Starting headless bot...
+[Mon 08/11/2025 20:18:47.86] [BOT] PID 16356
+[Mon 08/11/2025 20:20:00.08] ======== watcher start ========
+[Mon 08/11/2025 20:20:00.11] Press q to quit, r to restart (works anytime).
+[Mon 08/11/2025 20:20:00.12] BOTDIR=D:\tradingbot
+[Mon 08/11/2025 20:20:00.13] ZIPDIR=D:\Downloads
+[Mon 08/11/2025 20:20:00.15] ZIPPAT=binance-spot-bot-*.zip
+[Mon 08/11/2025 20:20:00.17] ENVNAME=tradingbot
+[Mon 08/11/2025 20:20:00.19] PYEXE=C:\Users\Robert\miniconda3\envs\tradingbot\python.exe
+[Mon 08/11/2025 20:26:28.34] ======== watcher start ========
+[Mon 08/11/2025 20:26:28.36] Press q to quit, r to restart (works anytime).
+[Mon 08/11/2025 20:26:28.38] BOTDIR=D:\tradingbot
+[Mon 08/11/2025 20:26:28.40] ZIPDIR=D:\Downloads
+[Mon 08/11/2025 20:26:28.42] ZIPPAT=binance-spot-bot-*.zip
+[Mon 08/11/2025 20:26:28.44] ENVNAME=tradingbot
+[Mon 08/11/2025 20:26:28.46] PYEXE=C:\Users\Robert\miniconda3\envs\tradingbot\python.exe
+[Mon 08/11/2025 20:26:28.47] [CLEANUP] Sweeping old tradingbot Python processes...
+[Mon 08/11/2025 20:26:30.63] [BOT] Starting headless bot...
+[Mon 08/11/2025 20:26:31.06] [BOT] PID 63616
+[Mon 08/11/2025 20:26:48.66] ======== watcher start ========
+[Mon 08/11/2025 20:26:48.68] Press q to quit, r to restart (works anytime).
+[Mon 08/11/2025 20:26:48.71] BOTDIR=D:\tradingbot
+[Mon 08/11/2025 20:26:48.73] ZIPDIR=D:\Downloads
+[Mon 08/11/2025 20:26:48.74] ZIPPAT=binance-spot-bot-*.zip
+[Mon 08/11/2025 20:26:48.76] ENVNAME=tradingbot
+[Mon 08/11/2025 20:26:48.78] PYEXE=C:\Users\Robert\miniconda3\envs\tradingbot\python.exe
+[Mon 08/11/2025 20:26:48.80] [CLEANUP] Sweeping old tradingbot Python processes...
+[Mon 08/11/2025 20:26:50.87] [BOT] Starting headless bot...
+[Mon 08/11/2025 20:26:51.33] [BOT] PID 43500
+[Mon 08/11/2025 20:27:00.65] [UPDATE] Detected new ZIP: binance-spot-bot-uiv3-20250811-1624.zip (prev: binance-spot-bot-uiv3-20250811-1624.processed.processed.processed.processed.zip)
+[Mon 08/11/2025 20:27:02.75] [OK] ZIP size stabilized.
+[Mon 08/11/2025 20:27:02.76] [CHECK] Validating ZIP readability...
+[Mon 08/11/2025 20:27:02.82] [OK] ZIP structure looks valid.
+[Mon 08/11/2025 20:27:05.17] [UNPACK] Expanding D:\Downloads\binance-spot-bot-uiv3-20250811-1624.deploying.zip into D:\tradingbot ...
+[Mon 08/11/2025 20:27:06.13] [DONE] Updated from binance-spot-bot-uiv3-20250811-1624.zip, restarting bot.
+[Mon 08/11/2025 20:27:07.14] [BOT] Starting headless bot...
+[Mon 08/11/2025 20:27:07.56] [BOT] PID 6716
+[Mon 08/11/2025 20:33:07.56] ======== watcher start ========
+[Mon 08/11/2025 20:33:35.31] ======== watcher start ========
+[Mon 08/11/2025 20:34:09.14] ======== watcher start ========
+[Mon 08/11/2025 20:35:21.31] ======== watcher start ========
+[Mon 08/11/2025 20:37:57.40] [GUARD] File not found yet: . Will retry.
+[Mon 08/11/2025 20:38:02.53] ======== watcher start ========
+[Mon 08/11/2025 20:38:02.56] Press q to quit, r to restart (works anytime).
+[Mon 08/11/2025 20:38:02.58] BOTDIR=D:\tradingbot
+[Mon 08/11/2025 20:38:02.60] ZIPDIR=D:\Downloads
+[Mon 08/11/2025 20:38:02.61] ZIPPAT=binance-spot-bot-*.zip
+[Mon 08/11/2025 20:38:02.63] ENVNAME=tradingbot
+[Mon 08/11/2025 20:38:02.64] PYEXE=C:\Users\Robert\miniconda3\envs\tradingbot\python.exe
+[Mon 08/11/2025 20:38:02.66] [CLEANUP] Sweeping old tradingbot Python processes...
+[Mon 08/11/2025 20:38:04.64] [BOT] Starting headless bot...
+[Mon 08/11/2025 20:38:05.08] [BOT] PID 27644
+[Mon 08/11/2025 20:49:17.16] [QUIT] Stopping bot and killing python processes from D:\tradingbot ...
+[Mon 08/11/2025 20:49:20.07] [QUIT] Exiting watcher.
+[Mon 08/11/2025 20:58:11.54] ======== watcher start ========
+[Mon 08/11/2025 20:58:11.56] Press q to quit, r to restart (works anytime).
+[Mon 08/11/2025 20:58:11.58] BOTDIR=D:\tradingbot
+[Mon 08/11/2025 20:58:11.60] ZIPDIR=D:\Downloads
+[Mon 08/11/2025 20:58:11.62] ZIPPAT=binance-spot-bot-*.zip
+[Mon 08/11/2025 20:58:11.63] ENVNAME=tradingbot
+[Mon 08/11/2025 20:58:11.65] PYEXE=C:\Users\Robert\miniconda3\envs\tradingbot\python.exe
+[Mon 08/11/2025 20:58:11.67] [CLEANUP] Sweeping old tradingbot Python processes...
+[Mon 08/11/2025 20:58:13.59] [BOT] Starting headless bot...
+[Mon 08/11/2025 20:58:14.04] [BOT] PID 53844
+[Tue 08/12/2025 10:13:59.68] [QUIT] Stopping bot and killing python processes from D:\tradingbot ...
+[Tue 08/12/2025 10:14:03.29] [QUIT] Exiting watcher.
+[Wed 08/13/2025  0:24:52.10] ======== watcher start ========
+[Wed 08/13/2025  0:24:52.13] Press q to quit, r to restart (works anytime).
+[Wed 08/13/2025  0:24:52.14] BOTDIR=D:\tradingbot
+[Wed 08/13/2025  0:24:52.16] ZIPDIR=D:\Downloads
+[Wed 08/13/2025  0:24:52.17] ZIPPAT=binance-spot-bot-*.zip
+[Wed 08/13/2025  0:24:52.19] ENVNAME=tradingbot
+[Wed 08/13/2025  0:24:52.21] PYEXE=C:\Users\Robert\miniconda3\envs\tradingbot\python.exe
+[Wed 08/13/2025  0:24:52.22] [CLEANUP] Sweeping old tradingbot Python processes...
+[Wed 08/13/2025  0:24:54.33] [BOT] Starting headless bot...
+[Wed 08/13/2025  0:24:54.79] [BOT] PID 62992
+[Wed 08/13/2025  0:33:51.18] [RESTART] Manual restart requested.
+[Wed 08/13/2025  0:33:53.12] [RESTART] Restarting bot now (no new ZIP).
+[Wed 08/13/2025  0:33:54.15] [BOT] Starting headless bot...
+[Wed 08/13/2025  0:33:54.59] [BOT] PID 34696
+[Wed 08/13/2025  0:34:34.73] [RESTART] Manual restart requested.
+[Wed 08/13/2025  0:34:37.22] [RESTART] Restarting bot now (no new ZIP).
+[Wed 08/13/2025  0:34:38.23] [BOT] Starting headless bot...
+[Wed 08/13/2025  0:34:38.67] [BOT] PID 57732
+[Wed 08/13/2025  0:41:32.90] [RESTART] Manual restart requested.
+[Wed 08/13/2025  0:41:35.16] [RESTART] Restarting bot now (no new ZIP).
+[Wed 08/13/2025  0:41:36.12] [BOT] Starting headless bot...
+[Wed 08/13/2025  0:41:36.58] [BOT] PID 54820
+[Wed 08/13/2025  0:45:17.62] [RESTART] Manual restart requested.
+[Wed 08/13/2025  0:45:20.15] [RESTART] Restarting bot now (no new ZIP).
+[Wed 08/13/2025  0:45:21.17] [BOT] Starting headless bot...
+[Wed 08/13/2025  0:45:21.60] [BOT] PID 61732
+[Wed 08/13/2025  0:45:50.21] [QUIT] Stopping bot and killing python processes from D:\tradingbot ...
+[Wed 08/13/2025  0:45:53.12] [QUIT] Exiting watcher.
+[Wed 08/13/2025  0:46:34.22] ======== watcher start ========
+[Wed 08/13/2025  0:46:34.25] Press q to quit, r to restart (works anytime).
+[Wed 08/13/2025  0:46:34.26] BOTDIR=D:\tradingbot
+[Wed 08/13/2025  0:46:34.28] ZIPDIR=D:\Downloads
+[Wed 08/13/2025  0:46:34.30] ZIPPAT=binance-spot-bot-*.zip
+[Wed 08/13/2025  0:46:34.31] ENVNAME=tradingbot
+[Wed 08/13/2025  0:46:34.33] PYEXE=C:\Users\Robert\miniconda3\envs\tradingbot\python.exe
+[Wed 08/13/2025  0:46:34.35] [CLEANUP] Sweeping old tradingbot Python processes...
+[Wed 08/13/2025  0:46:36.39] [BOT] Starting headless bot...
+[Wed 08/13/2025  0:46:36.83] [BOT] PID 38076
+[Wed 08/13/2025  0:53:04.41] [RESTART] Manual restart requested.
+[Wed 08/13/2025  0:53:07.12] [RESTART] Restarting bot now (no new ZIP).
+[Wed 08/13/2025  0:53:08.16] [BOT] Starting headless bot...
+[Wed 08/13/2025  0:53:08.63] [BOT] PID 15016
+[Wed 08/13/2025  1:33:14.44] [RESTART] Manual restart requested.
+[Wed 08/13/2025  1:33:17.12] [RESTART] Restarting bot now (no new ZIP).
+[Wed 08/13/2025  1:33:18.18] [BOT] Starting headless bot...
+[Wed 08/13/2025  1:33:18.63] [BOT] PID 65956
+[Wed 08/13/2025  1:34:58.27] [QUIT] Stopping bot and killing python processes from D:\tradingbot ...
+[Wed 08/13/2025  1:35:01.22] [QUIT] Exiting watcher.
+[Wed 08/13/2025  1:41:49.20] ======== watcher start ========
+[Wed 08/13/2025  1:41:49.21] Press q to quit, r to restart (works anytime).
+[Wed 08/13/2025  1:41:49.23] BOTDIR=D:\tradingbot
+[Wed 08/13/2025  1:41:49.25] ZIPDIR=D:\Downloads
+[Wed 08/13/2025  1:41:49.26] ZIPPAT=binance-spot-bot-*.zip
+[Wed 08/13/2025  1:41:49.28] ENVNAME=tradingbot
+[Wed 08/13/2025  1:41:49.30] PYEXE=C:\Users\Robert\miniconda3\envs\tradingbot\python.exe
+[Wed 08/13/2025  1:41:49.32] [CLEANUP] Sweeping old tradingbot Python processes...
+[Wed 08/13/2025  1:41:51.39] [BOT] Starting headless bot...
+[Wed 08/13/2025  1:41:51.87] [BOT] PID 71528
+[Wed 08/13/2025  1:42:06.74] [QUIT] Stopping bot and killing python processes from D:\tradingbot ...
+[Wed 08/13/2025  1:42:10.18] [QUIT] Exiting watcher.
+[Wed 08/13/2025  1:48:17.43] ======== watcher start ========
+[Wed 08/13/2025  1:48:17.45] Press q to quit, r to restart (works anytime).
+[Wed 08/13/2025  1:48:17.46] BOTDIR=D:\tradingbot
+[Wed 08/13/2025  1:48:17.48] ZIPDIR=D:\Downloads
+[Wed 08/13/2025  1:48:17.50] ZIPPAT=binance-spot-bot-*.zip
+[Wed 08/13/2025  1:48:17.52] ENVNAME=tradingbot
+[Wed 08/13/2025  1:48:17.53] PYEXE=C:\Users\Robert\miniconda3\envs\tradingbot\python.exe
+[Wed 08/13/2025  1:48:17.55] [CLEANUP] Sweeping old tradingbot Python processes...
+[Wed 08/13/2025  1:48:19.61] [BOT] Starting headless bot...
+[Wed 08/13/2025  1:48:20.06] [BOT] PID 63396
+[Wed 08/13/2025  1:49:30.68] [QUIT] Stopping bot and killing python processes from D:\tradingbot ...
+[Wed 08/13/2025  1:49:34.20] [QUIT] Exiting watcher.

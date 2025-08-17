@@ -1,0 +1,2688 @@
+Traceback (most recent call last):
+  File "<frozen runpy>", line 198, in _run_module_as_main
+  File "<frozen runpy>", line 88, in _run_code
+  File "D:\tradingbot\app\telegram_bot.py", line 37, in <module>
+    asyncio.run(main())
+  File "C:\Users\Robert\miniconda3\envs\tradingbot\Lib\asyncio\runners.py", line 190, in run
+    return runner.run(main)
+           ^^^^^^^^^^^^^^^^
+  File "C:\Users\Robert\miniconda3\envs\tradingbot\Lib\asyncio\runners.py", line 118, in run
+    return self._loop.run_until_complete(task)
+           ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "C:\Users\Robert\miniconda3\envs\tradingbot\Lib\asyncio\base_events.py", line 654, in run_until_complete
+    return future.result()
+           ^^^^^^^^^^^^^^^
+  File "D:\tradingbot\app\telegram_bot.py", line 31, in main
+    app = Application.builder().token(TELEGRAM_BOT_TOKEN).build()
+          ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "C:\Users\Robert\miniconda3\envs\tradingbot\Lib\site-packages\telegram\ext\_applicationbuilder.py", line 310, in build
+    bot: Bot = self._build_ext_bot()  # build a bot
+               ^^^^^^^^^^^^^^^^^^^^^
+  File "C:\Users\Robert\miniconda3\envs\tradingbot\Lib\site-packages\telegram\ext\_applicationbuilder.py", line 272, in _build_ext_bot
+    return ExtBot(
+           ^^^^^^^
+  File "C:\Users\Robert\miniconda3\envs\tradingbot\Lib\site-packages\telegram\ext\_extbot.py", line 229, in __init__
+    super().__init__(
+  File "C:\Users\Robert\miniconda3\envs\tradingbot\Lib\site-packages\telegram\_bot.py", line 256, in __init__
+    raise InvalidToken("You must pass the token you received from https://t.me/Botfather!")
+telegram.error.InvalidToken: You must pass the token you received from https://t.me/Botfather!
+Traceback (most recent call last):
+  File "<frozen runpy>", line 198, in _run_module_as_main
+  File "<frozen runpy>", line 88, in _run_code
+  File "D:\tradingbot\app\telegram_bot.py", line 37, in <module>
+    asyncio.run(main())
+  File "C:\Users\Robert\miniconda3\envs\tradingbot\Lib\asyncio\runners.py", line 190, in run
+    return runner.run(main)
+           ^^^^^^^^^^^^^^^^
+  File "C:\Users\Robert\miniconda3\envs\tradingbot\Lib\asyncio\runners.py", line 118, in run
+    return self._loop.run_until_complete(task)
+           ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "C:\Users\Robert\miniconda3\envs\tradingbot\Lib\asyncio\base_events.py", line 654, in run_until_complete
+    return future.result()
+           ^^^^^^^^^^^^^^^
+  File "D:\tradingbot\app\telegram_bot.py", line 31, in main
+    app = Application.builder().token(TELEGRAM_BOT_TOKEN).build()
+          ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "C:\Users\Robert\miniconda3\envs\tradingbot\Lib\site-packages\telegram\ext\_applicationbuilder.py", line 310, in build
+    bot: Bot = self._build_ext_bot()  # build a bot
+               ^^^^^^^^^^^^^^^^^^^^^
+  File "C:\Users\Robert\miniconda3\envs\tradingbot\Lib\site-packages\telegram\ext\_applicationbuilder.py", line 272, in _build_ext_bot
+    return ExtBot(
+           ^^^^^^^
+  File "C:\Users\Robert\miniconda3\envs\tradingbot\Lib\site-packages\telegram\ext\_extbot.py", line 229, in __init__
+    super().__init__(
+  File "C:\Users\Robert\miniconda3\envs\tradingbot\Lib\site-packages\telegram\_bot.py", line 256, in __init__
+    raise InvalidToken("You must pass the token you received from https://t.me/Botfather!")
+telegram.error.InvalidToken: You must pass the token you received from https://t.me/Botfather!
+Traceback (most recent call last):
+  File "<frozen runpy>", line 198, in _run_module_as_main
+  File "<frozen runpy>", line 88, in _run_code
+  File "D:\tradingbot\app\telegram_bot.py", line 37, in <module>
+    asyncio.run(main())
+  File "C:\Users\Robert\miniconda3\envs\tradingbot\Lib\asyncio\runners.py", line 190, in run
+    return runner.run(main)
+           ^^^^^^^^^^^^^^^^
+  File "C:\Users\Robert\miniconda3\envs\tradingbot\Lib\asyncio\runners.py", line 118, in run
+    return self._loop.run_until_complete(task)
+           ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "C:\Users\Robert\miniconda3\envs\tradingbot\Lib\asyncio\base_events.py", line 654, in run_until_complete
+    return future.result()
+           ^^^^^^^^^^^^^^^
+  File "D:\tradingbot\app\telegram_bot.py", line 31, in main
+    app = Application.builder().token(TELEGRAM_BOT_TOKEN).build()
+          ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "C:\Users\Robert\miniconda3\envs\tradingbot\Lib\site-packages\telegram\ext\_applicationbuilder.py", line 310, in build
+    bot: Bot = self._build_ext_bot()  # build a bot
+               ^^^^^^^^^^^^^^^^^^^^^
+  File "C:\Users\Robert\miniconda3\envs\tradingbot\Lib\site-packages\telegram\ext\_applicationbuilder.py", line 272, in _build_ext_bot
+    return ExtBot(
+           ^^^^^^^
+  File "C:\Users\Robert\miniconda3\envs\tradingbot\Lib\site-packages\telegram\ext\_extbot.py", line 229, in __init__
+    super().__init__(
+  File "C:\Users\Robert\miniconda3\envs\tradingbot\Lib\site-packages\telegram\_bot.py", line 256, in __init__
+    raise InvalidToken("You must pass the token you received from https://t.me/Botfather!")
+telegram.error.InvalidToken: You must pass the token you received from https://t.me/Botfather!
+Traceback (most recent call last):
+  File "<frozen runpy>", line 198, in _run_module_as_main
+  File "<frozen runpy>", line 88, in _run_code
+  File "D:\tradingbot\app\telegram_bot.py", line 37, in <module>
+    asyncio.run(main())
+  File "C:\Users\Robert\miniconda3\envs\tradingbot\Lib\asyncio\runners.py", line 190, in run
+    return runner.run(main)
+           ^^^^^^^^^^^^^^^^
+  File "C:\Users\Robert\miniconda3\envs\tradingbot\Lib\asyncio\runners.py", line 118, in run
+    return self._loop.run_until_complete(task)
+           ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "C:\Users\Robert\miniconda3\envs\tradingbot\Lib\asyncio\base_events.py", line 654, in run_until_complete
+    return future.result()
+           ^^^^^^^^^^^^^^^
+  File "D:\tradingbot\app\telegram_bot.py", line 31, in main
+    app = Application.builder().token(TELEGRAM_BOT_TOKEN).build()
+          ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "C:\Users\Robert\miniconda3\envs\tradingbot\Lib\site-packages\telegram\ext\_applicationbuilder.py", line 310, in build
+    bot: Bot = self._build_ext_bot()  # build a bot
+               ^^^^^^^^^^^^^^^^^^^^^
+  File "C:\Users\Robert\miniconda3\envs\tradingbot\Lib\site-packages\telegram\ext\_applicationbuilder.py", line 272, in _build_ext_bot
+    return ExtBot(
+           ^^^^^^^
+  File "C:\Users\Robert\miniconda3\envs\tradingbot\Lib\site-packages\telegram\ext\_extbot.py", line 229, in __init__
+    super().__init__(
+  File "C:\Users\Robert\miniconda3\envs\tradingbot\Lib\site-packages\telegram\_bot.py", line 256, in __init__
+    raise InvalidToken("You must pass the token you received from https://t.me/Botfather!")
+telegram.error.InvalidToken: You must pass the token you received from https://t.me/Botfather!
+Traceback (most recent call last):
+  File "<frozen runpy>", line 198, in _run_module_as_main
+  File "<frozen runpy>", line 88, in _run_code
+  File "D:\tradingbot\app\telegram_bot.py", line 37, in <module>
+    asyncio.run(main())
+  File "C:\Users\Robert\miniconda3\envs\tradingbot\Lib\asyncio\runners.py", line 190, in run
+    return runner.run(main)
+           ^^^^^^^^^^^^^^^^
+  File "C:\Users\Robert\miniconda3\envs\tradingbot\Lib\asyncio\runners.py", line 118, in run
+    return self._loop.run_until_complete(task)
+           ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "C:\Users\Robert\miniconda3\envs\tradingbot\Lib\asyncio\base_events.py", line 654, in run_until_complete
+    return future.result()
+           ^^^^^^^^^^^^^^^
+  File "D:\tradingbot\app\telegram_bot.py", line 31, in main
+    app = Application.builder().token(TELEGRAM_BOT_TOKEN).build()
+          ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "C:\Users\Robert\miniconda3\envs\tradingbot\Lib\site-packages\telegram\ext\_applicationbuilder.py", line 310, in build
+    bot: Bot = self._build_ext_bot()  # build a bot
+               ^^^^^^^^^^^^^^^^^^^^^
+  File "C:\Users\Robert\miniconda3\envs\tradingbot\Lib\site-packages\telegram\ext\_applicationbuilder.py", line 272, in _build_ext_bot
+    return ExtBot(
+           ^^^^^^^
+  File "C:\Users\Robert\miniconda3\envs\tradingbot\Lib\site-packages\telegram\ext\_extbot.py", line 229, in __init__
+    super().__init__(
+  File "C:\Users\Robert\miniconda3\envs\tradingbot\Lib\site-packages\telegram\_bot.py", line 256, in __init__
+    raise InvalidToken("You must pass the token you received from https://t.me/Botfather!")
+telegram.error.InvalidToken: You must pass the token you received from https://t.me/Botfather!
+Traceback (most recent call last):
+  File "<frozen runpy>", line 198, in _run_module_as_main
+  File "<frozen runpy>", line 88, in _run_code
+  File "D:\tradingbot\app\telegram_bot.py", line 37, in <module>
+    asyncio.run(main())
+  File "C:\Users\Robert\miniconda3\envs\tradingbot\Lib\asyncio\runners.py", line 190, in run
+    return runner.run(main)
+           ^^^^^^^^^^^^^^^^
+  File "C:\Users\Robert\miniconda3\envs\tradingbot\Lib\asyncio\runners.py", line 118, in run
+    return self._loop.run_until_complete(task)
+           ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "C:\Users\Robert\miniconda3\envs\tradingbot\Lib\asyncio\base_events.py", line 654, in run_until_complete
+    return future.result()
+           ^^^^^^^^^^^^^^^
+  File "D:\tradingbot\app\telegram_bot.py", line 31, in main
+    app = Application.builder().token(TELEGRAM_BOT_TOKEN).build()
+          ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "C:\Users\Robert\miniconda3\envs\tradingbot\Lib\site-packages\telegram\ext\_applicationbuilder.py", line 310, in build
+    bot: Bot = self._build_ext_bot()  # build a bot
+               ^^^^^^^^^^^^^^^^^^^^^
+  File "C:\Users\Robert\miniconda3\envs\tradingbot\Lib\site-packages\telegram\ext\_applicationbuilder.py", line 272, in _build_ext_bot
+    return ExtBot(
+           ^^^^^^^
+  File "C:\Users\Robert\miniconda3\envs\tradingbot\Lib\site-packages\telegram\ext\_extbot.py", line 229, in __init__
+    super().__init__(
+  File "C:\Users\Robert\miniconda3\envs\tradingbot\Lib\site-packages\telegram\_bot.py", line 256, in __init__
+    raise InvalidToken("You must pass the token you received from https://t.me/Botfather!")
+telegram.error.InvalidToken: You must pass the token you received from https://t.me/Botfather!
+Traceback (most recent call last):
+  File "<frozen runpy>", line 198, in _run_module_as_main
+  File "<frozen runpy>", line 88, in _run_code
+  File "D:\tradingbot\app\telegram_bot.py", line 37, in <module>
+    asyncio.run(main())
+  File "C:\Users\Robert\miniconda3\envs\tradingbot\Lib\asyncio\runners.py", line 190, in run
+    return runner.run(main)
+           ^^^^^^^^^^^^^^^^
+  File "C:\Users\Robert\miniconda3\envs\tradingbot\Lib\asyncio\runners.py", line 118, in run
+    return self._loop.run_until_complete(task)
+           ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "C:\Users\Robert\miniconda3\envs\tradingbot\Lib\asyncio\base_events.py", line 654, in run_until_complete
+    return future.result()
+           ^^^^^^^^^^^^^^^
+  File "D:\tradingbot\app\telegram_bot.py", line 31, in main
+    app = Application.builder().token(TELEGRAM_BOT_TOKEN).build()
+          ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "C:\Users\Robert\miniconda3\envs\tradingbot\Lib\site-packages\telegram\ext\_applicationbuilder.py", line 310, in build
+    bot: Bot = self._build_ext_bot()  # build a bot
+               ^^^^^^^^^^^^^^^^^^^^^
+  File "C:\Users\Robert\miniconda3\envs\tradingbot\Lib\site-packages\telegram\ext\_applicationbuilder.py", line 272, in _build_ext_bot
+    return ExtBot(
+           ^^^^^^^
+  File "C:\Users\Robert\miniconda3\envs\tradingbot\Lib\site-packages\telegram\ext\_extbot.py", line 229, in __init__
+    super().__init__(
+  File "C:\Users\Robert\miniconda3\envs\tradingbot\Lib\site-packages\telegram\_bot.py", line 256, in __init__
+    raise InvalidToken("You must pass the token you received from https://t.me/Botfather!")
+telegram.error.InvalidToken: You must pass the token you received from https://t.me/Botfather!
+Traceback (most recent call last):
+  File "<frozen runpy>", line 198, in _run_module_as_main
+  File "<frozen runpy>", line 88, in _run_code
+  File "D:\tradingbot\app\telegram_bot.py", line 37, in <module>
+    asyncio.run(main())
+  File "C:\Users\Robert\miniconda3\envs\tradingbot\Lib\asyncio\runners.py", line 190, in run
+    return runner.run(main)
+           ^^^^^^^^^^^^^^^^
+  File "C:\Users\Robert\miniconda3\envs\tradingbot\Lib\asyncio\runners.py", line 118, in run
+    return self._loop.run_until_complete(task)
+           ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "C:\Users\Robert\miniconda3\envs\tradingbot\Lib\asyncio\base_events.py", line 654, in run_until_complete
+    return future.result()
+           ^^^^^^^^^^^^^^^
+  File "D:\tradingbot\app\telegram_bot.py", line 31, in main
+    app = Application.builder().token(TELEGRAM_BOT_TOKEN).build()
+          ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "C:\Users\Robert\miniconda3\envs\tradingbot\Lib\site-packages\telegram\ext\_applicationbuilder.py", line 310, in build
+    bot: Bot = self._build_ext_bot()  # build a bot
+               ^^^^^^^^^^^^^^^^^^^^^
+  File "C:\Users\Robert\miniconda3\envs\tradingbot\Lib\site-packages\telegram\ext\_applicationbuilder.py", line 272, in _build_ext_bot
+    return ExtBot(
+           ^^^^^^^
+  File "C:\Users\Robert\miniconda3\envs\tradingbot\Lib\site-packages\telegram\ext\_extbot.py", line 229, in __init__
+    super().__init__(
+  File "C:\Users\Robert\miniconda3\envs\tradingbot\Lib\site-packages\telegram\_bot.py", line 256, in __init__
+    raise InvalidToken("You must pass the token you received from https://t.me/Botfather!")
+telegram.error.InvalidToken: You must pass the token you received from https://t.me/Botfather!
+Traceback (most recent call last):
+  File "<frozen runpy>", line 198, in _run_module_as_main
+  File "<frozen runpy>", line 88, in _run_code
+  File "D:\tradingbot\app\telegram_bot.py", line 37, in <module>
+    asyncio.run(main())
+  File "C:\Users\Robert\miniconda3\envs\tradingbot\Lib\asyncio\runners.py", line 190, in run
+    return runner.run(main)
+           ^^^^^^^^^^^^^^^^
+  File "C:\Users\Robert\miniconda3\envs\tradingbot\Lib\asyncio\runners.py", line 118, in run
+    return self._loop.run_until_complete(task)
+           ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "C:\Users\Robert\miniconda3\envs\tradingbot\Lib\asyncio\base_events.py", line 654, in run_until_complete
+    return future.result()
+           ^^^^^^^^^^^^^^^
+  File "D:\tradingbot\app\telegram_bot.py", line 31, in main
+    app = Application.builder().token(TELEGRAM_BOT_TOKEN).build()
+          ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "C:\Users\Robert\miniconda3\envs\tradingbot\Lib\site-packages\telegram\ext\_applicationbuilder.py", line 310, in build
+    bot: Bot = self._build_ext_bot()  # build a bot
+               ^^^^^^^^^^^^^^^^^^^^^
+  File "C:\Users\Robert\miniconda3\envs\tradingbot\Lib\site-packages\telegram\ext\_applicationbuilder.py", line 272, in _build_ext_bot
+    return ExtBot(
+           ^^^^^^^
+  File "C:\Users\Robert\miniconda3\envs\tradingbot\Lib\site-packages\telegram\ext\_extbot.py", line 229, in __init__
+    super().__init__(
+  File "C:\Users\Robert\miniconda3\envs\tradingbot\Lib\site-packages\telegram\_bot.py", line 256, in __init__
+    raise InvalidToken("You must pass the token you received from https://t.me/Botfather!")
+telegram.error.InvalidToken: You must pass the token you received from https://t.me/Botfather!
+Traceback (most recent call last):
+  File "<frozen runpy>", line 198, in _run_module_as_main
+  File "<frozen runpy>", line 88, in _run_code
+  File "D:\tradingbot\app\telegram_bot.py", line 37, in <module>
+    asyncio.run(main())
+  File "C:\Users\Robert\miniconda3\envs\tradingbot\Lib\asyncio\runners.py", line 190, in run
+    return runner.run(main)
+           ^^^^^^^^^^^^^^^^
+  File "C:\Users\Robert\miniconda3\envs\tradingbot\Lib\asyncio\runners.py", line 118, in run
+    return self._loop.run_until_complete(task)
+           ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "C:\Users\Robert\miniconda3\envs\tradingbot\Lib\asyncio\base_events.py", line 654, in run_until_complete
+    return future.result()
+           ^^^^^^^^^^^^^^^
+  File "D:\tradingbot\app\telegram_bot.py", line 31, in main
+    app = Application.builder().token(TELEGRAM_BOT_TOKEN).build()
+          ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "C:\Users\Robert\miniconda3\envs\tradingbot\Lib\site-packages\telegram\ext\_applicationbuilder.py", line 310, in build
+    bot: Bot = self._build_ext_bot()  # build a bot
+               ^^^^^^^^^^^^^^^^^^^^^
+  File "C:\Users\Robert\miniconda3\envs\tradingbot\Lib\site-packages\telegram\ext\_applicationbuilder.py", line 272, in _build_ext_bot
+    return ExtBot(
+           ^^^^^^^
+  File "C:\Users\Robert\miniconda3\envs\tradingbot\Lib\site-packages\telegram\ext\_extbot.py", line 229, in __init__
+    super().__init__(
+  File "C:\Users\Robert\miniconda3\envs\tradingbot\Lib\site-packages\telegram\_bot.py", line 256, in __init__
+    raise InvalidToken("You must pass the token you received from https://t.me/Botfather!")
+telegram.error.InvalidToken: You must pass the token you received from https://t.me/Botfather!
+Traceback (most recent call last):
+  File "<frozen runpy>", line 198, in _run_module_as_main
+  File "<frozen runpy>", line 88, in _run_code
+  File "D:\tradingbot\app\telegram_bot.py", line 37, in <module>
+    asyncio.run(main())
+  File "C:\Users\Robert\miniconda3\envs\tradingbot\Lib\asyncio\runners.py", line 190, in run
+    return runner.run(main)
+           ^^^^^^^^^^^^^^^^
+  File "C:\Users\Robert\miniconda3\envs\tradingbot\Lib\asyncio\runners.py", line 118, in run
+    return self._loop.run_until_complete(task)
+           ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "C:\Users\Robert\miniconda3\envs\tradingbot\Lib\asyncio\base_events.py", line 654, in run_until_complete
+    return future.result()
+           ^^^^^^^^^^^^^^^
+  File "D:\tradingbot\app\telegram_bot.py", line 31, in main
+    app = Application.builder().token(TELEGRAM_BOT_TOKEN).build()
+          ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "C:\Users\Robert\miniconda3\envs\tradingbot\Lib\site-packages\telegram\ext\_applicationbuilder.py", line 310, in build
+    bot: Bot = self._build_ext_bot()  # build a bot
+               ^^^^^^^^^^^^^^^^^^^^^
+  File "C:\Users\Robert\miniconda3\envs\tradingbot\Lib\site-packages\telegram\ext\_applicationbuilder.py", line 272, in _build_ext_bot
+    return ExtBot(
+           ^^^^^^^
+  File "C:\Users\Robert\miniconda3\envs\tradingbot\Lib\site-packages\telegram\ext\_extbot.py", line 229, in __init__
+    super().__init__(
+  File "C:\Users\Robert\miniconda3\envs\tradingbot\Lib\site-packages\telegram\_bot.py", line 256, in __init__
+    raise InvalidToken("You must pass the token you received from https://t.me/Botfather!")
+telegram.error.InvalidToken: You must pass the token you received from https://t.me/Botfather!
+Traceback (most recent call last):
+  File "<frozen runpy>", line 198, in _run_module_as_main
+  File "<frozen runpy>", line 88, in _run_code
+  File "D:\tradingbot\app\telegram_bot.py", line 37, in <module>
+    asyncio.run(main())
+  File "C:\Users\Robert\miniconda3\envs\tradingbot\Lib\asyncio\runners.py", line 190, in run
+    return runner.run(main)
+           ^^^^^^^^^^^^^^^^
+  File "C:\Users\Robert\miniconda3\envs\tradingbot\Lib\asyncio\runners.py", line 118, in run
+    return self._loop.run_until_complete(task)
+           ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "C:\Users\Robert\miniconda3\envs\tradingbot\Lib\asyncio\base_events.py", line 654, in run_until_complete
+    return future.result()
+           ^^^^^^^^^^^^^^^
+  File "D:\tradingbot\app\telegram_bot.py", line 31, in main
+    app = Application.builder().token(TELEGRAM_BOT_TOKEN).build()
+          ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "C:\Users\Robert\miniconda3\envs\tradingbot\Lib\site-packages\telegram\ext\_applicationbuilder.py", line 310, in build
+    bot: Bot = self._build_ext_bot()  # build a bot
+               ^^^^^^^^^^^^^^^^^^^^^
+  File "C:\Users\Robert\miniconda3\envs\tradingbot\Lib\site-packages\telegram\ext\_applicationbuilder.py", line 272, in _build_ext_bot
+    return ExtBot(
+           ^^^^^^^
+  File "C:\Users\Robert\miniconda3\envs\tradingbot\Lib\site-packages\telegram\ext\_extbot.py", line 229, in __init__
+    super().__init__(
+  File "C:\Users\Robert\miniconda3\envs\tradingbot\Lib\site-packages\telegram\_bot.py", line 256, in __init__
+    raise InvalidToken("You must pass the token you received from https://t.me/Botfather!")
+telegram.error.InvalidToken: You must pass the token you received from https://t.me/Botfather!
+Traceback (most recent call last):
+  File "<frozen runpy>", line 198, in _run_module_as_main
+  File "<frozen runpy>", line 88, in _run_code
+  File "D:\tradingbot\app\telegram_bot.py", line 37, in <module>
+    asyncio.run(main())
+  File "C:\Users\Robert\miniconda3\envs\tradingbot\Lib\asyncio\runners.py", line 190, in run
+    return runner.run(main)
+           ^^^^^^^^^^^^^^^^
+  File "C:\Users\Robert\miniconda3\envs\tradingbot\Lib\asyncio\runners.py", line 118, in run
+    return self._loop.run_until_complete(task)
+           ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "C:\Users\Robert\miniconda3\envs\tradingbot\Lib\asyncio\base_events.py", line 654, in run_until_complete
+    return future.result()
+           ^^^^^^^^^^^^^^^
+  File "D:\tradingbot\app\telegram_bot.py", line 31, in main
+    app = Application.builder().token(TELEGRAM_BOT_TOKEN).build()
+          ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "C:\Users\Robert\miniconda3\envs\tradingbot\Lib\site-packages\telegram\ext\_applicationbuilder.py", line 310, in build
+    bot: Bot = self._build_ext_bot()  # build a bot
+               ^^^^^^^^^^^^^^^^^^^^^
+  File "C:\Users\Robert\miniconda3\envs\tradingbot\Lib\site-packages\telegram\ext\_applicationbuilder.py", line 272, in _build_ext_bot
+    return ExtBot(
+           ^^^^^^^
+  File "C:\Users\Robert\miniconda3\envs\tradingbot\Lib\site-packages\telegram\ext\_extbot.py", line 229, in __init__
+    super().__init__(
+  File "C:\Users\Robert\miniconda3\envs\tradingbot\Lib\site-packages\telegram\_bot.py", line 256, in __init__
+    raise InvalidToken("You must pass the token you received from https://t.me/Botfather!")
+telegram.error.InvalidToken: You must pass the token you received from https://t.me/Botfather!
+Traceback (most recent call last):
+  File "<frozen runpy>", line 198, in _run_module_as_main
+  File "<frozen runpy>", line 88, in _run_code
+  File "D:\tradingbot\app\telegram_bot.py", line 37, in <module>
+    asyncio.run(main())
+  File "C:\Users\Robert\miniconda3\envs\tradingbot\Lib\asyncio\runners.py", line 190, in run
+    return runner.run(main)
+           ^^^^^^^^^^^^^^^^
+  File "C:\Users\Robert\miniconda3\envs\tradingbot\Lib\asyncio\runners.py", line 118, in run
+    return self._loop.run_until_complete(task)
+           ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "C:\Users\Robert\miniconda3\envs\tradingbot\Lib\asyncio\base_events.py", line 654, in run_until_complete
+    return future.result()
+           ^^^^^^^^^^^^^^^
+  File "D:\tradingbot\app\telegram_bot.py", line 31, in main
+    app = Application.builder().token(TELEGRAM_BOT_TOKEN).build()
+          ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "C:\Users\Robert\miniconda3\envs\tradingbot\Lib\site-packages\telegram\ext\_applicationbuilder.py", line 310, in build
+    bot: Bot = self._build_ext_bot()  # build a bot
+               ^^^^^^^^^^^^^^^^^^^^^
+  File "C:\Users\Robert\miniconda3\envs\tradingbot\Lib\site-packages\telegram\ext\_applicationbuilder.py", line 272, in _build_ext_bot
+    return ExtBot(
+           ^^^^^^^
+  File "C:\Users\Robert\miniconda3\envs\tradingbot\Lib\site-packages\telegram\ext\_extbot.py", line 229, in __init__
+    super().__init__(
+  File "C:\Users\Robert\miniconda3\envs\tradingbot\Lib\site-packages\telegram\_bot.py", line 256, in __init__
+    raise InvalidToken("You must pass the token you received from https://t.me/Botfather!")
+telegram.error.InvalidToken: You must pass the token you received from https://t.me/Botfather!
+Traceback (most recent call last):
+  File "<frozen runpy>", line 198, in _run_module_as_main
+  File "<frozen runpy>", line 88, in _run_code
+  File "D:\tradingbot\app\telegram_bot.py", line 37, in <module>
+    asyncio.run(main())
+  File "C:\Users\Robert\miniconda3\envs\tradingbot\Lib\asyncio\runners.py", line 190, in run
+    return runner.run(main)
+           ^^^^^^^^^^^^^^^^
+  File "C:\Users\Robert\miniconda3\envs\tradingbot\Lib\asyncio\runners.py", line 118, in run
+    return self._loop.run_until_complete(task)
+           ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "C:\Users\Robert\miniconda3\envs\tradingbot\Lib\asyncio\base_events.py", line 654, in run_until_complete
+    return future.result()
+           ^^^^^^^^^^^^^^^
+  File "D:\tradingbot\app\telegram_bot.py", line 31, in main
+    app = Application.builder().token(TELEGRAM_BOT_TOKEN).build()
+          ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "C:\Users\Robert\miniconda3\envs\tradingbot\Lib\site-packages\telegram\ext\_applicationbuilder.py", line 310, in build
+    bot: Bot = self._build_ext_bot()  # build a bot
+               ^^^^^^^^^^^^^^^^^^^^^
+  File "C:\Users\Robert\miniconda3\envs\tradingbot\Lib\site-packages\telegram\ext\_applicationbuilder.py", line 272, in _build_ext_bot
+    return ExtBot(
+           ^^^^^^^
+  File "C:\Users\Robert\miniconda3\envs\tradingbot\Lib\site-packages\telegram\ext\_extbot.py", line 229, in __init__
+    super().__init__(
+  File "C:\Users\Robert\miniconda3\envs\tradingbot\Lib\site-packages\telegram\_bot.py", line 256, in __init__
+    raise InvalidToken("You must pass the token you received from https://t.me/Botfather!")
+telegram.error.InvalidToken: You must pass the token you received from https://t.me/Botfather!
+Traceback (most recent call last):
+  File "<frozen runpy>", line 198, in _run_module_as_main
+  File "<frozen runpy>", line 88, in _run_code
+  File "D:\tradingbot\app\telegram_bot.py", line 37, in <module>
+    asyncio.run(main())
+  File "C:\Users\Robert\miniconda3\envs\tradingbot\Lib\asyncio\runners.py", line 190, in run
+    return runner.run(main)
+           ^^^^^^^^^^^^^^^^
+  File "C:\Users\Robert\miniconda3\envs\tradingbot\Lib\asyncio\runners.py", line 118, in run
+    return self._loop.run_until_complete(task)
+           ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "C:\Users\Robert\miniconda3\envs\tradingbot\Lib\asyncio\base_events.py", line 654, in run_until_complete
+    return future.result()
+           ^^^^^^^^^^^^^^^
+  File "D:\tradingbot\app\telegram_bot.py", line 31, in main
+    app = Application.builder().token(TELEGRAM_BOT_TOKEN).build()
+          ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "C:\Users\Robert\miniconda3\envs\tradingbot\Lib\site-packages\telegram\ext\_applicationbuilder.py", line 310, in build
+    bot: Bot = self._build_ext_bot()  # build a bot
+               ^^^^^^^^^^^^^^^^^^^^^
+  File "C:\Users\Robert\miniconda3\envs\tradingbot\Lib\site-packages\telegram\ext\_applicationbuilder.py", line 272, in _build_ext_bot
+    return ExtBot(
+           ^^^^^^^
+  File "C:\Users\Robert\miniconda3\envs\tradingbot\Lib\site-packages\telegram\ext\_extbot.py", line 229, in __init__
+    super().__init__(
+  File "C:\Users\Robert\miniconda3\envs\tradingbot\Lib\site-packages\telegram\_bot.py", line 256, in __init__
+    raise InvalidToken("You must pass the token you received from https://t.me/Botfather!")
+telegram.error.InvalidToken: You must pass the token you received from https://t.me/Botfather!
+Traceback (most recent call last):
+  File "<frozen runpy>", line 198, in _run_module_as_main
+  File "<frozen runpy>", line 88, in _run_code
+  File "D:\tradingbot\app\telegram_bot.py", line 37, in <module>
+    asyncio.run(main())
+  File "C:\Users\Robert\miniconda3\envs\tradingbot\Lib\asyncio\runners.py", line 190, in run
+    return runner.run(main)
+           ^^^^^^^^^^^^^^^^
+  File "C:\Users\Robert\miniconda3\envs\tradingbot\Lib\asyncio\runners.py", line 118, in run
+    return self._loop.run_until_complete(task)
+           ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "C:\Users\Robert\miniconda3\envs\tradingbot\Lib\asyncio\base_events.py", line 654, in run_until_complete
+    return future.result()
+           ^^^^^^^^^^^^^^^
+  File "D:\tradingbot\app\telegram_bot.py", line 31, in main
+    app = Application.builder().token(TELEGRAM_BOT_TOKEN).build()
+          ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "C:\Users\Robert\miniconda3\envs\tradingbot\Lib\site-packages\telegram\ext\_applicationbuilder.py", line 310, in build
+    bot: Bot = self._build_ext_bot()  # build a bot
+               ^^^^^^^^^^^^^^^^^^^^^
+  File "C:\Users\Robert\miniconda3\envs\tradingbot\Lib\site-packages\telegram\ext\_applicationbuilder.py", line 272, in _build_ext_bot
+    return ExtBot(
+           ^^^^^^^
+  File "C:\Users\Robert\miniconda3\envs\tradingbot\Lib\site-packages\telegram\ext\_extbot.py", line 229, in __init__
+    super().__init__(
+  File "C:\Users\Robert\miniconda3\envs\tradingbot\Lib\site-packages\telegram\_bot.py", line 256, in __init__
+    raise InvalidToken("You must pass the token you received from https://t.me/Botfather!")
+telegram.error.InvalidToken: You must pass the token you received from https://t.me/Botfather!
+Traceback (most recent call last):
+  File "<frozen runpy>", line 198, in _run_module_as_main
+  File "<frozen runpy>", line 88, in _run_code
+  File "D:\tradingbot\app\telegram_bot.py", line 37, in <module>
+    asyncio.run(main())
+  File "C:\Users\Robert\miniconda3\envs\tradingbot\Lib\asyncio\runners.py", line 190, in run
+    return runner.run(main)
+           ^^^^^^^^^^^^^^^^
+  File "C:\Users\Robert\miniconda3\envs\tradingbot\Lib\asyncio\runners.py", line 118, in run
+    return self._loop.run_until_complete(task)
+           ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "C:\Users\Robert\miniconda3\envs\tradingbot\Lib\asyncio\base_events.py", line 654, in run_until_complete
+    return future.result()
+           ^^^^^^^^^^^^^^^
+  File "D:\tradingbot\app\telegram_bot.py", line 31, in main
+    app = Application.builder().token(TELEGRAM_BOT_TOKEN).build()
+          ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "C:\Users\Robert\miniconda3\envs\tradingbot\Lib\site-packages\telegram\ext\_applicationbuilder.py", line 310, in build
+    bot: Bot = self._build_ext_bot()  # build a bot
+               ^^^^^^^^^^^^^^^^^^^^^
+  File "C:\Users\Robert\miniconda3\envs\tradingbot\Lib\site-packages\telegram\ext\_applicationbuilder.py", line 272, in _build_ext_bot
+    return ExtBot(
+           ^^^^^^^
+  File "C:\Users\Robert\miniconda3\envs\tradingbot\Lib\site-packages\telegram\ext\_extbot.py", line 229, in __init__
+    super().__init__(
+  File "C:\Users\Robert\miniconda3\envs\tradingbot\Lib\site-packages\telegram\_bot.py", line 256, in __init__
+    raise InvalidToken("You must pass the token you received from https://t.me/Botfather!")
+telegram.error.InvalidToken: You must pass the token you received from https://t.me/Botfather!
+Traceback (most recent call last):
+  File "<frozen runpy>", line 198, in _run_module_as_main
+  File "<frozen runpy>", line 88, in _run_code
+  File "D:\tradingbot\app\telegram_bot.py", line 37, in <module>
+    asyncio.run(main())
+  File "C:\Users\Robert\miniconda3\envs\tradingbot\Lib\asyncio\runners.py", line 190, in run
+    return runner.run(main)
+           ^^^^^^^^^^^^^^^^
+  File "C:\Users\Robert\miniconda3\envs\tradingbot\Lib\asyncio\runners.py", line 118, in run
+    return self._loop.run_until_complete(task)
+           ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "C:\Users\Robert\miniconda3\envs\tradingbot\Lib\asyncio\base_events.py", line 654, in run_until_complete
+    return future.result()
+           ^^^^^^^^^^^^^^^
+  File "D:\tradingbot\app\telegram_bot.py", line 31, in main
+    app = Application.builder().token(TELEGRAM_BOT_TOKEN).build()
+          ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "C:\Users\Robert\miniconda3\envs\tradingbot\Lib\site-packages\telegram\ext\_applicationbuilder.py", line 310, in build
+    bot: Bot = self._build_ext_bot()  # build a bot
+               ^^^^^^^^^^^^^^^^^^^^^
+  File "C:\Users\Robert\miniconda3\envs\tradingbot\Lib\site-packages\telegram\ext\_applicationbuilder.py", line 272, in _build_ext_bot
+    return ExtBot(
+           ^^^^^^^
+  File "C:\Users\Robert\miniconda3\envs\tradingbot\Lib\site-packages\telegram\ext\_extbot.py", line 229, in __init__
+    super().__init__(
+  File "C:\Users\Robert\miniconda3\envs\tradingbot\Lib\site-packages\telegram\_bot.py", line 256, in __init__
+    raise InvalidToken("You must pass the token you received from https://t.me/Botfather!")
+telegram.error.InvalidToken: You must pass the token you received from https://t.me/Botfather!
+Traceback (most recent call last):
+  File "<frozen runpy>", line 198, in _run_module_as_main
+  File "<frozen runpy>", line 88, in _run_code
+  File "D:\tradingbot\app\telegram_bot.py", line 37, in <module>
+    asyncio.run(main())
+  File "C:\Users\Robert\miniconda3\envs\tradingbot\Lib\asyncio\runners.py", line 190, in run
+    return runner.run(main)
+           ^^^^^^^^^^^^^^^^
+  File "C:\Users\Robert\miniconda3\envs\tradingbot\Lib\asyncio\runners.py", line 118, in run
+    return self._loop.run_until_complete(task)
+           ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "C:\Users\Robert\miniconda3\envs\tradingbot\Lib\asyncio\base_events.py", line 654, in run_until_complete
+    return future.result()
+           ^^^^^^^^^^^^^^^
+  File "D:\tradingbot\app\telegram_bot.py", line 31, in main
+    app = Application.builder().token(TELEGRAM_BOT_TOKEN).build()
+          ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "C:\Users\Robert\miniconda3\envs\tradingbot\Lib\site-packages\telegram\ext\_applicationbuilder.py", line 310, in build
+    bot: Bot = self._build_ext_bot()  # build a bot
+               ^^^^^^^^^^^^^^^^^^^^^
+  File "C:\Users\Robert\miniconda3\envs\tradingbot\Lib\site-packages\telegram\ext\_applicationbuilder.py", line 272, in _build_ext_bot
+    return ExtBot(
+           ^^^^^^^
+  File "C:\Users\Robert\miniconda3\envs\tradingbot\Lib\site-packages\telegram\ext\_extbot.py", line 229, in __init__
+    super().__init__(
+  File "C:\Users\Robert\miniconda3\envs\tradingbot\Lib\site-packages\telegram\_bot.py", line 256, in __init__
+    raise InvalidToken("You must pass the token you received from https://t.me/Botfather!")
+telegram.error.InvalidToken: You must pass the token you received from https://t.me/Botfather!
+Traceback (most recent call last):
+  File "<frozen runpy>", line 198, in _run_module_as_main
+  File "<frozen runpy>", line 88, in _run_code
+  File "D:\tradingbot\app\telegram_bot.py", line 37, in <module>
+    asyncio.run(main())
+  File "C:\Users\Robert\miniconda3\envs\tradingbot\Lib\asyncio\runners.py", line 190, in run
+    return runner.run(main)
+           ^^^^^^^^^^^^^^^^
+  File "C:\Users\Robert\miniconda3\envs\tradingbot\Lib\asyncio\runners.py", line 118, in run
+    return self._loop.run_until_complete(task)
+           ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "C:\Users\Robert\miniconda3\envs\tradingbot\Lib\asyncio\base_events.py", line 654, in run_until_complete
+    return future.result()
+           ^^^^^^^^^^^^^^^
+  File "D:\tradingbot\app\telegram_bot.py", line 31, in main
+    app = Application.builder().token(TELEGRAM_BOT_TOKEN).build()
+          ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "C:\Users\Robert\miniconda3\envs\tradingbot\Lib\site-packages\telegram\ext\_applicationbuilder.py", line 310, in build
+    bot: Bot = self._build_ext_bot()  # build a bot
+               ^^^^^^^^^^^^^^^^^^^^^
+  File "C:\Users\Robert\miniconda3\envs\tradingbot\Lib\site-packages\telegram\ext\_applicationbuilder.py", line 272, in _build_ext_bot
+    return ExtBot(
+           ^^^^^^^
+  File "C:\Users\Robert\miniconda3\envs\tradingbot\Lib\site-packages\telegram\ext\_extbot.py", line 229, in __init__
+    super().__init__(
+  File "C:\Users\Robert\miniconda3\envs\tradingbot\Lib\site-packages\telegram\_bot.py", line 256, in __init__
+    raise InvalidToken("You must pass the token you received from https://t.me/Botfather!")
+telegram.error.InvalidToken: You must pass the token you received from https://t.me/Botfather!
+Traceback (most recent call last):
+  File "<frozen runpy>", line 198, in _run_module_as_main
+  File "<frozen runpy>", line 88, in _run_code
+  File "D:\tradingbot\app\telegram_bot.py", line 37, in <module>
+    asyncio.run(main())
+  File "C:\Users\Robert\miniconda3\envs\tradingbot\Lib\asyncio\runners.py", line 190, in run
+    return runner.run(main)
+           ^^^^^^^^^^^^^^^^
+  File "C:\Users\Robert\miniconda3\envs\tradingbot\Lib\asyncio\runners.py", line 118, in run
+    return self._loop.run_until_complete(task)
+           ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "C:\Users\Robert\miniconda3\envs\tradingbot\Lib\asyncio\base_events.py", line 654, in run_until_complete
+    return future.result()
+           ^^^^^^^^^^^^^^^
+  File "D:\tradingbot\app\telegram_bot.py", line 31, in main
+    app = Application.builder().token(TELEGRAM_BOT_TOKEN).build()
+          ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "C:\Users\Robert\miniconda3\envs\tradingbot\Lib\site-packages\telegram\ext\_applicationbuilder.py", line 310, in build
+    bot: Bot = self._build_ext_bot()  # build a bot
+               ^^^^^^^^^^^^^^^^^^^^^
+  File "C:\Users\Robert\miniconda3\envs\tradingbot\Lib\site-packages\telegram\ext\_applicationbuilder.py", line 272, in _build_ext_bot
+    return ExtBot(
+           ^^^^^^^
+  File "C:\Users\Robert\miniconda3\envs\tradingbot\Lib\site-packages\telegram\ext\_extbot.py", line 229, in __init__
+    super().__init__(
+  File "C:\Users\Robert\miniconda3\envs\tradingbot\Lib\site-packages\telegram\_bot.py", line 256, in __init__
+    raise InvalidToken("You must pass the token you received from https://t.me/Botfather!")
+telegram.error.InvalidToken: You must pass the token you received from https://t.me/Botfather!
+Traceback (most recent call last):
+  File "<frozen runpy>", line 198, in _run_module_as_main
+  File "<frozen runpy>", line 88, in _run_code
+  File "D:\tradingbot\app\telegram_bot.py", line 37, in <module>
+    asyncio.run(main())
+  File "C:\Users\Robert\miniconda3\envs\tradingbot\Lib\asyncio\runners.py", line 190, in run
+    return runner.run(main)
+           ^^^^^^^^^^^^^^^^
+  File "C:\Users\Robert\miniconda3\envs\tradingbot\Lib\asyncio\runners.py", line 118, in run
+    return self._loop.run_until_complete(task)
+           ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "C:\Users\Robert\miniconda3\envs\tradingbot\Lib\asyncio\base_events.py", line 654, in run_until_complete
+    return future.result()
+           ^^^^^^^^^^^^^^^
+  File "D:\tradingbot\app\telegram_bot.py", line 31, in main
+    app = Application.builder().token(TELEGRAM_BOT_TOKEN).build()
+          ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "C:\Users\Robert\miniconda3\envs\tradingbot\Lib\site-packages\telegram\ext\_applicationbuilder.py", line 310, in build
+    bot: Bot = self._build_ext_bot()  # build a bot
+               ^^^^^^^^^^^^^^^^^^^^^
+  File "C:\Users\Robert\miniconda3\envs\tradingbot\Lib\site-packages\telegram\ext\_applicationbuilder.py", line 272, in _build_ext_bot
+    return ExtBot(
+           ^^^^^^^
+  File "C:\Users\Robert\miniconda3\envs\tradingbot\Lib\site-packages\telegram\ext\_extbot.py", line 229, in __init__
+    super().__init__(
+  File "C:\Users\Robert\miniconda3\envs\tradingbot\Lib\site-packages\telegram\_bot.py", line 256, in __init__
+    raise InvalidToken("You must pass the token you received from https://t.me/Botfather!")
+telegram.error.InvalidToken: You must pass the token you received from https://t.me/Botfather!
+Traceback (most recent call last):
+  File "<frozen runpy>", line 198, in _run_module_as_main
+  File "<frozen runpy>", line 88, in _run_code
+  File "D:\tradingbot\app\telegram_bot.py", line 37, in <module>
+    asyncio.run(main())
+  File "C:\Users\Robert\miniconda3\envs\tradingbot\Lib\asyncio\runners.py", line 190, in run
+    return runner.run(main)
+           ^^^^^^^^^^^^^^^^
+  File "C:\Users\Robert\miniconda3\envs\tradingbot\Lib\asyncio\runners.py", line 118, in run
+    return self._loop.run_until_complete(task)
+           ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "C:\Users\Robert\miniconda3\envs\tradingbot\Lib\asyncio\base_events.py", line 654, in run_until_complete
+    return future.result()
+           ^^^^^^^^^^^^^^^
+  File "D:\tradingbot\app\telegram_bot.py", line 31, in main
+    app = Application.builder().token(TELEGRAM_BOT_TOKEN).build()
+          ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "C:\Users\Robert\miniconda3\envs\tradingbot\Lib\site-packages\telegram\ext\_applicationbuilder.py", line 310, in build
+    bot: Bot = self._build_ext_bot()  # build a bot
+               ^^^^^^^^^^^^^^^^^^^^^
+  File "C:\Users\Robert\miniconda3\envs\tradingbot\Lib\site-packages\telegram\ext\_applicationbuilder.py", line 272, in _build_ext_bot
+    return ExtBot(
+           ^^^^^^^
+  File "C:\Users\Robert\miniconda3\envs\tradingbot\Lib\site-packages\telegram\ext\_extbot.py", line 229, in __init__
+    super().__init__(
+  File "C:\Users\Robert\miniconda3\envs\tradingbot\Lib\site-packages\telegram\_bot.py", line 256, in __init__
+    raise InvalidToken("You must pass the token you received from https://t.me/Botfather!")
+telegram.error.InvalidToken: You must pass the token you received from https://t.me/Botfather!
+Traceback (most recent call last):
+  File "<frozen runpy>", line 198, in _run_module_as_main
+  File "<frozen runpy>", line 88, in _run_code
+  File "D:\tradingbot\app\telegram_bot.py", line 37, in <module>
+    asyncio.run(main())
+  File "C:\Users\Robert\miniconda3\envs\tradingbot\Lib\asyncio\runners.py", line 190, in run
+    return runner.run(main)
+           ^^^^^^^^^^^^^^^^
+  File "C:\Users\Robert\miniconda3\envs\tradingbot\Lib\asyncio\runners.py", line 118, in run
+    return self._loop.run_until_complete(task)
+           ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "C:\Users\Robert\miniconda3\envs\tradingbot\Lib\asyncio\base_events.py", line 654, in run_until_complete
+    return future.result()
+           ^^^^^^^^^^^^^^^
+  File "D:\tradingbot\app\telegram_bot.py", line 31, in main
+    app = Application.builder().token(TELEGRAM_BOT_TOKEN).build()
+          ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "C:\Users\Robert\miniconda3\envs\tradingbot\Lib\site-packages\telegram\ext\_applicationbuilder.py", line 310, in build
+    bot: Bot = self._build_ext_bot()  # build a bot
+               ^^^^^^^^^^^^^^^^^^^^^
+  File "C:\Users\Robert\miniconda3\envs\tradingbot\Lib\site-packages\telegram\ext\_applicationbuilder.py", line 272, in _build_ext_bot
+    return ExtBot(
+           ^^^^^^^
+  File "C:\Users\Robert\miniconda3\envs\tradingbot\Lib\site-packages\telegram\ext\_extbot.py", line 229, in __init__
+    super().__init__(
+  File "C:\Users\Robert\miniconda3\envs\tradingbot\Lib\site-packages\telegram\_bot.py", line 256, in __init__
+    raise InvalidToken("You must pass the token you received from https://t.me/Botfather!")
+telegram.error.InvalidToken: You must pass the token you received from https://t.me/Botfather!
+Traceback (most recent call last):
+  File "<frozen runpy>", line 198, in _run_module_as_main
+  File "<frozen runpy>", line 88, in _run_code
+  File "D:\tradingbot\app\telegram_bot.py", line 37, in <module>
+    asyncio.run(main())
+  File "C:\Users\Robert\miniconda3\envs\tradingbot\Lib\asyncio\runners.py", line 190, in run
+    return runner.run(main)
+           ^^^^^^^^^^^^^^^^
+  File "C:\Users\Robert\miniconda3\envs\tradingbot\Lib\asyncio\runners.py", line 118, in run
+    return self._loop.run_until_complete(task)
+           ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "C:\Users\Robert\miniconda3\envs\tradingbot\Lib\asyncio\base_events.py", line 654, in run_until_complete
+    return future.result()
+           ^^^^^^^^^^^^^^^
+  File "D:\tradingbot\app\telegram_bot.py", line 31, in main
+    app = Application.builder().token(TELEGRAM_BOT_TOKEN).build()
+          ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "C:\Users\Robert\miniconda3\envs\tradingbot\Lib\site-packages\telegram\ext\_applicationbuilder.py", line 310, in build
+    bot: Bot = self._build_ext_bot()  # build a bot
+               ^^^^^^^^^^^^^^^^^^^^^
+  File "C:\Users\Robert\miniconda3\envs\tradingbot\Lib\site-packages\telegram\ext\_applicationbuilder.py", line 272, in _build_ext_bot
+    return ExtBot(
+           ^^^^^^^
+  File "C:\Users\Robert\miniconda3\envs\tradingbot\Lib\site-packages\telegram\ext\_extbot.py", line 229, in __init__
+    super().__init__(
+  File "C:\Users\Robert\miniconda3\envs\tradingbot\Lib\site-packages\telegram\_bot.py", line 256, in __init__
+    raise InvalidToken("You must pass the token you received from https://t.me/Botfather!")
+telegram.error.InvalidToken: You must pass the token you received from https://t.me/Botfather!
+Traceback (most recent call last):
+  File "<frozen runpy>", line 198, in _run_module_as_main
+  File "<frozen runpy>", line 88, in _run_code
+  File "D:\tradingbot\app\telegram_bot.py", line 37, in <module>
+    asyncio.run(main())
+  File "C:\Users\Robert\miniconda3\envs\tradingbot\Lib\asyncio\runners.py", line 190, in run
+    return runner.run(main)
+           ^^^^^^^^^^^^^^^^
+  File "C:\Users\Robert\miniconda3\envs\tradingbot\Lib\asyncio\runners.py", line 118, in run
+    return self._loop.run_until_complete(task)
+           ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "C:\Users\Robert\miniconda3\envs\tradingbot\Lib\asyncio\base_events.py", line 654, in run_until_complete
+    return future.result()
+           ^^^^^^^^^^^^^^^
+  File "D:\tradingbot\app\telegram_bot.py", line 31, in main
+    app = Application.builder().token(TELEGRAM_BOT_TOKEN).build()
+          ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "C:\Users\Robert\miniconda3\envs\tradingbot\Lib\site-packages\telegram\ext\_applicationbuilder.py", line 310, in build
+    bot: Bot = self._build_ext_bot()  # build a bot
+               ^^^^^^^^^^^^^^^^^^^^^
+  File "C:\Users\Robert\miniconda3\envs\tradingbot\Lib\site-packages\telegram\ext\_applicationbuilder.py", line 272, in _build_ext_bot
+    return ExtBot(
+           ^^^^^^^
+  File "C:\Users\Robert\miniconda3\envs\tradingbot\Lib\site-packages\telegram\ext\_extbot.py", line 229, in __init__
+    super().__init__(
+  File "C:\Users\Robert\miniconda3\envs\tradingbot\Lib\site-packages\telegram\_bot.py", line 256, in __init__
+    raise InvalidToken("You must pass the token you received from https://t.me/Botfather!")
+telegram.error.InvalidToken: You must pass the token you received from https://t.me/Botfather!
+Traceback (most recent call last):
+  File "<frozen runpy>", line 198, in _run_module_as_main
+  File "<frozen runpy>", line 88, in _run_code
+  File "D:\tradingbot\app\telegram_bot.py", line 37, in <module>
+    asyncio.run(main())
+  File "C:\Users\Robert\miniconda3\envs\tradingbot\Lib\asyncio\runners.py", line 190, in run
+    return runner.run(main)
+           ^^^^^^^^^^^^^^^^
+  File "C:\Users\Robert\miniconda3\envs\tradingbot\Lib\asyncio\runners.py", line 118, in run
+    return self._loop.run_until_complete(task)
+           ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "C:\Users\Robert\miniconda3\envs\tradingbot\Lib\asyncio\base_events.py", line 654, in run_until_complete
+    return future.result()
+           ^^^^^^^^^^^^^^^
+  File "D:\tradingbot\app\telegram_bot.py", line 31, in main
+    app = Application.builder().token(TELEGRAM_BOT_TOKEN).build()
+          ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "C:\Users\Robert\miniconda3\envs\tradingbot\Lib\site-packages\telegram\ext\_applicationbuilder.py", line 310, in build
+    bot: Bot = self._build_ext_bot()  # build a bot
+               ^^^^^^^^^^^^^^^^^^^^^
+  File "C:\Users\Robert\miniconda3\envs\tradingbot\Lib\site-packages\telegram\ext\_applicationbuilder.py", line 272, in _build_ext_bot
+    return ExtBot(
+           ^^^^^^^
+  File "C:\Users\Robert\miniconda3\envs\tradingbot\Lib\site-packages\telegram\ext\_extbot.py", line 229, in __init__
+    super().__init__(
+  File "C:\Users\Robert\miniconda3\envs\tradingbot\Lib\site-packages\telegram\_bot.py", line 256, in __init__
+    raise InvalidToken("You must pass the token you received from https://t.me/Botfather!")
+telegram.error.InvalidToken: You must pass the token you received from https://t.me/Botfather!
+Traceback (most recent call last):
+  File "<frozen runpy>", line 198, in _run_module_as_main
+  File "<frozen runpy>", line 88, in _run_code
+  File "D:\tradingbot\app\telegram_bot.py", line 37, in <module>
+    asyncio.run(main())
+  File "C:\Users\Robert\miniconda3\envs\tradingbot\Lib\asyncio\runners.py", line 190, in run
+    return runner.run(main)
+           ^^^^^^^^^^^^^^^^
+  File "C:\Users\Robert\miniconda3\envs\tradingbot\Lib\asyncio\runners.py", line 118, in run
+    return self._loop.run_until_complete(task)
+           ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "C:\Users\Robert\miniconda3\envs\tradingbot\Lib\asyncio\base_events.py", line 654, in run_until_complete
+    return future.result()
+           ^^^^^^^^^^^^^^^
+  File "D:\tradingbot\app\telegram_bot.py", line 31, in main
+    app = Application.builder().token(TELEGRAM_BOT_TOKEN).build()
+          ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "C:\Users\Robert\miniconda3\envs\tradingbot\Lib\site-packages\telegram\ext\_applicationbuilder.py", line 310, in build
+    bot: Bot = self._build_ext_bot()  # build a bot
+               ^^^^^^^^^^^^^^^^^^^^^
+  File "C:\Users\Robert\miniconda3\envs\tradingbot\Lib\site-packages\telegram\ext\_applicationbuilder.py", line 272, in _build_ext_bot
+    return ExtBot(
+           ^^^^^^^
+  File "C:\Users\Robert\miniconda3\envs\tradingbot\Lib\site-packages\telegram\ext\_extbot.py", line 229, in __init__
+    super().__init__(
+  File "C:\Users\Robert\miniconda3\envs\tradingbot\Lib\site-packages\telegram\_bot.py", line 256, in __init__
+    raise InvalidToken("You must pass the token you received from https://t.me/Botfather!")
+telegram.error.InvalidToken: You must pass the token you received from https://t.me/Botfather!
+Traceback (most recent call last):
+  File "<frozen runpy>", line 198, in _run_module_as_main
+  File "<frozen runpy>", line 88, in _run_code
+  File "D:\tradingbot\app\telegram_bot.py", line 37, in <module>
+    asyncio.run(main())
+  File "C:\Users\Robert\miniconda3\envs\tradingbot\Lib\asyncio\runners.py", line 190, in run
+    return runner.run(main)
+           ^^^^^^^^^^^^^^^^
+  File "C:\Users\Robert\miniconda3\envs\tradingbot\Lib\asyncio\runners.py", line 118, in run
+    return self._loop.run_until_complete(task)
+           ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "C:\Users\Robert\miniconda3\envs\tradingbot\Lib\asyncio\base_events.py", line 654, in run_until_complete
+    return future.result()
+           ^^^^^^^^^^^^^^^
+  File "D:\tradingbot\app\telegram_bot.py", line 31, in main
+    app = Application.builder().token(TELEGRAM_BOT_TOKEN).build()
+          ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "C:\Users\Robert\miniconda3\envs\tradingbot\Lib\site-packages\telegram\ext\_applicationbuilder.py", line 310, in build
+    bot: Bot = self._build_ext_bot()  # build a bot
+               ^^^^^^^^^^^^^^^^^^^^^
+  File "C:\Users\Robert\miniconda3\envs\tradingbot\Lib\site-packages\telegram\ext\_applicationbuilder.py", line 272, in _build_ext_bot
+    return ExtBot(
+           ^^^^^^^
+  File "C:\Users\Robert\miniconda3\envs\tradingbot\Lib\site-packages\telegram\ext\_extbot.py", line 229, in __init__
+    super().__init__(
+  File "C:\Users\Robert\miniconda3\envs\tradingbot\Lib\site-packages\telegram\_bot.py", line 256, in __init__
+    raise InvalidToken("You must pass the token you received from https://t.me/Botfather!")
+telegram.error.InvalidToken: You must pass the token you received from https://t.me/Botfather!
+Traceback (most recent call last):
+  File "<frozen runpy>", line 198, in _run_module_as_main
+  File "<frozen runpy>", line 88, in _run_code
+  File "D:\tradingbot\app\telegram_bot.py", line 37, in <module>
+    asyncio.run(main())
+  File "C:\Users\Robert\miniconda3\envs\tradingbot\Lib\asyncio\runners.py", line 190, in run
+    return runner.run(main)
+           ^^^^^^^^^^^^^^^^
+  File "C:\Users\Robert\miniconda3\envs\tradingbot\Lib\asyncio\runners.py", line 118, in run
+    return self._loop.run_until_complete(task)
+           ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "C:\Users\Robert\miniconda3\envs\tradingbot\Lib\asyncio\base_events.py", line 654, in run_until_complete
+    return future.result()
+           ^^^^^^^^^^^^^^^
+  File "D:\tradingbot\app\telegram_bot.py", line 31, in main
+    app = Application.builder().token(TELEGRAM_BOT_TOKEN).build()
+          ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "C:\Users\Robert\miniconda3\envs\tradingbot\Lib\site-packages\telegram\ext\_applicationbuilder.py", line 310, in build
+    bot: Bot = self._build_ext_bot()  # build a bot
+               ^^^^^^^^^^^^^^^^^^^^^
+  File "C:\Users\Robert\miniconda3\envs\tradingbot\Lib\site-packages\telegram\ext\_applicationbuilder.py", line 272, in _build_ext_bot
+    return ExtBot(
+           ^^^^^^^
+  File "C:\Users\Robert\miniconda3\envs\tradingbot\Lib\site-packages\telegram\ext\_extbot.py", line 229, in __init__
+    super().__init__(
+  File "C:\Users\Robert\miniconda3\envs\tradingbot\Lib\site-packages\telegram\_bot.py", line 256, in __init__
+    raise InvalidToken("You must pass the token you received from https://t.me/Botfather!")
+telegram.error.InvalidToken: You must pass the token you received from https://t.me/Botfather!
+Traceback (most recent call last):
+  File "<frozen runpy>", line 198, in _run_module_as_main
+  File "<frozen runpy>", line 88, in _run_code
+  File "D:\tradingbot\app\telegram_bot.py", line 37, in <module>
+    asyncio.run(main())
+  File "C:\Users\Robert\miniconda3\envs\tradingbot\Lib\asyncio\runners.py", line 190, in run
+    return runner.run(main)
+           ^^^^^^^^^^^^^^^^
+  File "C:\Users\Robert\miniconda3\envs\tradingbot\Lib\asyncio\runners.py", line 118, in run
+    return self._loop.run_until_complete(task)
+           ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "C:\Users\Robert\miniconda3\envs\tradingbot\Lib\asyncio\base_events.py", line 654, in run_until_complete
+    return future.result()
+           ^^^^^^^^^^^^^^^
+  File "D:\tradingbot\app\telegram_bot.py", line 31, in main
+    app = Application.builder().token(TELEGRAM_BOT_TOKEN).build()
+          ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "C:\Users\Robert\miniconda3\envs\tradingbot\Lib\site-packages\telegram\ext\_applicationbuilder.py", line 310, in build
+    bot: Bot = self._build_ext_bot()  # build a bot
+               ^^^^^^^^^^^^^^^^^^^^^
+  File "C:\Users\Robert\miniconda3\envs\tradingbot\Lib\site-packages\telegram\ext\_applicationbuilder.py", line 272, in _build_ext_bot
+    return ExtBot(
+           ^^^^^^^
+  File "C:\Users\Robert\miniconda3\envs\tradingbot\Lib\site-packages\telegram\ext\_extbot.py", line 229, in __init__
+    super().__init__(
+  File "C:\Users\Robert\miniconda3\envs\tradingbot\Lib\site-packages\telegram\_bot.py", line 256, in __init__
+    raise InvalidToken("You must pass the token you received from https://t.me/Botfather!")
+telegram.error.InvalidToken: You must pass the token you received from https://t.me/Botfather!
+Traceback (most recent call last):
+  File "<frozen runpy>", line 198, in _run_module_as_main
+  File "<frozen runpy>", line 88, in _run_code
+  File "D:\tradingbot\app\telegram_bot.py", line 37, in <module>
+    asyncio.run(main())
+  File "C:\Users\Robert\miniconda3\envs\tradingbot\Lib\asyncio\runners.py", line 190, in run
+    return runner.run(main)
+           ^^^^^^^^^^^^^^^^
+  File "C:\Users\Robert\miniconda3\envs\tradingbot\Lib\asyncio\runners.py", line 118, in run
+    return self._loop.run_until_complete(task)
+           ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "C:\Users\Robert\miniconda3\envs\tradingbot\Lib\asyncio\base_events.py", line 654, in run_until_complete
+    return future.result()
+           ^^^^^^^^^^^^^^^
+  File "D:\tradingbot\app\telegram_bot.py", line 31, in main
+    app = Application.builder().token(TELEGRAM_BOT_TOKEN).build()
+          ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "C:\Users\Robert\miniconda3\envs\tradingbot\Lib\site-packages\telegram\ext\_applicationbuilder.py", line 310, in build
+    bot: Bot = self._build_ext_bot()  # build a bot
+               ^^^^^^^^^^^^^^^^^^^^^
+  File "C:\Users\Robert\miniconda3\envs\tradingbot\Lib\site-packages\telegram\ext\_applicationbuilder.py", line 272, in _build_ext_bot
+    return ExtBot(
+           ^^^^^^^
+  File "C:\Users\Robert\miniconda3\envs\tradingbot\Lib\site-packages\telegram\ext\_extbot.py", line 229, in __init__
+    super().__init__(
+  File "C:\Users\Robert\miniconda3\envs\tradingbot\Lib\site-packages\telegram\_bot.py", line 256, in __init__
+    raise InvalidToken("You must pass the token you received from https://t.me/Botfather!")
+telegram.error.InvalidToken: You must pass the token you received from https://t.me/Botfather!
+Traceback (most recent call last):
+  File "<frozen runpy>", line 198, in _run_module_as_main
+  File "<frozen runpy>", line 88, in _run_code
+  File "D:\tradingbot\app\telegram_bot.py", line 37, in <module>
+    asyncio.run(main())
+  File "C:\Users\Robert\miniconda3\envs\tradingbot\Lib\asyncio\runners.py", line 190, in run
+    return runner.run(main)
+           ^^^^^^^^^^^^^^^^
+  File "C:\Users\Robert\miniconda3\envs\tradingbot\Lib\asyncio\runners.py", line 118, in run
+    return self._loop.run_until_complete(task)
+           ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "C:\Users\Robert\miniconda3\envs\tradingbot\Lib\asyncio\base_events.py", line 654, in run_until_complete
+    return future.result()
+           ^^^^^^^^^^^^^^^
+  File "D:\tradingbot\app\telegram_bot.py", line 31, in main
+    app = Application.builder().token(TELEGRAM_BOT_TOKEN).build()
+          ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "C:\Users\Robert\miniconda3\envs\tradingbot\Lib\site-packages\telegram\ext\_applicationbuilder.py", line 310, in build
+    bot: Bot = self._build_ext_bot()  # build a bot
+               ^^^^^^^^^^^^^^^^^^^^^
+  File "C:\Users\Robert\miniconda3\envs\tradingbot\Lib\site-packages\telegram\ext\_applicationbuilder.py", line 272, in _build_ext_bot
+    return ExtBot(
+           ^^^^^^^
+  File "C:\Users\Robert\miniconda3\envs\tradingbot\Lib\site-packages\telegram\ext\_extbot.py", line 229, in __init__
+    super().__init__(
+  File "C:\Users\Robert\miniconda3\envs\tradingbot\Lib\site-packages\telegram\_bot.py", line 256, in __init__
+    raise InvalidToken("You must pass the token you received from https://t.me/Botfather!")
+telegram.error.InvalidToken: You must pass the token you received from https://t.me/Botfather!
+Traceback (most recent call last):
+  File "<frozen runpy>", line 198, in _run_module_as_main
+  File "<frozen runpy>", line 88, in _run_code
+  File "D:\tradingbot\app\telegram_bot.py", line 37, in <module>
+    asyncio.run(main())
+  File "C:\Users\Robert\miniconda3\envs\tradingbot\Lib\asyncio\runners.py", line 190, in run
+    return runner.run(main)
+           ^^^^^^^^^^^^^^^^
+  File "C:\Users\Robert\miniconda3\envs\tradingbot\Lib\asyncio\runners.py", line 118, in run
+    return self._loop.run_until_complete(task)
+           ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "C:\Users\Robert\miniconda3\envs\tradingbot\Lib\asyncio\base_events.py", line 654, in run_until_complete
+    return future.result()
+           ^^^^^^^^^^^^^^^
+  File "D:\tradingbot\app\telegram_bot.py", line 31, in main
+    app = Application.builder().token(TELEGRAM_BOT_TOKEN).build()
+          ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "C:\Users\Robert\miniconda3\envs\tradingbot\Lib\site-packages\telegram\ext\_applicationbuilder.py", line 310, in build
+    bot: Bot = self._build_ext_bot()  # build a bot
+               ^^^^^^^^^^^^^^^^^^^^^
+  File "C:\Users\Robert\miniconda3\envs\tradingbot\Lib\site-packages\telegram\ext\_applicationbuilder.py", line 272, in _build_ext_bot
+    return ExtBot(
+           ^^^^^^^
+  File "C:\Users\Robert\miniconda3\envs\tradingbot\Lib\site-packages\telegram\ext\_extbot.py", line 229, in __init__
+    super().__init__(
+  File "C:\Users\Robert\miniconda3\envs\tradingbot\Lib\site-packages\telegram\_bot.py", line 256, in __init__
+    raise InvalidToken("You must pass the token you received from https://t.me/Botfather!")
+telegram.error.InvalidToken: You must pass the token you received from https://t.me/Botfather!
+Traceback (most recent call last):
+  File "<frozen runpy>", line 198, in _run_module_as_main
+  File "<frozen runpy>", line 88, in _run_code
+  File "D:\tradingbot\app\telegram_bot.py", line 37, in <module>
+    asyncio.run(main())
+  File "C:\Users\Robert\miniconda3\envs\tradingbot\Lib\asyncio\runners.py", line 190, in run
+    return runner.run(main)
+           ^^^^^^^^^^^^^^^^
+  File "C:\Users\Robert\miniconda3\envs\tradingbot\Lib\asyncio\runners.py", line 118, in run
+    return self._loop.run_until_complete(task)
+           ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "C:\Users\Robert\miniconda3\envs\tradingbot\Lib\asyncio\base_events.py", line 654, in run_until_complete
+    return future.result()
+           ^^^^^^^^^^^^^^^
+  File "D:\tradingbot\app\telegram_bot.py", line 31, in main
+    app = Application.builder().token(TELEGRAM_BOT_TOKEN).build()
+          ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "C:\Users\Robert\miniconda3\envs\tradingbot\Lib\site-packages\telegram\ext\_applicationbuilder.py", line 310, in build
+    bot: Bot = self._build_ext_bot()  # build a bot
+               ^^^^^^^^^^^^^^^^^^^^^
+  File "C:\Users\Robert\miniconda3\envs\tradingbot\Lib\site-packages\telegram\ext\_applicationbuilder.py", line 272, in _build_ext_bot
+    return ExtBot(
+           ^^^^^^^
+  File "C:\Users\Robert\miniconda3\envs\tradingbot\Lib\site-packages\telegram\ext\_extbot.py", line 229, in __init__
+    super().__init__(
+  File "C:\Users\Robert\miniconda3\envs\tradingbot\Lib\site-packages\telegram\_bot.py", line 256, in __init__
+    raise InvalidToken("You must pass the token you received from https://t.me/Botfather!")
+telegram.error.InvalidToken: You must pass the token you received from https://t.me/Botfather!
+Traceback (most recent call last):
+  File "<frozen runpy>", line 198, in _run_module_as_main
+  File "<frozen runpy>", line 88, in _run_code
+  File "D:\tradingbot\app\telegram_bot.py", line 37, in <module>
+    asyncio.run(main())
+  File "C:\Users\Robert\miniconda3\envs\tradingbot\Lib\asyncio\runners.py", line 190, in run
+    return runner.run(main)
+           ^^^^^^^^^^^^^^^^
+  File "C:\Users\Robert\miniconda3\envs\tradingbot\Lib\asyncio\runners.py", line 118, in run
+    return self._loop.run_until_complete(task)
+           ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "C:\Users\Robert\miniconda3\envs\tradingbot\Lib\asyncio\base_events.py", line 654, in run_until_complete
+    return future.result()
+           ^^^^^^^^^^^^^^^
+  File "D:\tradingbot\app\telegram_bot.py", line 31, in main
+    app = Application.builder().token(TELEGRAM_BOT_TOKEN).build()
+          ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "C:\Users\Robert\miniconda3\envs\tradingbot\Lib\site-packages\telegram\ext\_applicationbuilder.py", line 310, in build
+    bot: Bot = self._build_ext_bot()  # build a bot
+               ^^^^^^^^^^^^^^^^^^^^^
+  File "C:\Users\Robert\miniconda3\envs\tradingbot\Lib\site-packages\telegram\ext\_applicationbuilder.py", line 272, in _build_ext_bot
+    return ExtBot(
+           ^^^^^^^
+  File "C:\Users\Robert\miniconda3\envs\tradingbot\Lib\site-packages\telegram\ext\_extbot.py", line 229, in __init__
+    super().__init__(
+  File "C:\Users\Robert\miniconda3\envs\tradingbot\Lib\site-packages\telegram\_bot.py", line 256, in __init__
+    raise InvalidToken("You must pass the token you received from https://t.me/Botfather!")
+telegram.error.InvalidToken: You must pass the token you received from https://t.me/Botfather!
+Traceback (most recent call last):
+  File "<frozen runpy>", line 198, in _run_module_as_main
+  File "<frozen runpy>", line 88, in _run_code
+  File "D:\tradingbot\app\telegram_bot.py", line 37, in <module>
+    asyncio.run(main())
+  File "C:\Users\Robert\miniconda3\envs\tradingbot\Lib\asyncio\runners.py", line 190, in run
+    return runner.run(main)
+           ^^^^^^^^^^^^^^^^
+  File "C:\Users\Robert\miniconda3\envs\tradingbot\Lib\asyncio\runners.py", line 118, in run
+    return self._loop.run_until_complete(task)
+           ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "C:\Users\Robert\miniconda3\envs\tradingbot\Lib\asyncio\base_events.py", line 654, in run_until_complete
+    return future.result()
+           ^^^^^^^^^^^^^^^
+  File "D:\tradingbot\app\telegram_bot.py", line 31, in main
+    app = Application.builder().token(TELEGRAM_BOT_TOKEN).build()
+          ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "C:\Users\Robert\miniconda3\envs\tradingbot\Lib\site-packages\telegram\ext\_applicationbuilder.py", line 310, in build
+    bot: Bot = self._build_ext_bot()  # build a bot
+               ^^^^^^^^^^^^^^^^^^^^^
+  File "C:\Users\Robert\miniconda3\envs\tradingbot\Lib\site-packages\telegram\ext\_applicationbuilder.py", line 272, in _build_ext_bot
+    return ExtBot(
+           ^^^^^^^
+  File "C:\Users\Robert\miniconda3\envs\tradingbot\Lib\site-packages\telegram\ext\_extbot.py", line 229, in __init__
+    super().__init__(
+  File "C:\Users\Robert\miniconda3\envs\tradingbot\Lib\site-packages\telegram\_bot.py", line 256, in __init__
+    raise InvalidToken("You must pass the token you received from https://t.me/Botfather!")
+telegram.error.InvalidToken: You must pass the token you received from https://t.me/Botfather!
+Traceback (most recent call last):
+  File "<frozen runpy>", line 198, in _run_module_as_main
+  File "<frozen runpy>", line 88, in _run_code
+  File "D:\tradingbot\app\telegram_bot.py", line 37, in <module>
+    asyncio.run(main())
+  File "C:\Users\Robert\miniconda3\envs\tradingbot\Lib\asyncio\runners.py", line 190, in run
+    return runner.run(main)
+           ^^^^^^^^^^^^^^^^
+  File "C:\Users\Robert\miniconda3\envs\tradingbot\Lib\asyncio\runners.py", line 118, in run
+    return self._loop.run_until_complete(task)
+           ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "C:\Users\Robert\miniconda3\envs\tradingbot\Lib\asyncio\base_events.py", line 654, in run_until_complete
+    return future.result()
+           ^^^^^^^^^^^^^^^
+  File "D:\tradingbot\app\telegram_bot.py", line 31, in main
+    app = Application.builder().token(TELEGRAM_BOT_TOKEN).build()
+          ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "C:\Users\Robert\miniconda3\envs\tradingbot\Lib\site-packages\telegram\ext\_applicationbuilder.py", line 310, in build
+    bot: Bot = self._build_ext_bot()  # build a bot
+               ^^^^^^^^^^^^^^^^^^^^^
+  File "C:\Users\Robert\miniconda3\envs\tradingbot\Lib\site-packages\telegram\ext\_applicationbuilder.py", line 272, in _build_ext_bot
+    return ExtBot(
+           ^^^^^^^
+  File "C:\Users\Robert\miniconda3\envs\tradingbot\Lib\site-packages\telegram\ext\_extbot.py", line 229, in __init__
+    super().__init__(
+  File "C:\Users\Robert\miniconda3\envs\tradingbot\Lib\site-packages\telegram\_bot.py", line 256, in __init__
+    raise InvalidToken("You must pass the token you received from https://t.me/Botfather!")
+telegram.error.InvalidToken: You must pass the token you received from https://t.me/Botfather!
+Traceback (most recent call last):
+  File "<frozen runpy>", line 198, in _run_module_as_main
+  File "<frozen runpy>", line 88, in _run_code
+  File "D:\tradingbot\app\telegram_bot.py", line 37, in <module>
+    asyncio.run(main())
+  File "C:\Users\Robert\miniconda3\envs\tradingbot\Lib\asyncio\runners.py", line 190, in run
+    return runner.run(main)
+           ^^^^^^^^^^^^^^^^
+  File "C:\Users\Robert\miniconda3\envs\tradingbot\Lib\asyncio\runners.py", line 118, in run
+    return self._loop.run_until_complete(task)
+           ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "C:\Users\Robert\miniconda3\envs\tradingbot\Lib\asyncio\base_events.py", line 654, in run_until_complete
+    return future.result()
+           ^^^^^^^^^^^^^^^
+  File "D:\tradingbot\app\telegram_bot.py", line 31, in main
+    app = Application.builder().token(TELEGRAM_BOT_TOKEN).build()
+          ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "C:\Users\Robert\miniconda3\envs\tradingbot\Lib\site-packages\telegram\ext\_applicationbuilder.py", line 310, in build
+    bot: Bot = self._build_ext_bot()  # build a bot
+               ^^^^^^^^^^^^^^^^^^^^^
+  File "C:\Users\Robert\miniconda3\envs\tradingbot\Lib\site-packages\telegram\ext\_applicationbuilder.py", line 272, in _build_ext_bot
+    return ExtBot(
+           ^^^^^^^
+  File "C:\Users\Robert\miniconda3\envs\tradingbot\Lib\site-packages\telegram\ext\_extbot.py", line 229, in __init__
+    super().__init__(
+  File "C:\Users\Robert\miniconda3\envs\tradingbot\Lib\site-packages\telegram\_bot.py", line 256, in __init__
+    raise InvalidToken("You must pass the token you received from https://t.me/Botfather!")
+telegram.error.InvalidToken: You must pass the token you received from https://t.me/Botfather!
+Traceback (most recent call last):
+  File "<frozen runpy>", line 198, in _run_module_as_main
+  File "<frozen runpy>", line 88, in _run_code
+  File "D:\tradingbot\app\telegram_bot.py", line 37, in <module>
+    asyncio.run(main())
+  File "C:\Users\Robert\miniconda3\envs\tradingbot\Lib\asyncio\runners.py", line 190, in run
+    return runner.run(main)
+           ^^^^^^^^^^^^^^^^
+  File "C:\Users\Robert\miniconda3\envs\tradingbot\Lib\asyncio\runners.py", line 118, in run
+    return self._loop.run_until_complete(task)
+           ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "C:\Users\Robert\miniconda3\envs\tradingbot\Lib\asyncio\base_events.py", line 654, in run_until_complete
+    return future.result()
+           ^^^^^^^^^^^^^^^
+  File "D:\tradingbot\app\telegram_bot.py", line 31, in main
+    app = Application.builder().token(TELEGRAM_BOT_TOKEN).build()
+          ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "C:\Users\Robert\miniconda3\envs\tradingbot\Lib\site-packages\telegram\ext\_applicationbuilder.py", line 310, in build
+    bot: Bot = self._build_ext_bot()  # build a bot
+               ^^^^^^^^^^^^^^^^^^^^^
+  File "C:\Users\Robert\miniconda3\envs\tradingbot\Lib\site-packages\telegram\ext\_applicationbuilder.py", line 272, in _build_ext_bot
+    return ExtBot(
+           ^^^^^^^
+  File "C:\Users\Robert\miniconda3\envs\tradingbot\Lib\site-packages\telegram\ext\_extbot.py", line 229, in __init__
+    super().__init__(
+  File "C:\Users\Robert\miniconda3\envs\tradingbot\Lib\site-packages\telegram\_bot.py", line 256, in __init__
+    raise InvalidToken("You must pass the token you received from https://t.me/Botfather!")
+telegram.error.InvalidToken: You must pass the token you received from https://t.me/Botfather!
+Traceback (most recent call last):
+  File "<frozen runpy>", line 198, in _run_module_as_main
+  File "<frozen runpy>", line 88, in _run_code
+  File "D:\tradingbot\app\telegram_bot.py", line 37, in <module>
+    asyncio.run(main())
+  File "C:\Users\Robert\miniconda3\envs\tradingbot\Lib\asyncio\runners.py", line 190, in run
+    return runner.run(main)
+           ^^^^^^^^^^^^^^^^
+  File "C:\Users\Robert\miniconda3\envs\tradingbot\Lib\asyncio\runners.py", line 118, in run
+    return self._loop.run_until_complete(task)
+           ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "C:\Users\Robert\miniconda3\envs\tradingbot\Lib\asyncio\base_events.py", line 654, in run_until_complete
+    return future.result()
+           ^^^^^^^^^^^^^^^
+  File "D:\tradingbot\app\telegram_bot.py", line 31, in main
+    app = Application.builder().token(TELEGRAM_BOT_TOKEN).build()
+          ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "C:\Users\Robert\miniconda3\envs\tradingbot\Lib\site-packages\telegram\ext\_applicationbuilder.py", line 310, in build
+    bot: Bot = self._build_ext_bot()  # build a bot
+               ^^^^^^^^^^^^^^^^^^^^^
+  File "C:\Users\Robert\miniconda3\envs\tradingbot\Lib\site-packages\telegram\ext\_applicationbuilder.py", line 272, in _build_ext_bot
+    return ExtBot(
+           ^^^^^^^
+  File "C:\Users\Robert\miniconda3\envs\tradingbot\Lib\site-packages\telegram\ext\_extbot.py", line 229, in __init__
+    super().__init__(
+  File "C:\Users\Robert\miniconda3\envs\tradingbot\Lib\site-packages\telegram\_bot.py", line 256, in __init__
+    raise InvalidToken("You must pass the token you received from https://t.me/Botfather!")
+telegram.error.InvalidToken: You must pass the token you received from https://t.me/Botfather!
+Traceback (most recent call last):
+  File "<frozen runpy>", line 198, in _run_module_as_main
+  File "<frozen runpy>", line 88, in _run_code
+  File "D:\tradingbot\app\telegram_bot.py", line 37, in <module>
+    asyncio.run(main())
+  File "C:\Users\Robert\miniconda3\envs\tradingbot\Lib\asyncio\runners.py", line 190, in run
+    return runner.run(main)
+           ^^^^^^^^^^^^^^^^
+  File "C:\Users\Robert\miniconda3\envs\tradingbot\Lib\asyncio\runners.py", line 118, in run
+    return self._loop.run_until_complete(task)
+           ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "C:\Users\Robert\miniconda3\envs\tradingbot\Lib\asyncio\base_events.py", line 654, in run_until_complete
+    return future.result()
+           ^^^^^^^^^^^^^^^
+  File "D:\tradingbot\app\telegram_bot.py", line 31, in main
+    app = Application.builder().token(TELEGRAM_BOT_TOKEN).build()
+          ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "C:\Users\Robert\miniconda3\envs\tradingbot\Lib\site-packages\telegram\ext\_applicationbuilder.py", line 310, in build
+    bot: Bot = self._build_ext_bot()  # build a bot
+               ^^^^^^^^^^^^^^^^^^^^^
+  File "C:\Users\Robert\miniconda3\envs\tradingbot\Lib\site-packages\telegram\ext\_applicationbuilder.py", line 272, in _build_ext_bot
+    return ExtBot(
+           ^^^^^^^
+  File "C:\Users\Robert\miniconda3\envs\tradingbot\Lib\site-packages\telegram\ext\_extbot.py", line 229, in __init__
+    super().__init__(
+  File "C:\Users\Robert\miniconda3\envs\tradingbot\Lib\site-packages\telegram\_bot.py", line 256, in __init__
+    raise InvalidToken("You must pass the token you received from https://t.me/Botfather!")
+telegram.error.InvalidToken: You must pass the token you received from https://t.me/Botfather!
+Traceback (most recent call last):
+  File "<frozen runpy>", line 198, in _run_module_as_main
+  File "<frozen runpy>", line 88, in _run_code
+  File "D:\tradingbot\app\telegram_bot.py", line 37, in <module>
+    asyncio.run(main())
+  File "C:\Users\Robert\miniconda3\envs\tradingbot\Lib\asyncio\runners.py", line 190, in run
+    return runner.run(main)
+           ^^^^^^^^^^^^^^^^
+  File "C:\Users\Robert\miniconda3\envs\tradingbot\Lib\asyncio\runners.py", line 118, in run
+    return self._loop.run_until_complete(task)
+           ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "C:\Users\Robert\miniconda3\envs\tradingbot\Lib\asyncio\base_events.py", line 654, in run_until_complete
+    return future.result()
+           ^^^^^^^^^^^^^^^
+  File "D:\tradingbot\app\telegram_bot.py", line 31, in main
+    app = Application.builder().token(TELEGRAM_BOT_TOKEN).build()
+          ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "C:\Users\Robert\miniconda3\envs\tradingbot\Lib\site-packages\telegram\ext\_applicationbuilder.py", line 310, in build
+    bot: Bot = self._build_ext_bot()  # build a bot
+               ^^^^^^^^^^^^^^^^^^^^^
+  File "C:\Users\Robert\miniconda3\envs\tradingbot\Lib\site-packages\telegram\ext\_applicationbuilder.py", line 272, in _build_ext_bot
+    return ExtBot(
+           ^^^^^^^
+  File "C:\Users\Robert\miniconda3\envs\tradingbot\Lib\site-packages\telegram\ext\_extbot.py", line 229, in __init__
+    super().__init__(
+  File "C:\Users\Robert\miniconda3\envs\tradingbot\Lib\site-packages\telegram\_bot.py", line 256, in __init__
+    raise InvalidToken("You must pass the token you received from https://t.me/Botfather!")
+telegram.error.InvalidToken: You must pass the token you received from https://t.me/Botfather!
+Traceback (most recent call last):
+  File "<frozen runpy>", line 198, in _run_module_as_main
+  File "<frozen runpy>", line 88, in _run_code
+  File "D:\tradingbot\app\telegram_bot.py", line 37, in <module>
+    asyncio.run(main())
+  File "C:\Users\Robert\miniconda3\envs\tradingbot\Lib\asyncio\runners.py", line 190, in run
+    return runner.run(main)
+           ^^^^^^^^^^^^^^^^
+  File "C:\Users\Robert\miniconda3\envs\tradingbot\Lib\asyncio\runners.py", line 118, in run
+    return self._loop.run_until_complete(task)
+           ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "C:\Users\Robert\miniconda3\envs\tradingbot\Lib\asyncio\base_events.py", line 654, in run_until_complete
+    return future.result()
+           ^^^^^^^^^^^^^^^
+  File "D:\tradingbot\app\telegram_bot.py", line 31, in main
+    app = Application.builder().token(TELEGRAM_BOT_TOKEN).build()
+          ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "C:\Users\Robert\miniconda3\envs\tradingbot\Lib\site-packages\telegram\ext\_applicationbuilder.py", line 310, in build
+    bot: Bot = self._build_ext_bot()  # build a bot
+               ^^^^^^^^^^^^^^^^^^^^^
+  File "C:\Users\Robert\miniconda3\envs\tradingbot\Lib\site-packages\telegram\ext\_applicationbuilder.py", line 272, in _build_ext_bot
+    return ExtBot(
+           ^^^^^^^
+  File "C:\Users\Robert\miniconda3\envs\tradingbot\Lib\site-packages\telegram\ext\_extbot.py", line 229, in __init__
+    super().__init__(
+  File "C:\Users\Robert\miniconda3\envs\tradingbot\Lib\site-packages\telegram\_bot.py", line 256, in __init__
+    raise InvalidToken("You must pass the token you received from https://t.me/Botfather!")
+telegram.error.InvalidToken: You must pass the token you received from https://t.me/Botfather!
+Traceback (most recent call last):
+  File "<frozen runpy>", line 198, in _run_module_as_main
+  File "<frozen runpy>", line 88, in _run_code
+  File "D:\tradingbot\app\telegram_bot.py", line 37, in <module>
+    asyncio.run(main())
+  File "C:\Users\Robert\miniconda3\envs\tradingbot\Lib\asyncio\runners.py", line 190, in run
+    return runner.run(main)
+           ^^^^^^^^^^^^^^^^
+  File "C:\Users\Robert\miniconda3\envs\tradingbot\Lib\asyncio\runners.py", line 118, in run
+    return self._loop.run_until_complete(task)
+           ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "C:\Users\Robert\miniconda3\envs\tradingbot\Lib\asyncio\base_events.py", line 654, in run_until_complete
+    return future.result()
+           ^^^^^^^^^^^^^^^
+  File "D:\tradingbot\app\telegram_bot.py", line 31, in main
+    app = Application.builder().token(TELEGRAM_BOT_TOKEN).build()
+          ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "C:\Users\Robert\miniconda3\envs\tradingbot\Lib\site-packages\telegram\ext\_applicationbuilder.py", line 310, in build
+    bot: Bot = self._build_ext_bot()  # build a bot
+               ^^^^^^^^^^^^^^^^^^^^^
+  File "C:\Users\Robert\miniconda3\envs\tradingbot\Lib\site-packages\telegram\ext\_applicationbuilder.py", line 272, in _build_ext_bot
+    return ExtBot(
+           ^^^^^^^
+  File "C:\Users\Robert\miniconda3\envs\tradingbot\Lib\site-packages\telegram\ext\_extbot.py", line 229, in __init__
+    super().__init__(
+  File "C:\Users\Robert\miniconda3\envs\tradingbot\Lib\site-packages\telegram\_bot.py", line 256, in __init__
+    raise InvalidToken("You must pass the token you received from https://t.me/Botfather!")
+telegram.error.InvalidToken: You must pass the token you received from https://t.me/Botfather!
+Traceback (most recent call last):
+  File "<frozen runpy>", line 198, in _run_module_as_main
+  File "<frozen runpy>", line 88, in _run_code
+  File "D:\tradingbot\app\telegram_bot.py", line 37, in <module>
+    asyncio.run(main())
+  File "C:\Users\Robert\miniconda3\envs\tradingbot\Lib\asyncio\runners.py", line 190, in run
+    return runner.run(main)
+           ^^^^^^^^^^^^^^^^
+  File "C:\Users\Robert\miniconda3\envs\tradingbot\Lib\asyncio\runners.py", line 118, in run
+    return self._loop.run_until_complete(task)
+           ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "C:\Users\Robert\miniconda3\envs\tradingbot\Lib\asyncio\base_events.py", line 654, in run_until_complete
+    return future.result()
+           ^^^^^^^^^^^^^^^
+  File "D:\tradingbot\app\telegram_bot.py", line 31, in main
+    app = Application.builder().token(TELEGRAM_BOT_TOKEN).build()
+          ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "C:\Users\Robert\miniconda3\envs\tradingbot\Lib\site-packages\telegram\ext\_applicationbuilder.py", line 310, in build
+    bot: Bot = self._build_ext_bot()  # build a bot
+               ^^^^^^^^^^^^^^^^^^^^^
+  File "C:\Users\Robert\miniconda3\envs\tradingbot\Lib\site-packages\telegram\ext\_applicationbuilder.py", line 272, in _build_ext_bot
+    return ExtBot(
+           ^^^^^^^
+  File "C:\Users\Robert\miniconda3\envs\tradingbot\Lib\site-packages\telegram\ext\_extbot.py", line 229, in __init__
+    super().__init__(
+  File "C:\Users\Robert\miniconda3\envs\tradingbot\Lib\site-packages\telegram\_bot.py", line 256, in __init__
+    raise InvalidToken("You must pass the token you received from https://t.me/Botfather!")
+telegram.error.InvalidToken: You must pass the token you received from https://t.me/Botfather!
+Traceback (most recent call last):
+  File "<frozen runpy>", line 198, in _run_module_as_main
+  File "<frozen runpy>", line 88, in _run_code
+  File "D:\tradingbot\app\telegram_bot.py", line 37, in <module>
+    asyncio.run(main())
+  File "C:\Users\Robert\miniconda3\envs\tradingbot\Lib\asyncio\runners.py", line 190, in run
+    return runner.run(main)
+           ^^^^^^^^^^^^^^^^
+  File "C:\Users\Robert\miniconda3\envs\tradingbot\Lib\asyncio\runners.py", line 118, in run
+    return self._loop.run_until_complete(task)
+           ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "C:\Users\Robert\miniconda3\envs\tradingbot\Lib\asyncio\base_events.py", line 654, in run_until_complete
+    return future.result()
+           ^^^^^^^^^^^^^^^
+  File "D:\tradingbot\app\telegram_bot.py", line 31, in main
+    app = Application.builder().token(TELEGRAM_BOT_TOKEN).build()
+          ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "C:\Users\Robert\miniconda3\envs\tradingbot\Lib\site-packages\telegram\ext\_applicationbuilder.py", line 310, in build
+    bot: Bot = self._build_ext_bot()  # build a bot
+               ^^^^^^^^^^^^^^^^^^^^^
+  File "C:\Users\Robert\miniconda3\envs\tradingbot\Lib\site-packages\telegram\ext\_applicationbuilder.py", line 272, in _build_ext_bot
+    return ExtBot(
+           ^^^^^^^
+  File "C:\Users\Robert\miniconda3\envs\tradingbot\Lib\site-packages\telegram\ext\_extbot.py", line 229, in __init__
+    super().__init__(
+  File "C:\Users\Robert\miniconda3\envs\tradingbot\Lib\site-packages\telegram\_bot.py", line 256, in __init__
+    raise InvalidToken("You must pass the token you received from https://t.me/Botfather!")
+telegram.error.InvalidToken: You must pass the token you received from https://t.me/Botfather!
+Traceback (most recent call last):
+  File "<frozen runpy>", line 198, in _run_module_as_main
+  File "<frozen runpy>", line 88, in _run_code
+  File "D:\tradingbot\app\telegram_bot.py", line 37, in <module>
+    asyncio.run(main())
+  File "C:\Users\Robert\miniconda3\envs\tradingbot\Lib\asyncio\runners.py", line 190, in run
+    return runner.run(main)
+           ^^^^^^^^^^^^^^^^
+  File "C:\Users\Robert\miniconda3\envs\tradingbot\Lib\asyncio\runners.py", line 118, in run
+    return self._loop.run_until_complete(task)
+           ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "C:\Users\Robert\miniconda3\envs\tradingbot\Lib\asyncio\base_events.py", line 654, in run_until_complete
+    return future.result()
+           ^^^^^^^^^^^^^^^
+  File "D:\tradingbot\app\telegram_bot.py", line 31, in main
+    app = Application.builder().token(TELEGRAM_BOT_TOKEN).build()
+          ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "C:\Users\Robert\miniconda3\envs\tradingbot\Lib\site-packages\telegram\ext\_applicationbuilder.py", line 310, in build
+    bot: Bot = self._build_ext_bot()  # build a bot
+               ^^^^^^^^^^^^^^^^^^^^^
+  File "C:\Users\Robert\miniconda3\envs\tradingbot\Lib\site-packages\telegram\ext\_applicationbuilder.py", line 272, in _build_ext_bot
+    return ExtBot(
+           ^^^^^^^
+  File "C:\Users\Robert\miniconda3\envs\tradingbot\Lib\site-packages\telegram\ext\_extbot.py", line 229, in __init__
+    super().__init__(
+  File "C:\Users\Robert\miniconda3\envs\tradingbot\Lib\site-packages\telegram\_bot.py", line 256, in __init__
+    raise InvalidToken("You must pass the token you received from https://t.me/Botfather!")
+telegram.error.InvalidToken: You must pass the token you received from https://t.me/Botfather!
+Traceback (most recent call last):
+  File "<frozen runpy>", line 198, in _run_module_as_main
+  File "<frozen runpy>", line 88, in _run_code
+  File "D:\tradingbot\app\telegram_bot.py", line 37, in <module>
+    asyncio.run(main())
+  File "C:\Users\Robert\miniconda3\envs\tradingbot\Lib\asyncio\runners.py", line 190, in run
+    return runner.run(main)
+           ^^^^^^^^^^^^^^^^
+  File "C:\Users\Robert\miniconda3\envs\tradingbot\Lib\asyncio\runners.py", line 118, in run
+    return self._loop.run_until_complete(task)
+           ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "C:\Users\Robert\miniconda3\envs\tradingbot\Lib\asyncio\base_events.py", line 654, in run_until_complete
+    return future.result()
+           ^^^^^^^^^^^^^^^
+  File "D:\tradingbot\app\telegram_bot.py", line 31, in main
+    app = Application.builder().token(TELEGRAM_BOT_TOKEN).build()
+          ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "C:\Users\Robert\miniconda3\envs\tradingbot\Lib\site-packages\telegram\ext\_applicationbuilder.py", line 310, in build
+    bot: Bot = self._build_ext_bot()  # build a bot
+               ^^^^^^^^^^^^^^^^^^^^^
+  File "C:\Users\Robert\miniconda3\envs\tradingbot\Lib\site-packages\telegram\ext\_applicationbuilder.py", line 272, in _build_ext_bot
+    return ExtBot(
+           ^^^^^^^
+  File "C:\Users\Robert\miniconda3\envs\tradingbot\Lib\site-packages\telegram\ext\_extbot.py", line 229, in __init__
+    super().__init__(
+  File "C:\Users\Robert\miniconda3\envs\tradingbot\Lib\site-packages\telegram\_bot.py", line 256, in __init__
+    raise InvalidToken("You must pass the token you received from https://t.me/Botfather!")
+telegram.error.InvalidToken: You must pass the token you received from https://t.me/Botfather!
+Traceback (most recent call last):
+  File "<frozen runpy>", line 198, in _run_module_as_main
+  File "<frozen runpy>", line 88, in _run_code
+  File "D:\tradingbot\app\telegram_bot.py", line 37, in <module>
+    asyncio.run(main())
+  File "C:\Users\Robert\miniconda3\envs\tradingbot\Lib\asyncio\runners.py", line 190, in run
+    return runner.run(main)
+           ^^^^^^^^^^^^^^^^
+  File "C:\Users\Robert\miniconda3\envs\tradingbot\Lib\asyncio\runners.py", line 118, in run
+    return self._loop.run_until_complete(task)
+           ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "C:\Users\Robert\miniconda3\envs\tradingbot\Lib\asyncio\base_events.py", line 654, in run_until_complete
+    return future.result()
+           ^^^^^^^^^^^^^^^
+  File "D:\tradingbot\app\telegram_bot.py", line 31, in main
+    app = Application.builder().token(TELEGRAM_BOT_TOKEN).build()
+          ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "C:\Users\Robert\miniconda3\envs\tradingbot\Lib\site-packages\telegram\ext\_applicationbuilder.py", line 310, in build
+    bot: Bot = self._build_ext_bot()  # build a bot
+               ^^^^^^^^^^^^^^^^^^^^^
+  File "C:\Users\Robert\miniconda3\envs\tradingbot\Lib\site-packages\telegram\ext\_applicationbuilder.py", line 272, in _build_ext_bot
+    return ExtBot(
+           ^^^^^^^
+  File "C:\Users\Robert\miniconda3\envs\tradingbot\Lib\site-packages\telegram\ext\_extbot.py", line 229, in __init__
+    super().__init__(
+  File "C:\Users\Robert\miniconda3\envs\tradingbot\Lib\site-packages\telegram\_bot.py", line 256, in __init__
+    raise InvalidToken("You must pass the token you received from https://t.me/Botfather!")
+telegram.error.InvalidToken: You must pass the token you received from https://t.me/Botfather!
+Traceback (most recent call last):
+  File "<frozen runpy>", line 198, in _run_module_as_main
+  File "<frozen runpy>", line 88, in _run_code
+  File "D:\tradingbot\app\telegram_bot.py", line 37, in <module>
+    asyncio.run(main())
+  File "C:\Users\Robert\miniconda3\envs\tradingbot\Lib\asyncio\runners.py", line 190, in run
+    return runner.run(main)
+           ^^^^^^^^^^^^^^^^
+  File "C:\Users\Robert\miniconda3\envs\tradingbot\Lib\asyncio\runners.py", line 118, in run
+    return self._loop.run_until_complete(task)
+           ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "C:\Users\Robert\miniconda3\envs\tradingbot\Lib\asyncio\base_events.py", line 654, in run_until_complete
+    return future.result()
+           ^^^^^^^^^^^^^^^
+  File "D:\tradingbot\app\telegram_bot.py", line 31, in main
+    app = Application.builder().token(TELEGRAM_BOT_TOKEN).build()
+          ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "C:\Users\Robert\miniconda3\envs\tradingbot\Lib\site-packages\telegram\ext\_applicationbuilder.py", line 310, in build
+    bot: Bot = self._build_ext_bot()  # build a bot
+               ^^^^^^^^^^^^^^^^^^^^^
+  File "C:\Users\Robert\miniconda3\envs\tradingbot\Lib\site-packages\telegram\ext\_applicationbuilder.py", line 272, in _build_ext_bot
+    return ExtBot(
+           ^^^^^^^
+  File "C:\Users\Robert\miniconda3\envs\tradingbot\Lib\site-packages\telegram\ext\_extbot.py", line 229, in __init__
+    super().__init__(
+  File "C:\Users\Robert\miniconda3\envs\tradingbot\Lib\site-packages\telegram\_bot.py", line 256, in __init__
+    raise InvalidToken("You must pass the token you received from https://t.me/Botfather!")
+telegram.error.InvalidToken: You must pass the token you received from https://t.me/Botfather!
+Traceback (most recent call last):
+  File "<frozen runpy>", line 198, in _run_module_as_main
+  File "<frozen runpy>", line 88, in _run_code
+  File "D:\tradingbot\app\telegram_bot.py", line 37, in <module>
+    asyncio.run(main())
+  File "C:\Users\Robert\miniconda3\envs\tradingbot\Lib\asyncio\runners.py", line 190, in run
+    return runner.run(main)
+           ^^^^^^^^^^^^^^^^
+  File "C:\Users\Robert\miniconda3\envs\tradingbot\Lib\asyncio\runners.py", line 118, in run
+    return self._loop.run_until_complete(task)
+           ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "C:\Users\Robert\miniconda3\envs\tradingbot\Lib\asyncio\base_events.py", line 654, in run_until_complete
+    return future.result()
+           ^^^^^^^^^^^^^^^
+  File "D:\tradingbot\app\telegram_bot.py", line 31, in main
+    app = Application.builder().token(TELEGRAM_BOT_TOKEN).build()
+          ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "C:\Users\Robert\miniconda3\envs\tradingbot\Lib\site-packages\telegram\ext\_applicationbuilder.py", line 310, in build
+    bot: Bot = self._build_ext_bot()  # build a bot
+               ^^^^^^^^^^^^^^^^^^^^^
+  File "C:\Users\Robert\miniconda3\envs\tradingbot\Lib\site-packages\telegram\ext\_applicationbuilder.py", line 272, in _build_ext_bot
+    return ExtBot(
+           ^^^^^^^
+  File "C:\Users\Robert\miniconda3\envs\tradingbot\Lib\site-packages\telegram\ext\_extbot.py", line 229, in __init__
+    super().__init__(
+  File "C:\Users\Robert\miniconda3\envs\tradingbot\Lib\site-packages\telegram\_bot.py", line 256, in __init__
+    raise InvalidToken("You must pass the token you received from https://t.me/Botfather!")
+telegram.error.InvalidToken: You must pass the token you received from https://t.me/Botfather!
+Traceback (most recent call last):
+  File "<frozen runpy>", line 198, in _run_module_as_main
+  File "<frozen runpy>", line 88, in _run_code
+  File "D:\tradingbot\app\telegram_bot.py", line 37, in <module>
+    asyncio.run(main())
+  File "C:\Users\Robert\miniconda3\envs\tradingbot\Lib\asyncio\runners.py", line 190, in run
+    return runner.run(main)
+           ^^^^^^^^^^^^^^^^
+  File "C:\Users\Robert\miniconda3\envs\tradingbot\Lib\asyncio\runners.py", line 118, in run
+    return self._loop.run_until_complete(task)
+           ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "C:\Users\Robert\miniconda3\envs\tradingbot\Lib\asyncio\base_events.py", line 654, in run_until_complete
+    return future.result()
+           ^^^^^^^^^^^^^^^
+  File "D:\tradingbot\app\telegram_bot.py", line 31, in main
+    app = Application.builder().token(TELEGRAM_BOT_TOKEN).build()
+          ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "C:\Users\Robert\miniconda3\envs\tradingbot\Lib\site-packages\telegram\ext\_applicationbuilder.py", line 310, in build
+    bot: Bot = self._build_ext_bot()  # build a bot
+               ^^^^^^^^^^^^^^^^^^^^^
+  File "C:\Users\Robert\miniconda3\envs\tradingbot\Lib\site-packages\telegram\ext\_applicationbuilder.py", line 272, in _build_ext_bot
+    return ExtBot(
+           ^^^^^^^
+  File "C:\Users\Robert\miniconda3\envs\tradingbot\Lib\site-packages\telegram\ext\_extbot.py", line 229, in __init__
+    super().__init__(
+  File "C:\Users\Robert\miniconda3\envs\tradingbot\Lib\site-packages\telegram\_bot.py", line 256, in __init__
+    raise InvalidToken("You must pass the token you received from https://t.me/Botfather!")
+telegram.error.InvalidToken: You must pass the token you received from https://t.me/Botfather!
+Traceback (most recent call last):
+  File "<frozen runpy>", line 198, in _run_module_as_main
+  File "<frozen runpy>", line 88, in _run_code
+  File "D:\tradingbot\app\telegram_bot.py", line 37, in <module>
+    asyncio.run(main())
+  File "C:\Users\Robert\miniconda3\envs\tradingbot\Lib\asyncio\runners.py", line 190, in run
+    return runner.run(main)
+           ^^^^^^^^^^^^^^^^
+  File "C:\Users\Robert\miniconda3\envs\tradingbot\Lib\asyncio\runners.py", line 118, in run
+    return self._loop.run_until_complete(task)
+           ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "C:\Users\Robert\miniconda3\envs\tradingbot\Lib\asyncio\base_events.py", line 654, in run_until_complete
+    return future.result()
+           ^^^^^^^^^^^^^^^
+  File "D:\tradingbot\app\telegram_bot.py", line 31, in main
+    app = Application.builder().token(TELEGRAM_BOT_TOKEN).build()
+          ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "C:\Users\Robert\miniconda3\envs\tradingbot\Lib\site-packages\telegram\ext\_applicationbuilder.py", line 310, in build
+    bot: Bot = self._build_ext_bot()  # build a bot
+               ^^^^^^^^^^^^^^^^^^^^^
+  File "C:\Users\Robert\miniconda3\envs\tradingbot\Lib\site-packages\telegram\ext\_applicationbuilder.py", line 272, in _build_ext_bot
+    return ExtBot(
+           ^^^^^^^
+  File "C:\Users\Robert\miniconda3\envs\tradingbot\Lib\site-packages\telegram\ext\_extbot.py", line 229, in __init__
+    super().__init__(
+  File "C:\Users\Robert\miniconda3\envs\tradingbot\Lib\site-packages\telegram\_bot.py", line 256, in __init__
+    raise InvalidToken("You must pass the token you received from https://t.me/Botfather!")
+telegram.error.InvalidToken: You must pass the token you received from https://t.me/Botfather!
+Traceback (most recent call last):
+  File "<frozen runpy>", line 198, in _run_module_as_main
+  File "<frozen runpy>", line 88, in _run_code
+  File "D:\tradingbot\app\telegram_bot.py", line 37, in <module>
+    asyncio.run(main())
+  File "C:\Users\Robert\miniconda3\envs\tradingbot\Lib\asyncio\runners.py", line 190, in run
+    return runner.run(main)
+           ^^^^^^^^^^^^^^^^
+  File "C:\Users\Robert\miniconda3\envs\tradingbot\Lib\asyncio\runners.py", line 118, in run
+    return self._loop.run_until_complete(task)
+           ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "C:\Users\Robert\miniconda3\envs\tradingbot\Lib\asyncio\base_events.py", line 654, in run_until_complete
+    return future.result()
+           ^^^^^^^^^^^^^^^
+  File "D:\tradingbot\app\telegram_bot.py", line 31, in main
+    app = Application.builder().token(TELEGRAM_BOT_TOKEN).build()
+          ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "C:\Users\Robert\miniconda3\envs\tradingbot\Lib\site-packages\telegram\ext\_applicationbuilder.py", line 310, in build
+    bot: Bot = self._build_ext_bot()  # build a bot
+               ^^^^^^^^^^^^^^^^^^^^^
+  File "C:\Users\Robert\miniconda3\envs\tradingbot\Lib\site-packages\telegram\ext\_applicationbuilder.py", line 272, in _build_ext_bot
+    return ExtBot(
+           ^^^^^^^
+  File "C:\Users\Robert\miniconda3\envs\tradingbot\Lib\site-packages\telegram\ext\_extbot.py", line 229, in __init__
+    super().__init__(
+  File "C:\Users\Robert\miniconda3\envs\tradingbot\Lib\site-packages\telegram\_bot.py", line 256, in __init__
+    raise InvalidToken("You must pass the token you received from https://t.me/Botfather!")
+telegram.error.InvalidToken: You must pass the token you received from https://t.me/Botfather!
+Traceback (most recent call last):
+  File "<frozen runpy>", line 198, in _run_module_as_main
+  File "<frozen runpy>", line 88, in _run_code
+  File "D:\tradingbot\app\telegram_bot.py", line 37, in <module>
+    asyncio.run(main())
+  File "C:\Users\Robert\miniconda3\envs\tradingbot\Lib\asyncio\runners.py", line 190, in run
+    return runner.run(main)
+           ^^^^^^^^^^^^^^^^
+  File "C:\Users\Robert\miniconda3\envs\tradingbot\Lib\asyncio\runners.py", line 118, in run
+    return self._loop.run_until_complete(task)
+           ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "C:\Users\Robert\miniconda3\envs\tradingbot\Lib\asyncio\base_events.py", line 654, in run_until_complete
+    return future.result()
+           ^^^^^^^^^^^^^^^
+  File "D:\tradingbot\app\telegram_bot.py", line 31, in main
+    app = Application.builder().token(TELEGRAM_BOT_TOKEN).build()
+          ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "C:\Users\Robert\miniconda3\envs\tradingbot\Lib\site-packages\telegram\ext\_applicationbuilder.py", line 310, in build
+    bot: Bot = self._build_ext_bot()  # build a bot
+               ^^^^^^^^^^^^^^^^^^^^^
+  File "C:\Users\Robert\miniconda3\envs\tradingbot\Lib\site-packages\telegram\ext\_applicationbuilder.py", line 272, in _build_ext_bot
+    return ExtBot(
+           ^^^^^^^
+  File "C:\Users\Robert\miniconda3\envs\tradingbot\Lib\site-packages\telegram\ext\_extbot.py", line 229, in __init__
+    super().__init__(
+  File "C:\Users\Robert\miniconda3\envs\tradingbot\Lib\site-packages\telegram\_bot.py", line 256, in __init__
+    raise InvalidToken("You must pass the token you received from https://t.me/Botfather!")
+telegram.error.InvalidToken: You must pass the token you received from https://t.me/Botfather!
+Traceback (most recent call last):
+  File "<frozen runpy>", line 198, in _run_module_as_main
+  File "<frozen runpy>", line 88, in _run_code
+  File "D:\tradingbot\app\telegram_bot.py", line 37, in <module>
+    asyncio.run(main())
+  File "C:\Users\Robert\miniconda3\envs\tradingbot\Lib\asyncio\runners.py", line 190, in run
+    return runner.run(main)
+           ^^^^^^^^^^^^^^^^
+  File "C:\Users\Robert\miniconda3\envs\tradingbot\Lib\asyncio\runners.py", line 118, in run
+    return self._loop.run_until_complete(task)
+           ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "C:\Users\Robert\miniconda3\envs\tradingbot\Lib\asyncio\base_events.py", line 654, in run_until_complete
+    return future.result()
+           ^^^^^^^^^^^^^^^
+  File "D:\tradingbot\app\telegram_bot.py", line 31, in main
+    app = Application.builder().token(TELEGRAM_BOT_TOKEN).build()
+          ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "C:\Users\Robert\miniconda3\envs\tradingbot\Lib\site-packages\telegram\ext\_applicationbuilder.py", line 310, in build
+    bot: Bot = self._build_ext_bot()  # build a bot
+               ^^^^^^^^^^^^^^^^^^^^^
+  File "C:\Users\Robert\miniconda3\envs\tradingbot\Lib\site-packages\telegram\ext\_applicationbuilder.py", line 272, in _build_ext_bot
+    return ExtBot(
+           ^^^^^^^
+  File "C:\Users\Robert\miniconda3\envs\tradingbot\Lib\site-packages\telegram\ext\_extbot.py", line 229, in __init__
+    super().__init__(
+  File "C:\Users\Robert\miniconda3\envs\tradingbot\Lib\site-packages\telegram\_bot.py", line 256, in __init__
+    raise InvalidToken("You must pass the token you received from https://t.me/Botfather!")
+telegram.error.InvalidToken: You must pass the token you received from https://t.me/Botfather!
+Traceback (most recent call last):
+  File "<frozen runpy>", line 198, in _run_module_as_main
+  File "<frozen runpy>", line 88, in _run_code
+  File "D:\tradingbot\app\telegram_bot.py", line 37, in <module>
+    asyncio.run(main())
+  File "C:\Users\Robert\miniconda3\envs\tradingbot\Lib\asyncio\runners.py", line 190, in run
+    return runner.run(main)
+           ^^^^^^^^^^^^^^^^
+  File "C:\Users\Robert\miniconda3\envs\tradingbot\Lib\asyncio\runners.py", line 118, in run
+    return self._loop.run_until_complete(task)
+           ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "C:\Users\Robert\miniconda3\envs\tradingbot\Lib\asyncio\base_events.py", line 654, in run_until_complete
+    return future.result()
+           ^^^^^^^^^^^^^^^
+  File "D:\tradingbot\app\telegram_bot.py", line 31, in main
+    app = Application.builder().token(TELEGRAM_BOT_TOKEN).build()
+          ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "C:\Users\Robert\miniconda3\envs\tradingbot\Lib\site-packages\telegram\ext\_applicationbuilder.py", line 310, in build
+    bot: Bot = self._build_ext_bot()  # build a bot
+               ^^^^^^^^^^^^^^^^^^^^^
+  File "C:\Users\Robert\miniconda3\envs\tradingbot\Lib\site-packages\telegram\ext\_applicationbuilder.py", line 272, in _build_ext_bot
+    return ExtBot(
+           ^^^^^^^
+  File "C:\Users\Robert\miniconda3\envs\tradingbot\Lib\site-packages\telegram\ext\_extbot.py", line 229, in __init__
+    super().__init__(
+  File "C:\Users\Robert\miniconda3\envs\tradingbot\Lib\site-packages\telegram\_bot.py", line 256, in __init__
+    raise InvalidToken("You must pass the token you received from https://t.me/Botfather!")
+telegram.error.InvalidToken: You must pass the token you received from https://t.me/Botfather!
+Traceback (most recent call last):
+  File "<frozen runpy>", line 198, in _run_module_as_main
+  File "<frozen runpy>", line 88, in _run_code
+  File "D:\tradingbot\app\telegram_bot.py", line 37, in <module>
+    asyncio.run(main())
+  File "C:\Users\Robert\miniconda3\envs\tradingbot\Lib\asyncio\runners.py", line 190, in run
+    return runner.run(main)
+           ^^^^^^^^^^^^^^^^
+  File "C:\Users\Robert\miniconda3\envs\tradingbot\Lib\asyncio\runners.py", line 118, in run
+    return self._loop.run_until_complete(task)
+           ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "C:\Users\Robert\miniconda3\envs\tradingbot\Lib\asyncio\base_events.py", line 654, in run_until_complete
+    return future.result()
+           ^^^^^^^^^^^^^^^
+  File "D:\tradingbot\app\telegram_bot.py", line 31, in main
+    app = Application.builder().token(TELEGRAM_BOT_TOKEN).build()
+          ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "C:\Users\Robert\miniconda3\envs\tradingbot\Lib\site-packages\telegram\ext\_applicationbuilder.py", line 310, in build
+    bot: Bot = self._build_ext_bot()  # build a bot
+               ^^^^^^^^^^^^^^^^^^^^^
+  File "C:\Users\Robert\miniconda3\envs\tradingbot\Lib\site-packages\telegram\ext\_applicationbuilder.py", line 272, in _build_ext_bot
+    return ExtBot(
+           ^^^^^^^
+  File "C:\Users\Robert\miniconda3\envs\tradingbot\Lib\site-packages\telegram\ext\_extbot.py", line 229, in __init__
+    super().__init__(
+  File "C:\Users\Robert\miniconda3\envs\tradingbot\Lib\site-packages\telegram\_bot.py", line 256, in __init__
+    raise InvalidToken("You must pass the token you received from https://t.me/Botfather!")
+telegram.error.InvalidToken: You must pass the token you received from https://t.me/Botfather!
+Traceback (most recent call last):
+  File "<frozen runpy>", line 198, in _run_module_as_main
+  File "<frozen runpy>", line 88, in _run_code
+  File "D:\tradingbot\app\telegram_bot.py", line 37, in <module>
+    asyncio.run(main())
+  File "C:\Users\Robert\miniconda3\envs\tradingbot\Lib\asyncio\runners.py", line 190, in run
+    return runner.run(main)
+           ^^^^^^^^^^^^^^^^
+  File "C:\Users\Robert\miniconda3\envs\tradingbot\Lib\asyncio\runners.py", line 118, in run
+    return self._loop.run_until_complete(task)
+           ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "C:\Users\Robert\miniconda3\envs\tradingbot\Lib\asyncio\base_events.py", line 654, in run_until_complete
+    return future.result()
+           ^^^^^^^^^^^^^^^
+  File "D:\tradingbot\app\telegram_bot.py", line 31, in main
+    app = Application.builder().token(TELEGRAM_BOT_TOKEN).build()
+          ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "C:\Users\Robert\miniconda3\envs\tradingbot\Lib\site-packages\telegram\ext\_applicationbuilder.py", line 310, in build
+    bot: Bot = self._build_ext_bot()  # build a bot
+               ^^^^^^^^^^^^^^^^^^^^^
+  File "C:\Users\Robert\miniconda3\envs\tradingbot\Lib\site-packages\telegram\ext\_applicationbuilder.py", line 272, in _build_ext_bot
+    return ExtBot(
+           ^^^^^^^
+  File "C:\Users\Robert\miniconda3\envs\tradingbot\Lib\site-packages\telegram\ext\_extbot.py", line 229, in __init__
+    super().__init__(
+  File "C:\Users\Robert\miniconda3\envs\tradingbot\Lib\site-packages\telegram\_bot.py", line 256, in __init__
+    raise InvalidToken("You must pass the token you received from https://t.me/Botfather!")
+telegram.error.InvalidToken: You must pass the token you received from https://t.me/Botfather!
+Traceback (most recent call last):
+  File "<frozen runpy>", line 198, in _run_module_as_main
+  File "<frozen runpy>", line 88, in _run_code
+  File "D:\tradingbot\app\telegram_bot.py", line 37, in <module>
+    asyncio.run(main())
+  File "C:\Users\Robert\miniconda3\envs\tradingbot\Lib\asyncio\runners.py", line 190, in run
+    return runner.run(main)
+           ^^^^^^^^^^^^^^^^
+  File "C:\Users\Robert\miniconda3\envs\tradingbot\Lib\asyncio\runners.py", line 118, in run
+    return self._loop.run_until_complete(task)
+           ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "C:\Users\Robert\miniconda3\envs\tradingbot\Lib\asyncio\base_events.py", line 654, in run_until_complete
+    return future.result()
+           ^^^^^^^^^^^^^^^
+  File "D:\tradingbot\app\telegram_bot.py", line 31, in main
+    app = Application.builder().token(TELEGRAM_BOT_TOKEN).build()
+          ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "C:\Users\Robert\miniconda3\envs\tradingbot\Lib\site-packages\telegram\ext\_applicationbuilder.py", line 310, in build
+    bot: Bot = self._build_ext_bot()  # build a bot
+               ^^^^^^^^^^^^^^^^^^^^^
+  File "C:\Users\Robert\miniconda3\envs\tradingbot\Lib\site-packages\telegram\ext\_applicationbuilder.py", line 272, in _build_ext_bot
+    return ExtBot(
+           ^^^^^^^
+  File "C:\Users\Robert\miniconda3\envs\tradingbot\Lib\site-packages\telegram\ext\_extbot.py", line 229, in __init__
+    super().__init__(
+  File "C:\Users\Robert\miniconda3\envs\tradingbot\Lib\site-packages\telegram\_bot.py", line 256, in __init__
+    raise InvalidToken("You must pass the token you received from https://t.me/Botfather!")
+telegram.error.InvalidToken: You must pass the token you received from https://t.me/Botfather!
+Traceback (most recent call last):
+  File "<frozen runpy>", line 198, in _run_module_as_main
+  File "<frozen runpy>", line 88, in _run_code
+  File "D:\tradingbot\app\telegram_bot.py", line 37, in <module>
+    asyncio.run(main())
+  File "C:\Users\Robert\miniconda3\envs\tradingbot\Lib\asyncio\runners.py", line 190, in run
+    return runner.run(main)
+           ^^^^^^^^^^^^^^^^
+  File "C:\Users\Robert\miniconda3\envs\tradingbot\Lib\asyncio\runners.py", line 118, in run
+    return self._loop.run_until_complete(task)
+           ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "C:\Users\Robert\miniconda3\envs\tradingbot\Lib\asyncio\base_events.py", line 654, in run_until_complete
+    return future.result()
+           ^^^^^^^^^^^^^^^
+  File "D:\tradingbot\app\telegram_bot.py", line 31, in main
+    app = Application.builder().token(TELEGRAM_BOT_TOKEN).build()
+          ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "C:\Users\Robert\miniconda3\envs\tradingbot\Lib\site-packages\telegram\ext\_applicationbuilder.py", line 310, in build
+    bot: Bot = self._build_ext_bot()  # build a bot
+               ^^^^^^^^^^^^^^^^^^^^^
+  File "C:\Users\Robert\miniconda3\envs\tradingbot\Lib\site-packages\telegram\ext\_applicationbuilder.py", line 272, in _build_ext_bot
+    return ExtBot(
+           ^^^^^^^
+  File "C:\Users\Robert\miniconda3\envs\tradingbot\Lib\site-packages\telegram\ext\_extbot.py", line 229, in __init__
+    super().__init__(
+  File "C:\Users\Robert\miniconda3\envs\tradingbot\Lib\site-packages\telegram\_bot.py", line 256, in __init__
+    raise InvalidToken("You must pass the token you received from https://t.me/Botfather!")
+telegram.error.InvalidToken: You must pass the token you received from https://t.me/Botfather!
+Traceback (most recent call last):
+  File "<frozen runpy>", line 198, in _run_module_as_main
+  File "<frozen runpy>", line 88, in _run_code
+  File "D:\tradingbot\app\telegram_bot.py", line 37, in <module>
+    asyncio.run(main())
+  File "C:\Users\Robert\miniconda3\envs\tradingbot\Lib\asyncio\runners.py", line 190, in run
+    return runner.run(main)
+           ^^^^^^^^^^^^^^^^
+  File "C:\Users\Robert\miniconda3\envs\tradingbot\Lib\asyncio\runners.py", line 118, in run
+    return self._loop.run_until_complete(task)
+           ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "C:\Users\Robert\miniconda3\envs\tradingbot\Lib\asyncio\base_events.py", line 654, in run_until_complete
+    return future.result()
+           ^^^^^^^^^^^^^^^
+  File "D:\tradingbot\app\telegram_bot.py", line 31, in main
+    app = Application.builder().token(TELEGRAM_BOT_TOKEN).build()
+          ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "C:\Users\Robert\miniconda3\envs\tradingbot\Lib\site-packages\telegram\ext\_applicationbuilder.py", line 310, in build
+    bot: Bot = self._build_ext_bot()  # build a bot
+               ^^^^^^^^^^^^^^^^^^^^^
+  File "C:\Users\Robert\miniconda3\envs\tradingbot\Lib\site-packages\telegram\ext\_applicationbuilder.py", line 272, in _build_ext_bot
+    return ExtBot(
+           ^^^^^^^
+  File "C:\Users\Robert\miniconda3\envs\tradingbot\Lib\site-packages\telegram\ext\_extbot.py", line 229, in __init__
+    super().__init__(
+  File "C:\Users\Robert\miniconda3\envs\tradingbot\Lib\site-packages\telegram\_bot.py", line 256, in __init__
+    raise InvalidToken("You must pass the token you received from https://t.me/Botfather!")
+telegram.error.InvalidToken: You must pass the token you received from https://t.me/Botfather!
+Traceback (most recent call last):
+  File "<frozen runpy>", line 198, in _run_module_as_main
+  File "<frozen runpy>", line 88, in _run_code
+  File "D:\tradingbot\app\telegram_bot.py", line 37, in <module>
+    asyncio.run(main())
+  File "C:\Users\Robert\miniconda3\envs\tradingbot\Lib\asyncio\runners.py", line 190, in run
+    return runner.run(main)
+           ^^^^^^^^^^^^^^^^
+  File "C:\Users\Robert\miniconda3\envs\tradingbot\Lib\asyncio\runners.py", line 118, in run
+    return self._loop.run_until_complete(task)
+           ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "C:\Users\Robert\miniconda3\envs\tradingbot\Lib\asyncio\base_events.py", line 654, in run_until_complete
+    return future.result()
+           ^^^^^^^^^^^^^^^
+  File "D:\tradingbot\app\telegram_bot.py", line 31, in main
+    app = Application.builder().token(TELEGRAM_BOT_TOKEN).build()
+          ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "C:\Users\Robert\miniconda3\envs\tradingbot\Lib\site-packages\telegram\ext\_applicationbuilder.py", line 310, in build
+    bot: Bot = self._build_ext_bot()  # build a bot
+               ^^^^^^^^^^^^^^^^^^^^^
+  File "C:\Users\Robert\miniconda3\envs\tradingbot\Lib\site-packages\telegram\ext\_applicationbuilder.py", line 272, in _build_ext_bot
+    return ExtBot(
+           ^^^^^^^
+  File "C:\Users\Robert\miniconda3\envs\tradingbot\Lib\site-packages\telegram\ext\_extbot.py", line 229, in __init__
+    super().__init__(
+  File "C:\Users\Robert\miniconda3\envs\tradingbot\Lib\site-packages\telegram\_bot.py", line 256, in __init__
+    raise InvalidToken("You must pass the token you received from https://t.me/Botfather!")
+telegram.error.InvalidToken: You must pass the token you received from https://t.me/Botfather!
+Traceback (most recent call last):
+  File "<frozen runpy>", line 198, in _run_module_as_main
+  File "<frozen runpy>", line 88, in _run_code
+  File "D:\tradingbot\app\telegram_bot.py", line 37, in <module>
+    asyncio.run(main())
+  File "C:\Users\Robert\miniconda3\envs\tradingbot\Lib\asyncio\runners.py", line 190, in run
+    return runner.run(main)
+           ^^^^^^^^^^^^^^^^
+  File "C:\Users\Robert\miniconda3\envs\tradingbot\Lib\asyncio\runners.py", line 118, in run
+    return self._loop.run_until_complete(task)
+           ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "C:\Users\Robert\miniconda3\envs\tradingbot\Lib\asyncio\base_events.py", line 654, in run_until_complete
+    return future.result()
+           ^^^^^^^^^^^^^^^
+  File "D:\tradingbot\app\telegram_bot.py", line 31, in main
+    app = Application.builder().token(TELEGRAM_BOT_TOKEN).build()
+          ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "C:\Users\Robert\miniconda3\envs\tradingbot\Lib\site-packages\telegram\ext\_applicationbuilder.py", line 310, in build
+    bot: Bot = self._build_ext_bot()  # build a bot
+               ^^^^^^^^^^^^^^^^^^^^^
+  File "C:\Users\Robert\miniconda3\envs\tradingbot\Lib\site-packages\telegram\ext\_applicationbuilder.py", line 272, in _build_ext_bot
+    return ExtBot(
+           ^^^^^^^
+  File "C:\Users\Robert\miniconda3\envs\tradingbot\Lib\site-packages\telegram\ext\_extbot.py", line 229, in __init__
+    super().__init__(
+  File "C:\Users\Robert\miniconda3\envs\tradingbot\Lib\site-packages\telegram\_bot.py", line 256, in __init__
+    raise InvalidToken("You must pass the token you received from https://t.me/Botfather!")
+telegram.error.InvalidToken: You must pass the token you received from https://t.me/Botfather!
+Traceback (most recent call last):
+  File "<frozen runpy>", line 198, in _run_module_as_main
+  File "<frozen runpy>", line 88, in _run_code
+  File "D:\tradingbot\app\telegram_bot.py", line 37, in <module>
+    asyncio.run(main())
+  File "C:\Users\Robert\miniconda3\envs\tradingbot\Lib\asyncio\runners.py", line 190, in run
+    return runner.run(main)
+           ^^^^^^^^^^^^^^^^
+  File "C:\Users\Robert\miniconda3\envs\tradingbot\Lib\asyncio\runners.py", line 118, in run
+    return self._loop.run_until_complete(task)
+           ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "C:\Users\Robert\miniconda3\envs\tradingbot\Lib\asyncio\base_events.py", line 654, in run_until_complete
+    return future.result()
+           ^^^^^^^^^^^^^^^
+  File "D:\tradingbot\app\telegram_bot.py", line 31, in main
+    app = Application.builder().token(TELEGRAM_BOT_TOKEN).build()
+          ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "C:\Users\Robert\miniconda3\envs\tradingbot\Lib\site-packages\telegram\ext\_applicationbuilder.py", line 310, in build
+    bot: Bot = self._build_ext_bot()  # build a bot
+               ^^^^^^^^^^^^^^^^^^^^^
+  File "C:\Users\Robert\miniconda3\envs\tradingbot\Lib\site-packages\telegram\ext\_applicationbuilder.py", line 272, in _build_ext_bot
+    return ExtBot(
+           ^^^^^^^
+  File "C:\Users\Robert\miniconda3\envs\tradingbot\Lib\site-packages\telegram\ext\_extbot.py", line 229, in __init__
+    super().__init__(
+  File "C:\Users\Robert\miniconda3\envs\tradingbot\Lib\site-packages\telegram\_bot.py", line 256, in __init__
+    raise InvalidToken("You must pass the token you received from https://t.me/Botfather!")
+telegram.error.InvalidToken: You must pass the token you received from https://t.me/Botfather!
+Traceback (most recent call last):
+  File "<frozen runpy>", line 198, in _run_module_as_main
+  File "<frozen runpy>", line 88, in _run_code
+  File "D:\tradingbot\app\telegram_bot.py", line 37, in <module>
+    asyncio.run(main())
+  File "C:\Users\Robert\miniconda3\envs\tradingbot\Lib\asyncio\runners.py", line 190, in run
+    return runner.run(main)
+           ^^^^^^^^^^^^^^^^
+  File "C:\Users\Robert\miniconda3\envs\tradingbot\Lib\asyncio\runners.py", line 118, in run
+    return self._loop.run_until_complete(task)
+           ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "C:\Users\Robert\miniconda3\envs\tradingbot\Lib\asyncio\base_events.py", line 654, in run_until_complete
+    return future.result()
+           ^^^^^^^^^^^^^^^
+  File "D:\tradingbot\app\telegram_bot.py", line 31, in main
+    app = Application.builder().token(TELEGRAM_BOT_TOKEN).build()
+          ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "C:\Users\Robert\miniconda3\envs\tradingbot\Lib\site-packages\telegram\ext\_applicationbuilder.py", line 310, in build
+    bot: Bot = self._build_ext_bot()  # build a bot
+               ^^^^^^^^^^^^^^^^^^^^^
+  File "C:\Users\Robert\miniconda3\envs\tradingbot\Lib\site-packages\telegram\ext\_applicationbuilder.py", line 272, in _build_ext_bot
+    return ExtBot(
+           ^^^^^^^
+  File "C:\Users\Robert\miniconda3\envs\tradingbot\Lib\site-packages\telegram\ext\_extbot.py", line 229, in __init__
+    super().__init__(
+  File "C:\Users\Robert\miniconda3\envs\tradingbot\Lib\site-packages\telegram\_bot.py", line 256, in __init__
+    raise InvalidToken("You must pass the token you received from https://t.me/Botfather!")
+telegram.error.InvalidToken: You must pass the token you received from https://t.me/Botfather!
+Traceback (most recent call last):
+  File "<frozen runpy>", line 198, in _run_module_as_main
+  File "<frozen runpy>", line 88, in _run_code
+  File "D:\tradingbot\app\telegram_bot.py", line 37, in <module>
+    asyncio.run(main())
+  File "C:\Users\Robert\miniconda3\envs\tradingbot\Lib\asyncio\runners.py", line 190, in run
+    return runner.run(main)
+           ^^^^^^^^^^^^^^^^
+  File "C:\Users\Robert\miniconda3\envs\tradingbot\Lib\asyncio\runners.py", line 118, in run
+    return self._loop.run_until_complete(task)
+           ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "C:\Users\Robert\miniconda3\envs\tradingbot\Lib\asyncio\base_events.py", line 654, in run_until_complete
+    return future.result()
+           ^^^^^^^^^^^^^^^
+  File "D:\tradingbot\app\telegram_bot.py", line 31, in main
+    app = Application.builder().token(TELEGRAM_BOT_TOKEN).build()
+          ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "C:\Users\Robert\miniconda3\envs\tradingbot\Lib\site-packages\telegram\ext\_applicationbuilder.py", line 310, in build
+    bot: Bot = self._build_ext_bot()  # build a bot
+               ^^^^^^^^^^^^^^^^^^^^^
+  File "C:\Users\Robert\miniconda3\envs\tradingbot\Lib\site-packages\telegram\ext\_applicationbuilder.py", line 272, in _build_ext_bot
+    return ExtBot(
+           ^^^^^^^
+  File "C:\Users\Robert\miniconda3\envs\tradingbot\Lib\site-packages\telegram\ext\_extbot.py", line 229, in __init__
+    super().__init__(
+  File "C:\Users\Robert\miniconda3\envs\tradingbot\Lib\site-packages\telegram\_bot.py", line 256, in __init__
+    raise InvalidToken("You must pass the token you received from https://t.me/Botfather!")
+telegram.error.InvalidToken: You must pass the token you received from https://t.me/Botfather!
+Traceback (most recent call last):
+  File "<frozen runpy>", line 198, in _run_module_as_main
+  File "<frozen runpy>", line 88, in _run_code
+  File "D:\tradingbot\app\telegram_bot.py", line 37, in <module>
+    asyncio.run(main())
+  File "C:\Users\Robert\miniconda3\envs\tradingbot\Lib\asyncio\runners.py", line 190, in run
+    return runner.run(main)
+           ^^^^^^^^^^^^^^^^
+  File "C:\Users\Robert\miniconda3\envs\tradingbot\Lib\asyncio\runners.py", line 118, in run
+    return self._loop.run_until_complete(task)
+           ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "C:\Users\Robert\miniconda3\envs\tradingbot\Lib\asyncio\base_events.py", line 654, in run_until_complete
+    return future.result()
+           ^^^^^^^^^^^^^^^
+  File "D:\tradingbot\app\telegram_bot.py", line 31, in main
+    app = Application.builder().token(TELEGRAM_BOT_TOKEN).build()
+          ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "C:\Users\Robert\miniconda3\envs\tradingbot\Lib\site-packages\telegram\ext\_applicationbuilder.py", line 310, in build
+    bot: Bot = self._build_ext_bot()  # build a bot
+               ^^^^^^^^^^^^^^^^^^^^^
+  File "C:\Users\Robert\miniconda3\envs\tradingbot\Lib\site-packages\telegram\ext\_applicationbuilder.py", line 272, in _build_ext_bot
+    return ExtBot(
+           ^^^^^^^
+  File "C:\Users\Robert\miniconda3\envs\tradingbot\Lib\site-packages\telegram\ext\_extbot.py", line 229, in __init__
+    super().__init__(
+  File "C:\Users\Robert\miniconda3\envs\tradingbot\Lib\site-packages\telegram\_bot.py", line 256, in __init__
+    raise InvalidToken("You must pass the token you received from https://t.me/Botfather!")
+telegram.error.InvalidToken: You must pass the token you received from https://t.me/Botfather!
+Traceback (most recent call last):
+  File "<frozen runpy>", line 198, in _run_module_as_main
+  File "<frozen runpy>", line 88, in _run_code
+  File "D:\tradingbot\app\telegram_bot.py", line 37, in <module>
+    asyncio.run(main())
+  File "C:\Users\Robert\miniconda3\envs\tradingbot\Lib\asyncio\runners.py", line 190, in run
+    return runner.run(main)
+           ^^^^^^^^^^^^^^^^
+  File "C:\Users\Robert\miniconda3\envs\tradingbot\Lib\asyncio\runners.py", line 118, in run
+    return self._loop.run_until_complete(task)
+           ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "C:\Users\Robert\miniconda3\envs\tradingbot\Lib\asyncio\base_events.py", line 654, in run_until_complete
+    return future.result()
+           ^^^^^^^^^^^^^^^
+  File "D:\tradingbot\app\telegram_bot.py", line 31, in main
+    app = Application.builder().token(TELEGRAM_BOT_TOKEN).build()
+          ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "C:\Users\Robert\miniconda3\envs\tradingbot\Lib\site-packages\telegram\ext\_applicationbuilder.py", line 310, in build
+    bot: Bot = self._build_ext_bot()  # build a bot
+               ^^^^^^^^^^^^^^^^^^^^^
+  File "C:\Users\Robert\miniconda3\envs\tradingbot\Lib\site-packages\telegram\ext\_applicationbuilder.py", line 272, in _build_ext_bot
+    return ExtBot(
+           ^^^^^^^
+  File "C:\Users\Robert\miniconda3\envs\tradingbot\Lib\site-packages\telegram\ext\_extbot.py", line 229, in __init__
+    super().__init__(
+  File "C:\Users\Robert\miniconda3\envs\tradingbot\Lib\site-packages\telegram\_bot.py", line 256, in __init__
+    raise InvalidToken("You must pass the token you received from https://t.me/Botfather!")
+telegram.error.InvalidToken: You must pass the token you received from https://t.me/Botfather!
+Traceback (most recent call last):
+  File "<frozen runpy>", line 198, in _run_module_as_main
+  File "<frozen runpy>", line 88, in _run_code
+  File "D:\tradingbot\app\telegram_bot.py", line 37, in <module>
+    asyncio.run(main())
+  File "C:\Users\Robert\miniconda3\envs\tradingbot\Lib\asyncio\runners.py", line 190, in run
+    return runner.run(main)
+           ^^^^^^^^^^^^^^^^
+  File "C:\Users\Robert\miniconda3\envs\tradingbot\Lib\asyncio\runners.py", line 118, in run
+    return self._loop.run_until_complete(task)
+           ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "C:\Users\Robert\miniconda3\envs\tradingbot\Lib\asyncio\base_events.py", line 654, in run_until_complete
+    return future.result()
+           ^^^^^^^^^^^^^^^
+  File "D:\tradingbot\app\telegram_bot.py", line 31, in main
+    app = Application.builder().token(TELEGRAM_BOT_TOKEN).build()
+          ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "C:\Users\Robert\miniconda3\envs\tradingbot\Lib\site-packages\telegram\ext\_applicationbuilder.py", line 310, in build
+    bot: Bot = self._build_ext_bot()  # build a bot
+               ^^^^^^^^^^^^^^^^^^^^^
+  File "C:\Users\Robert\miniconda3\envs\tradingbot\Lib\site-packages\telegram\ext\_applicationbuilder.py", line 272, in _build_ext_bot
+    return ExtBot(
+           ^^^^^^^
+  File "C:\Users\Robert\miniconda3\envs\tradingbot\Lib\site-packages\telegram\ext\_extbot.py", line 229, in __init__
+    super().__init__(
+  File "C:\Users\Robert\miniconda3\envs\tradingbot\Lib\site-packages\telegram\_bot.py", line 256, in __init__
+    raise InvalidToken("You must pass the token you received from https://t.me/Botfather!")
+telegram.error.InvalidToken: You must pass the token you received from https://t.me/Botfather!
+Traceback (most recent call last):
+  File "<frozen runpy>", line 198, in _run_module_as_main
+  File "<frozen runpy>", line 88, in _run_code
+  File "D:\tradingbot\app\telegram_bot.py", line 37, in <module>
+    asyncio.run(main())
+  File "C:\Users\Robert\miniconda3\envs\tradingbot\Lib\asyncio\runners.py", line 190, in run
+    return runner.run(main)
+           ^^^^^^^^^^^^^^^^
+  File "C:\Users\Robert\miniconda3\envs\tradingbot\Lib\asyncio\runners.py", line 118, in run
+    return self._loop.run_until_complete(task)
+           ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "C:\Users\Robert\miniconda3\envs\tradingbot\Lib\asyncio\base_events.py", line 654, in run_until_complete
+    return future.result()
+           ^^^^^^^^^^^^^^^
+  File "D:\tradingbot\app\telegram_bot.py", line 31, in main
+    app = Application.builder().token(TELEGRAM_BOT_TOKEN).build()
+          ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "C:\Users\Robert\miniconda3\envs\tradingbot\Lib\site-packages\telegram\ext\_applicationbuilder.py", line 310, in build
+    bot: Bot = self._build_ext_bot()  # build a bot
+               ^^^^^^^^^^^^^^^^^^^^^
+  File "C:\Users\Robert\miniconda3\envs\tradingbot\Lib\site-packages\telegram\ext\_applicationbuilder.py", line 272, in _build_ext_bot
+    return ExtBot(
+           ^^^^^^^
+  File "C:\Users\Robert\miniconda3\envs\tradingbot\Lib\site-packages\telegram\ext\_extbot.py", line 229, in __init__
+    super().__init__(
+  File "C:\Users\Robert\miniconda3\envs\tradingbot\Lib\site-packages\telegram\_bot.py", line 256, in __init__
+    raise InvalidToken("You must pass the token you received from https://t.me/Botfather!")
+telegram.error.InvalidToken: You must pass the token you received from https://t.me/Botfather!
+Traceback (most recent call last):
+  File "<frozen runpy>", line 198, in _run_module_as_main
+  File "<frozen runpy>", line 88, in _run_code
+  File "D:\tradingbot\app\telegram_bot.py", line 37, in <module>
+    asyncio.run(main())
+  File "C:\Users\Robert\miniconda3\envs\tradingbot\Lib\asyncio\runners.py", line 190, in run
+    return runner.run(main)
+           ^^^^^^^^^^^^^^^^
+  File "C:\Users\Robert\miniconda3\envs\tradingbot\Lib\asyncio\runners.py", line 118, in run
+    return self._loop.run_until_complete(task)
+           ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "C:\Users\Robert\miniconda3\envs\tradingbot\Lib\asyncio\base_events.py", line 654, in run_until_complete
+    return future.result()
+           ^^^^^^^^^^^^^^^
+  File "D:\tradingbot\app\telegram_bot.py", line 31, in main
+    app = Application.builder().token(TELEGRAM_BOT_TOKEN).build()
+          ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "C:\Users\Robert\miniconda3\envs\tradingbot\Lib\site-packages\telegram\ext\_applicationbuilder.py", line 310, in build
+    bot: Bot = self._build_ext_bot()  # build a bot
+               ^^^^^^^^^^^^^^^^^^^^^
+  File "C:\Users\Robert\miniconda3\envs\tradingbot\Lib\site-packages\telegram\ext\_applicationbuilder.py", line 272, in _build_ext_bot
+    return ExtBot(
+           ^^^^^^^
+  File "C:\Users\Robert\miniconda3\envs\tradingbot\Lib\site-packages\telegram\ext\_extbot.py", line 229, in __init__
+    super().__init__(
+  File "C:\Users\Robert\miniconda3\envs\tradingbot\Lib\site-packages\telegram\_bot.py", line 256, in __init__
+    raise InvalidToken("You must pass the token you received from https://t.me/Botfather!")
+telegram.error.InvalidToken: You must pass the token you received from https://t.me/Botfather!
+Traceback (most recent call last):
+  File "<frozen runpy>", line 198, in _run_module_as_main
+  File "<frozen runpy>", line 88, in _run_code
+  File "D:\tradingbot\app\telegram_bot.py", line 37, in <module>
+    asyncio.run(main())
+  File "C:\Users\Robert\miniconda3\envs\tradingbot\Lib\asyncio\runners.py", line 190, in run
+    return runner.run(main)
+           ^^^^^^^^^^^^^^^^
+  File "C:\Users\Robert\miniconda3\envs\tradingbot\Lib\asyncio\runners.py", line 118, in run
+    return self._loop.run_until_complete(task)
+           ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "C:\Users\Robert\miniconda3\envs\tradingbot\Lib\asyncio\base_events.py", line 654, in run_until_complete
+    return future.result()
+           ^^^^^^^^^^^^^^^
+  File "D:\tradingbot\app\telegram_bot.py", line 31, in main
+    app = Application.builder().token(TELEGRAM_BOT_TOKEN).build()
+          ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "C:\Users\Robert\miniconda3\envs\tradingbot\Lib\site-packages\telegram\ext\_applicationbuilder.py", line 310, in build
+    bot: Bot = self._build_ext_bot()  # build a bot
+               ^^^^^^^^^^^^^^^^^^^^^
+  File "C:\Users\Robert\miniconda3\envs\tradingbot\Lib\site-packages\telegram\ext\_applicationbuilder.py", line 272, in _build_ext_bot
+    return ExtBot(
+           ^^^^^^^
+  File "C:\Users\Robert\miniconda3\envs\tradingbot\Lib\site-packages\telegram\ext\_extbot.py", line 229, in __init__
+    super().__init__(
+  File "C:\Users\Robert\miniconda3\envs\tradingbot\Lib\site-packages\telegram\_bot.py", line 256, in __init__
+    raise InvalidToken("You must pass the token you received from https://t.me/Botfather!")
+telegram.error.InvalidToken: You must pass the token you received from https://t.me/Botfather!
+Traceback (most recent call last):
+  File "<frozen runpy>", line 198, in _run_module_as_main
+  File "<frozen runpy>", line 88, in _run_code
+  File "D:\tradingbot\app\telegram_bot.py", line 37, in <module>
+    asyncio.run(main())
+  File "C:\Users\Robert\miniconda3\envs\tradingbot\Lib\asyncio\runners.py", line 190, in run
+    return runner.run(main)
+           ^^^^^^^^^^^^^^^^
+  File "C:\Users\Robert\miniconda3\envs\tradingbot\Lib\asyncio\runners.py", line 118, in run
+    return self._loop.run_until_complete(task)
+           ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "C:\Users\Robert\miniconda3\envs\tradingbot\Lib\asyncio\base_events.py", line 654, in run_until_complete
+    return future.result()
+           ^^^^^^^^^^^^^^^
+  File "D:\tradingbot\app\telegram_bot.py", line 31, in main
+    app = Application.builder().token(TELEGRAM_BOT_TOKEN).build()
+          ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "C:\Users\Robert\miniconda3\envs\tradingbot\Lib\site-packages\telegram\ext\_applicationbuilder.py", line 310, in build
+    bot: Bot = self._build_ext_bot()  # build a bot
+               ^^^^^^^^^^^^^^^^^^^^^
+  File "C:\Users\Robert\miniconda3\envs\tradingbot\Lib\site-packages\telegram\ext\_applicationbuilder.py", line 272, in _build_ext_bot
+    return ExtBot(
+           ^^^^^^^
+  File "C:\Users\Robert\miniconda3\envs\tradingbot\Lib\site-packages\telegram\ext\_extbot.py", line 229, in __init__
+    super().__init__(
+  File "C:\Users\Robert\miniconda3\envs\tradingbot\Lib\site-packages\telegram\_bot.py", line 256, in __init__
+    raise InvalidToken("You must pass the token you received from https://t.me/Botfather!")
+telegram.error.InvalidToken: You must pass the token you received from https://t.me/Botfather!
+Traceback (most recent call last):
+  File "<frozen runpy>", line 198, in _run_module_as_main
+  File "<frozen runpy>", line 88, in _run_code
+  File "D:\tradingbot\app\telegram_bot.py", line 37, in <module>
+    asyncio.run(main())
+  File "C:\Users\Robert\miniconda3\envs\tradingbot\Lib\asyncio\runners.py", line 190, in run
+    return runner.run(main)
+           ^^^^^^^^^^^^^^^^
+  File "C:\Users\Robert\miniconda3\envs\tradingbot\Lib\asyncio\runners.py", line 118, in run
+    return self._loop.run_until_complete(task)
+           ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "C:\Users\Robert\miniconda3\envs\tradingbot\Lib\asyncio\base_events.py", line 654, in run_until_complete
+    return future.result()
+           ^^^^^^^^^^^^^^^
+  File "D:\tradingbot\app\telegram_bot.py", line 31, in main
+    app = Application.builder().token(TELEGRAM_BOT_TOKEN).build()
+          ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "C:\Users\Robert\miniconda3\envs\tradingbot\Lib\site-packages\telegram\ext\_applicationbuilder.py", line 310, in build
+    bot: Bot = self._build_ext_bot()  # build a bot
+               ^^^^^^^^^^^^^^^^^^^^^
+  File "C:\Users\Robert\miniconda3\envs\tradingbot\Lib\site-packages\telegram\ext\_applicationbuilder.py", line 272, in _build_ext_bot
+    return ExtBot(
+           ^^^^^^^
+  File "C:\Users\Robert\miniconda3\envs\tradingbot\Lib\site-packages\telegram\ext\_extbot.py", line 229, in __init__
+    super().__init__(
+  File "C:\Users\Robert\miniconda3\envs\tradingbot\Lib\site-packages\telegram\_bot.py", line 256, in __init__
+    raise InvalidToken("You must pass the token you received from https://t.me/Botfather!")
+telegram.error.InvalidToken: You must pass the token you received from https://t.me/Botfather!
+Traceback (most recent call last):
+  File "<frozen runpy>", line 198, in _run_module_as_main
+  File "<frozen runpy>", line 88, in _run_code
+  File "D:\tradingbot\app\telegram_bot.py", line 37, in <module>
+    asyncio.run(main())
+  File "C:\Users\Robert\miniconda3\envs\tradingbot\Lib\asyncio\runners.py", line 190, in run
+    return runner.run(main)
+           ^^^^^^^^^^^^^^^^
+  File "C:\Users\Robert\miniconda3\envs\tradingbot\Lib\asyncio\runners.py", line 118, in run
+    return self._loop.run_until_complete(task)
+           ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "C:\Users\Robert\miniconda3\envs\tradingbot\Lib\asyncio\base_events.py", line 654, in run_until_complete
+    return future.result()
+           ^^^^^^^^^^^^^^^
+  File "D:\tradingbot\app\telegram_bot.py", line 31, in main
+    app = Application.builder().token(TELEGRAM_BOT_TOKEN).build()
+          ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "C:\Users\Robert\miniconda3\envs\tradingbot\Lib\site-packages\telegram\ext\_applicationbuilder.py", line 310, in build
+    bot: Bot = self._build_ext_bot()  # build a bot
+               ^^^^^^^^^^^^^^^^^^^^^
+  File "C:\Users\Robert\miniconda3\envs\tradingbot\Lib\site-packages\telegram\ext\_applicationbuilder.py", line 272, in _build_ext_bot
+    return ExtBot(
+           ^^^^^^^
+  File "C:\Users\Robert\miniconda3\envs\tradingbot\Lib\site-packages\telegram\ext\_extbot.py", line 229, in __init__
+    super().__init__(
+  File "C:\Users\Robert\miniconda3\envs\tradingbot\Lib\site-packages\telegram\_bot.py", line 256, in __init__
+    raise InvalidToken("You must pass the token you received from https://t.me/Botfather!")
+telegram.error.InvalidToken: You must pass the token you received from https://t.me/Botfather!
+Traceback (most recent call last):
+  File "<frozen runpy>", line 198, in _run_module_as_main
+  File "<frozen runpy>", line 88, in _run_code
+  File "D:\tradingbot\app\telegram_bot.py", line 37, in <module>
+    asyncio.run(main())
+  File "C:\Users\Robert\miniconda3\envs\tradingbot\Lib\asyncio\runners.py", line 190, in run
+    return runner.run(main)
+           ^^^^^^^^^^^^^^^^
+  File "C:\Users\Robert\miniconda3\envs\tradingbot\Lib\asyncio\runners.py", line 118, in run
+    return self._loop.run_until_complete(task)
+           ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "C:\Users\Robert\miniconda3\envs\tradingbot\Lib\asyncio\base_events.py", line 654, in run_until_complete
+    return future.result()
+           ^^^^^^^^^^^^^^^
+  File "D:\tradingbot\app\telegram_bot.py", line 31, in main
+    app = Application.builder().token(TELEGRAM_BOT_TOKEN).build()
+          ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "C:\Users\Robert\miniconda3\envs\tradingbot\Lib\site-packages\telegram\ext\_applicationbuilder.py", line 310, in build
+    bot: Bot = self._build_ext_bot()  # build a bot
+               ^^^^^^^^^^^^^^^^^^^^^
+  File "C:\Users\Robert\miniconda3\envs\tradingbot\Lib\site-packages\telegram\ext\_applicationbuilder.py", line 272, in _build_ext_bot
+    return ExtBot(
+           ^^^^^^^
+  File "C:\Users\Robert\miniconda3\envs\tradingbot\Lib\site-packages\telegram\ext\_extbot.py", line 229, in __init__
+    super().__init__(
+  File "C:\Users\Robert\miniconda3\envs\tradingbot\Lib\site-packages\telegram\_bot.py", line 256, in __init__
+    raise InvalidToken("You must pass the token you received from https://t.me/Botfather!")
+telegram.error.InvalidToken: You must pass the token you received from https://t.me/Botfather!
+Traceback (most recent call last):
+  File "<frozen runpy>", line 198, in _run_module_as_main
+  File "<frozen runpy>", line 88, in _run_code
+  File "D:\tradingbot\app\telegram_bot.py", line 37, in <module>
+    asyncio.run(main())
+  File "C:\Users\Robert\miniconda3\envs\tradingbot\Lib\asyncio\runners.py", line 190, in run
+    return runner.run(main)
+           ^^^^^^^^^^^^^^^^
+  File "C:\Users\Robert\miniconda3\envs\tradingbot\Lib\asyncio\runners.py", line 118, in run
+    return self._loop.run_until_complete(task)
+           ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "C:\Users\Robert\miniconda3\envs\tradingbot\Lib\asyncio\base_events.py", line 654, in run_until_complete
+    return future.result()
+           ^^^^^^^^^^^^^^^
+  File "D:\tradingbot\app\telegram_bot.py", line 31, in main
+    app = Application.builder().token(TELEGRAM_BOT_TOKEN).build()
+          ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "C:\Users\Robert\miniconda3\envs\tradingbot\Lib\site-packages\telegram\ext\_applicationbuilder.py", line 310, in build
+    bot: Bot = self._build_ext_bot()  # build a bot
+               ^^^^^^^^^^^^^^^^^^^^^
+  File "C:\Users\Robert\miniconda3\envs\tradingbot\Lib\site-packages\telegram\ext\_applicationbuilder.py", line 272, in _build_ext_bot
+    return ExtBot(
+           ^^^^^^^
+  File "C:\Users\Robert\miniconda3\envs\tradingbot\Lib\site-packages\telegram\ext\_extbot.py", line 229, in __init__
+    super().__init__(
+  File "C:\Users\Robert\miniconda3\envs\tradingbot\Lib\site-packages\telegram\_bot.py", line 256, in __init__
+    raise InvalidToken("You must pass the token you received from https://t.me/Botfather!")
+telegram.error.InvalidToken: You must pass the token you received from https://t.me/Botfather!
+Traceback (most recent call last):
+  File "<frozen runpy>", line 198, in _run_module_as_main
+  File "<frozen runpy>", line 88, in _run_code
+  File "D:\tradingbot\app\telegram_bot.py", line 37, in <module>
+    asyncio.run(main())
+  File "C:\Users\Robert\miniconda3\envs\tradingbot\Lib\asyncio\runners.py", line 190, in run
+    return runner.run(main)
+           ^^^^^^^^^^^^^^^^
+  File "C:\Users\Robert\miniconda3\envs\tradingbot\Lib\asyncio\runners.py", line 118, in run
+    return self._loop.run_until_complete(task)
+           ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "C:\Users\Robert\miniconda3\envs\tradingbot\Lib\asyncio\base_events.py", line 654, in run_until_complete
+    return future.result()
+           ^^^^^^^^^^^^^^^
+  File "D:\tradingbot\app\telegram_bot.py", line 31, in main
+    app = Application.builder().token(TELEGRAM_BOT_TOKEN).build()
+          ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "C:\Users\Robert\miniconda3\envs\tradingbot\Lib\site-packages\telegram\ext\_applicationbuilder.py", line 310, in build
+    bot: Bot = self._build_ext_bot()  # build a bot
+               ^^^^^^^^^^^^^^^^^^^^^
+  File "C:\Users\Robert\miniconda3\envs\tradingbot\Lib\site-packages\telegram\ext\_applicationbuilder.py", line 272, in _build_ext_bot
+    return ExtBot(
+           ^^^^^^^
+  File "C:\Users\Robert\miniconda3\envs\tradingbot\Lib\site-packages\telegram\ext\_extbot.py", line 229, in __init__
+    super().__init__(
+  File "C:\Users\Robert\miniconda3\envs\tradingbot\Lib\site-packages\telegram\_bot.py", line 256, in __init__
+    raise InvalidToken("You must pass the token you received from https://t.me/Botfather!")
+telegram.error.InvalidToken: You must pass the token you received from https://t.me/Botfather!
+Traceback (most recent call last):
+  File "<frozen runpy>", line 198, in _run_module_as_main
+  File "<frozen runpy>", line 88, in _run_code
+  File "D:\tradingbot\app\telegram_bot.py", line 37, in <module>
+    asyncio.run(main())
+  File "C:\Users\Robert\miniconda3\envs\tradingbot\Lib\asyncio\runners.py", line 190, in run
+    return runner.run(main)
+           ^^^^^^^^^^^^^^^^
+  File "C:\Users\Robert\miniconda3\envs\tradingbot\Lib\asyncio\runners.py", line 118, in run
+    return self._loop.run_until_complete(task)
+           ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "C:\Users\Robert\miniconda3\envs\tradingbot\Lib\asyncio\base_events.py", line 654, in run_until_complete
+    return future.result()
+           ^^^^^^^^^^^^^^^
+  File "D:\tradingbot\app\telegram_bot.py", line 31, in main
+    app = Application.builder().token(TELEGRAM_BOT_TOKEN).build()
+          ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "C:\Users\Robert\miniconda3\envs\tradingbot\Lib\site-packages\telegram\ext\_applicationbuilder.py", line 310, in build
+    bot: Bot = self._build_ext_bot()  # build a bot
+               ^^^^^^^^^^^^^^^^^^^^^
+  File "C:\Users\Robert\miniconda3\envs\tradingbot\Lib\site-packages\telegram\ext\_applicationbuilder.py", line 272, in _build_ext_bot
+    return ExtBot(
+           ^^^^^^^
+  File "C:\Users\Robert\miniconda3\envs\tradingbot\Lib\site-packages\telegram\ext\_extbot.py", line 229, in __init__
+    super().__init__(
+  File "C:\Users\Robert\miniconda3\envs\tradingbot\Lib\site-packages\telegram\_bot.py", line 256, in __init__
+    raise InvalidToken("You must pass the token you received from https://t.me/Botfather!")
+telegram.error.InvalidToken: You must pass the token you received from https://t.me/Botfather!
+Traceback (most recent call last):
+  File "<frozen runpy>", line 198, in _run_module_as_main
+  File "<frozen runpy>", line 88, in _run_code
+  File "D:\tradingbot\app\telegram_bot.py", line 37, in <module>
+    asyncio.run(main())
+  File "C:\Users\Robert\miniconda3\envs\tradingbot\Lib\asyncio\runners.py", line 190, in run
+    return runner.run(main)
+           ^^^^^^^^^^^^^^^^
+  File "C:\Users\Robert\miniconda3\envs\tradingbot\Lib\asyncio\runners.py", line 118, in run
+    return self._loop.run_until_complete(task)
+           ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "C:\Users\Robert\miniconda3\envs\tradingbot\Lib\asyncio\base_events.py", line 654, in run_until_complete
+    return future.result()
+           ^^^^^^^^^^^^^^^
+  File "D:\tradingbot\app\telegram_bot.py", line 31, in main
+    app = Application.builder().token(TELEGRAM_BOT_TOKEN).build()
+          ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "C:\Users\Robert\miniconda3\envs\tradingbot\Lib\site-packages\telegram\ext\_applicationbuilder.py", line 310, in build
+    bot: Bot = self._build_ext_bot()  # build a bot
+               ^^^^^^^^^^^^^^^^^^^^^
+  File "C:\Users\Robert\miniconda3\envs\tradingbot\Lib\site-packages\telegram\ext\_applicationbuilder.py", line 272, in _build_ext_bot
+    return ExtBot(
+           ^^^^^^^
+  File "C:\Users\Robert\miniconda3\envs\tradingbot\Lib\site-packages\telegram\ext\_extbot.py", line 229, in __init__
+    super().__init__(
+  File "C:\Users\Robert\miniconda3\envs\tradingbot\Lib\site-packages\telegram\_bot.py", line 256, in __init__
+    raise InvalidToken("You must pass the token you received from https://t.me/Botfather!")
+telegram.error.InvalidToken: You must pass the token you received from https://t.me/Botfather!
+Traceback (most recent call last):
+  File "<frozen runpy>", line 198, in _run_module_as_main
+  File "<frozen runpy>", line 88, in _run_code
+  File "D:\tradingbot\app\telegram_bot.py", line 37, in <module>
+    asyncio.run(main())
+  File "C:\Users\Robert\miniconda3\envs\tradingbot\Lib\asyncio\runners.py", line 190, in run
+    return runner.run(main)
+           ^^^^^^^^^^^^^^^^
+  File "C:\Users\Robert\miniconda3\envs\tradingbot\Lib\asyncio\runners.py", line 118, in run
+    return self._loop.run_until_complete(task)
+           ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "C:\Users\Robert\miniconda3\envs\tradingbot\Lib\asyncio\base_events.py", line 654, in run_until_complete
+    return future.result()
+           ^^^^^^^^^^^^^^^
+  File "D:\tradingbot\app\telegram_bot.py", line 31, in main
+    app = Application.builder().token(TELEGRAM_BOT_TOKEN).build()
+          ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "C:\Users\Robert\miniconda3\envs\tradingbot\Lib\site-packages\telegram\ext\_applicationbuilder.py", line 310, in build
+    bot: Bot = self._build_ext_bot()  # build a bot
+               ^^^^^^^^^^^^^^^^^^^^^
+  File "C:\Users\Robert\miniconda3\envs\tradingbot\Lib\site-packages\telegram\ext\_applicationbuilder.py", line 272, in _build_ext_bot
+    return ExtBot(
+           ^^^^^^^
+  File "C:\Users\Robert\miniconda3\envs\tradingbot\Lib\site-packages\telegram\ext\_extbot.py", line 229, in __init__
+    super().__init__(
+  File "C:\Users\Robert\miniconda3\envs\tradingbot\Lib\site-packages\telegram\_bot.py", line 256, in __init__
+    raise InvalidToken("You must pass the token you received from https://t.me/Botfather!")
+telegram.error.InvalidToken: You must pass the token you received from https://t.me/Botfather!
+Traceback (most recent call last):
+  File "<frozen runpy>", line 198, in _run_module_as_main
+  File "<frozen runpy>", line 88, in _run_code
+  File "D:\tradingbot\app\telegram_bot.py", line 37, in <module>
+    asyncio.run(main())
+  File "C:\Users\Robert\miniconda3\envs\tradingbot\Lib\asyncio\runners.py", line 190, in run
+    return runner.run(main)
+           ^^^^^^^^^^^^^^^^
+  File "C:\Users\Robert\miniconda3\envs\tradingbot\Lib\asyncio\runners.py", line 118, in run
+    return self._loop.run_until_complete(task)
+           ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "C:\Users\Robert\miniconda3\envs\tradingbot\Lib\asyncio\base_events.py", line 654, in run_until_complete
+    return future.result()
+           ^^^^^^^^^^^^^^^
+  File "D:\tradingbot\app\telegram_bot.py", line 31, in main
+    app = Application.builder().token(TELEGRAM_BOT_TOKEN).build()
+          ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "C:\Users\Robert\miniconda3\envs\tradingbot\Lib\site-packages\telegram\ext\_applicationbuilder.py", line 310, in build
+    bot: Bot = self._build_ext_bot()  # build a bot
+               ^^^^^^^^^^^^^^^^^^^^^
+  File "C:\Users\Robert\miniconda3\envs\tradingbot\Lib\site-packages\telegram\ext\_applicationbuilder.py", line 272, in _build_ext_bot
+    return ExtBot(
+           ^^^^^^^
+  File "C:\Users\Robert\miniconda3\envs\tradingbot\Lib\site-packages\telegram\ext\_extbot.py", line 229, in __init__
+    super().__init__(
+  File "C:\Users\Robert\miniconda3\envs\tradingbot\Lib\site-packages\telegram\_bot.py", line 256, in __init__
+    raise InvalidToken("You must pass the token you received from https://t.me/Botfather!")
+telegram.error.InvalidToken: You must pass the token you received from https://t.me/Botfather!
+Traceback (most recent call last):
+  File "<frozen runpy>", line 198, in _run_module_as_main
+  File "<frozen runpy>", line 88, in _run_code
+  File "D:\tradingbot\app\telegram_bot.py", line 37, in <module>
+    asyncio.run(main())
+  File "C:\Users\Robert\miniconda3\envs\tradingbot\Lib\asyncio\runners.py", line 190, in run
+    return runner.run(main)
+           ^^^^^^^^^^^^^^^^
+  File "C:\Users\Robert\miniconda3\envs\tradingbot\Lib\asyncio\runners.py", line 118, in run
+    return self._loop.run_until_complete(task)
+           ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "C:\Users\Robert\miniconda3\envs\tradingbot\Lib\asyncio\base_events.py", line 654, in run_until_complete
+    return future.result()
+           ^^^^^^^^^^^^^^^
+  File "D:\tradingbot\app\telegram_bot.py", line 31, in main
+    app = Application.builder().token(TELEGRAM_BOT_TOKEN).build()
+          ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "C:\Users\Robert\miniconda3\envs\tradingbot\Lib\site-packages\telegram\ext\_applicationbuilder.py", line 310, in build
+    bot: Bot = self._build_ext_bot()  # build a bot
+               ^^^^^^^^^^^^^^^^^^^^^
+  File "C:\Users\Robert\miniconda3\envs\tradingbot\Lib\site-packages\telegram\ext\_applicationbuilder.py", line 272, in _build_ext_bot
+    return ExtBot(
+           ^^^^^^^
+  File "C:\Users\Robert\miniconda3\envs\tradingbot\Lib\site-packages\telegram\ext\_extbot.py", line 229, in __init__
+    super().__init__(
+  File "C:\Users\Robert\miniconda3\envs\tradingbot\Lib\site-packages\telegram\_bot.py", line 256, in __init__
+    raise InvalidToken("You must pass the token you received from https://t.me/Botfather!")
+telegram.error.InvalidToken: You must pass the token you received from https://t.me/Botfather!
+Traceback (most recent call last):
+  File "<frozen runpy>", line 198, in _run_module_as_main
+  File "<frozen runpy>", line 88, in _run_code
+  File "D:\tradingbot\app\telegram_bot.py", line 37, in <module>
+    asyncio.run(main())
+  File "C:\Users\Robert\miniconda3\envs\tradingbot\Lib\asyncio\runners.py", line 190, in run
+    return runner.run(main)
+           ^^^^^^^^^^^^^^^^
+  File "C:\Users\Robert\miniconda3\envs\tradingbot\Lib\asyncio\runners.py", line 118, in run
+    return self._loop.run_until_complete(task)
+           ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "C:\Users\Robert\miniconda3\envs\tradingbot\Lib\asyncio\base_events.py", line 654, in run_until_complete
+    return future.result()
+           ^^^^^^^^^^^^^^^
+  File "D:\tradingbot\app\telegram_bot.py", line 31, in main
+    app = Application.builder().token(TELEGRAM_BOT_TOKEN).build()
+          ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "C:\Users\Robert\miniconda3\envs\tradingbot\Lib\site-packages\telegram\ext\_applicationbuilder.py", line 310, in build
+    bot: Bot = self._build_ext_bot()  # build a bot
+               ^^^^^^^^^^^^^^^^^^^^^
+  File "C:\Users\Robert\miniconda3\envs\tradingbot\Lib\site-packages\telegram\ext\_applicationbuilder.py", line 272, in _build_ext_bot
+    return ExtBot(
+           ^^^^^^^
+  File "C:\Users\Robert\miniconda3\envs\tradingbot\Lib\site-packages\telegram\ext\_extbot.py", line 229, in __init__
+    super().__init__(
+  File "C:\Users\Robert\miniconda3\envs\tradingbot\Lib\site-packages\telegram\_bot.py", line 256, in __init__
+    raise InvalidToken("You must pass the token you received from https://t.me/Botfather!")
+telegram.error.InvalidToken: You must pass the token you received from https://t.me/Botfather!
+Traceback (most recent call last):
+  File "<frozen runpy>", line 198, in _run_module_as_main
+  File "<frozen runpy>", line 88, in _run_code
+  File "D:\tradingbot\app\telegram_bot.py", line 37, in <module>
+    asyncio.run(main())
+  File "C:\Users\Robert\miniconda3\envs\tradingbot\Lib\asyncio\runners.py", line 190, in run
+    return runner.run(main)
+           ^^^^^^^^^^^^^^^^
+  File "C:\Users\Robert\miniconda3\envs\tradingbot\Lib\asyncio\runners.py", line 118, in run
+    return self._loop.run_until_complete(task)
+           ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "C:\Users\Robert\miniconda3\envs\tradingbot\Lib\asyncio\base_events.py", line 654, in run_until_complete
+    return future.result()
+           ^^^^^^^^^^^^^^^
+  File "D:\tradingbot\app\telegram_bot.py", line 31, in main
+    app = Application.builder().token(TELEGRAM_BOT_TOKEN).build()
+          ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "C:\Users\Robert\miniconda3\envs\tradingbot\Lib\site-packages\telegram\ext\_applicationbuilder.py", line 310, in build
+    bot: Bot = self._build_ext_bot()  # build a bot
+               ^^^^^^^^^^^^^^^^^^^^^
+  File "C:\Users\Robert\miniconda3\envs\tradingbot\Lib\site-packages\telegram\ext\_applicationbuilder.py", line 272, in _build_ext_bot
+    return ExtBot(
+           ^^^^^^^
+  File "C:\Users\Robert\miniconda3\envs\tradingbot\Lib\site-packages\telegram\ext\_extbot.py", line 229, in __init__
+    super().__init__(
+  File "C:\Users\Robert\miniconda3\envs\tradingbot\Lib\site-packages\telegram\_bot.py", line 256, in __init__
+    raise InvalidToken("You must pass the token you received from https://t.me/Botfather!")
+telegram.error.InvalidToken: You must pass the token you received from https://t.me/Botfather!
+Traceback (most recent call last):
+  File "<frozen runpy>", line 198, in _run_module_as_main
+  File "<frozen runpy>", line 88, in _run_code
+  File "D:\tradingbot\app\telegram_bot.py", line 37, in <module>
+    asyncio.run(main())
+  File "C:\Users\Robert\miniconda3\envs\tradingbot\Lib\asyncio\runners.py", line 190, in run
+    return runner.run(main)
+           ^^^^^^^^^^^^^^^^
+  File "C:\Users\Robert\miniconda3\envs\tradingbot\Lib\asyncio\runners.py", line 118, in run
+    return self._loop.run_until_complete(task)
+           ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "C:\Users\Robert\miniconda3\envs\tradingbot\Lib\asyncio\base_events.py", line 654, in run_until_complete
+    return future.result()
+           ^^^^^^^^^^^^^^^
+  File "D:\tradingbot\app\telegram_bot.py", line 31, in main
+    app = Application.builder().token(TELEGRAM_BOT_TOKEN).build()
+          ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "C:\Users\Robert\miniconda3\envs\tradingbot\Lib\site-packages\telegram\ext\_applicationbuilder.py", line 310, in build
+    bot: Bot = self._build_ext_bot()  # build a bot
+               ^^^^^^^^^^^^^^^^^^^^^
+  File "C:\Users\Robert\miniconda3\envs\tradingbot\Lib\site-packages\telegram\ext\_applicationbuilder.py", line 272, in _build_ext_bot
+    return ExtBot(
+           ^^^^^^^
+  File "C:\Users\Robert\miniconda3\envs\tradingbot\Lib\site-packages\telegram\ext\_extbot.py", line 229, in __init__
+    super().__init__(
+  File "C:\Users\Robert\miniconda3\envs\tradingbot\Lib\site-packages\telegram\_bot.py", line 256, in __init__
+    raise InvalidToken("You must pass the token you received from https://t.me/Botfather!")
+telegram.error.InvalidToken: You must pass the token you received from https://t.me/Botfather!
+Traceback (most recent call last):
+  File "<frozen runpy>", line 198, in _run_module_as_main
+  File "<frozen runpy>", line 88, in _run_code
+  File "D:\tradingbot\app\telegram_bot.py", line 37, in <module>
+    asyncio.run(main())
+  File "C:\Users\Robert\miniconda3\envs\tradingbot\Lib\asyncio\runners.py", line 190, in run
+    return runner.run(main)
+           ^^^^^^^^^^^^^^^^
+  File "C:\Users\Robert\miniconda3\envs\tradingbot\Lib\asyncio\runners.py", line 118, in run
+    return self._loop.run_until_complete(task)
+           ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "C:\Users\Robert\miniconda3\envs\tradingbot\Lib\asyncio\base_events.py", line 654, in run_until_complete
+    return future.result()
+           ^^^^^^^^^^^^^^^
+  File "D:\tradingbot\app\telegram_bot.py", line 31, in main
+    app = Application.builder().token(TELEGRAM_BOT_TOKEN).build()
+          ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "C:\Users\Robert\miniconda3\envs\tradingbot\Lib\site-packages\telegram\ext\_applicationbuilder.py", line 310, in build
+    bot: Bot = self._build_ext_bot()  # build a bot
+               ^^^^^^^^^^^^^^^^^^^^^
+  File "C:\Users\Robert\miniconda3\envs\tradingbot\Lib\site-packages\telegram\ext\_applicationbuilder.py", line 272, in _build_ext_bot
+    return ExtBot(
+           ^^^^^^^
+  File "C:\Users\Robert\miniconda3\envs\tradingbot\Lib\site-packages\telegram\ext\_extbot.py", line 229, in __init__
+    super().__init__(
+  File "C:\Users\Robert\miniconda3\envs\tradingbot\Lib\site-packages\telegram\_bot.py", line 256, in __init__
+    raise InvalidToken("You must pass the token you received from https://t.me/Botfather!")
+telegram.error.InvalidToken: You must pass the token you received from https://t.me/Botfather!
+Traceback (most recent call last):
+  File "<frozen runpy>", line 198, in _run_module_as_main
+  File "<frozen runpy>", line 88, in _run_code
+  File "D:\tradingbot\app\telegram_bot.py", line 37, in <module>
+    asyncio.run(main())
+  File "C:\Users\Robert\miniconda3\envs\tradingbot\Lib\asyncio\runners.py", line 190, in run
+    return runner.run(main)
+           ^^^^^^^^^^^^^^^^
+  File "C:\Users\Robert\miniconda3\envs\tradingbot\Lib\asyncio\runners.py", line 118, in run
+    return self._loop.run_until_complete(task)
+           ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "C:\Users\Robert\miniconda3\envs\tradingbot\Lib\asyncio\base_events.py", line 654, in run_until_complete
+    return future.result()
+           ^^^^^^^^^^^^^^^
+  File "D:\tradingbot\app\telegram_bot.py", line 31, in main
+    app = Application.builder().token(TELEGRAM_BOT_TOKEN).build()
+          ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "C:\Users\Robert\miniconda3\envs\tradingbot\Lib\site-packages\telegram\ext\_applicationbuilder.py", line 310, in build
+    bot: Bot = self._build_ext_bot()  # build a bot
+               ^^^^^^^^^^^^^^^^^^^^^
+  File "C:\Users\Robert\miniconda3\envs\tradingbot\Lib\site-packages\telegram\ext\_applicationbuilder.py", line 272, in _build_ext_bot
+    return ExtBot(
+           ^^^^^^^
+  File "C:\Users\Robert\miniconda3\envs\tradingbot\Lib\site-packages\telegram\ext\_extbot.py", line 229, in __init__
+    super().__init__(
+  File "C:\Users\Robert\miniconda3\envs\tradingbot\Lib\site-packages\telegram\_bot.py", line 256, in __init__
+    raise InvalidToken("You must pass the token you received from https://t.me/Botfather!")
+telegram.error.InvalidToken: You must pass the token you received from https://t.me/Botfather!
+Traceback (most recent call last):
+  File "<frozen runpy>", line 198, in _run_module_as_main
+  File "<frozen runpy>", line 88, in _run_code
+  File "D:\tradingbot\app\telegram_bot.py", line 37, in <module>
+    asyncio.run(main())
+  File "C:\Users\Robert\miniconda3\envs\tradingbot\Lib\asyncio\runners.py", line 190, in run
+    return runner.run(main)
+           ^^^^^^^^^^^^^^^^
+  File "C:\Users\Robert\miniconda3\envs\tradingbot\Lib\asyncio\runners.py", line 118, in run
+    return self._loop.run_until_complete(task)
+           ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "C:\Users\Robert\miniconda3\envs\tradingbot\Lib\asyncio\base_events.py", line 654, in run_until_complete
+    return future.result()
+           ^^^^^^^^^^^^^^^
+  File "D:\tradingbot\app\telegram_bot.py", line 31, in main
+    app = Application.builder().token(TELEGRAM_BOT_TOKEN).build()
+          ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "C:\Users\Robert\miniconda3\envs\tradingbot\Lib\site-packages\telegram\ext\_applicationbuilder.py", line 310, in build
+    bot: Bot = self._build_ext_bot()  # build a bot
+               ^^^^^^^^^^^^^^^^^^^^^
+  File "C:\Users\Robert\miniconda3\envs\tradingbot\Lib\site-packages\telegram\ext\_applicationbuilder.py", line 272, in _build_ext_bot
+    return ExtBot(
+           ^^^^^^^
+  File "C:\Users\Robert\miniconda3\envs\tradingbot\Lib\site-packages\telegram\ext\_extbot.py", line 229, in __init__
+    super().__init__(
+  File "C:\Users\Robert\miniconda3\envs\tradingbot\Lib\site-packages\telegram\_bot.py", line 256, in __init__
+    raise InvalidToken("You must pass the token you received from https://t.me/Botfather!")
+telegram.error.InvalidToken: You must pass the token you received from https://t.me/Botfather!
+Traceback (most recent call last):
+  File "<frozen runpy>", line 198, in _run_module_as_main
+  File "<frozen runpy>", line 88, in _run_code
+  File "D:\tradingbot\app\telegram_bot.py", line 37, in <module>
+    asyncio.run(main())
+  File "C:\Users\Robert\miniconda3\envs\tradingbot\Lib\asyncio\runners.py", line 190, in run
+    return runner.run(main)
+           ^^^^^^^^^^^^^^^^
+  File "C:\Users\Robert\miniconda3\envs\tradingbot\Lib\asyncio\runners.py", line 118, in run
+    return self._loop.run_until_complete(task)
+           ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "C:\Users\Robert\miniconda3\envs\tradingbot\Lib\asyncio\base_events.py", line 654, in run_until_complete
+    return future.result()
+           ^^^^^^^^^^^^^^^
+  File "D:\tradingbot\app\telegram_bot.py", line 31, in main
+    app = Application.builder().token(TELEGRAM_BOT_TOKEN).build()
+          ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "C:\Users\Robert\miniconda3\envs\tradingbot\Lib\site-packages\telegram\ext\_applicationbuilder.py", line 310, in build
+    bot: Bot = self._build_ext_bot()  # build a bot
+               ^^^^^^^^^^^^^^^^^^^^^
+  File "C:\Users\Robert\miniconda3\envs\tradingbot\Lib\site-packages\telegram\ext\_applicationbuilder.py", line 272, in _build_ext_bot
+    return ExtBot(
+           ^^^^^^^
+  File "C:\Users\Robert\miniconda3\envs\tradingbot\Lib\site-packages\telegram\ext\_extbot.py", line 229, in __init__
+    super().__init__(
+  File "C:\Users\Robert\miniconda3\envs\tradingbot\Lib\site-packages\telegram\_bot.py", line 256, in __init__
+    raise InvalidToken("You must pass the token you received from https://t.me/Botfather!")
+telegram.error.InvalidToken: You must pass the token you received from https://t.me/Botfather!
+Traceback (most recent call last):
+  File "<frozen runpy>", line 198, in _run_module_as_main
+  File "<frozen runpy>", line 88, in _run_code
+  File "D:\tradingbot\app\telegram_bot.py", line 37, in <module>
+    asyncio.run(main())
+  File "C:\Users\Robert\miniconda3\envs\tradingbot\Lib\asyncio\runners.py", line 190, in run
+    return runner.run(main)
+           ^^^^^^^^^^^^^^^^
+  File "C:\Users\Robert\miniconda3\envs\tradingbot\Lib\asyncio\runners.py", line 118, in run
+    return self._loop.run_until_complete(task)
+           ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "C:\Users\Robert\miniconda3\envs\tradingbot\Lib\asyncio\base_events.py", line 654, in run_until_complete
+    return future.result()
+           ^^^^^^^^^^^^^^^
+  File "D:\tradingbot\app\telegram_bot.py", line 31, in main
+    app = Application.builder().token(TELEGRAM_BOT_TOKEN).build()
+          ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "C:\Users\Robert\miniconda3\envs\tradingbot\Lib\site-packages\telegram\ext\_applicationbuilder.py", line 310, in build
+    bot: Bot = self._build_ext_bot()  # build a bot
+               ^^^^^^^^^^^^^^^^^^^^^
+  File "C:\Users\Robert\miniconda3\envs\tradingbot\Lib\site-packages\telegram\ext\_applicationbuilder.py", line 272, in _build_ext_bot
+    return ExtBot(
+           ^^^^^^^
+  File "C:\Users\Robert\miniconda3\envs\tradingbot\Lib\site-packages\telegram\ext\_extbot.py", line 229, in __init__
+    super().__init__(
+  File "C:\Users\Robert\miniconda3\envs\tradingbot\Lib\site-packages\telegram\_bot.py", line 256, in __init__
+    raise InvalidToken("You must pass the token you received from https://t.me/Botfather!")
+telegram.error.InvalidToken: You must pass the token you received from https://t.me/Botfather!
+Traceback (most recent call last):
+  File "<frozen runpy>", line 198, in _run_module_as_main
+  File "<frozen runpy>", line 88, in _run_code
+  File "D:\tradingbot\app\telegram_bot.py", line 37, in <module>
+    asyncio.run(main())
+  File "C:\Users\Robert\miniconda3\envs\tradingbot\Lib\asyncio\runners.py", line 190, in run
+    return runner.run(main)
+           ^^^^^^^^^^^^^^^^
+  File "C:\Users\Robert\miniconda3\envs\tradingbot\Lib\asyncio\runners.py", line 118, in run
+    return self._loop.run_until_complete(task)
+           ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "C:\Users\Robert\miniconda3\envs\tradingbot\Lib\asyncio\base_events.py", line 654, in run_until_complete
+    return future.result()
+           ^^^^^^^^^^^^^^^
+  File "D:\tradingbot\app\telegram_bot.py", line 31, in main
+    app = Application.builder().token(TELEGRAM_BOT_TOKEN).build()
+          ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "C:\Users\Robert\miniconda3\envs\tradingbot\Lib\site-packages\telegram\ext\_applicationbuilder.py", line 310, in build
+    bot: Bot = self._build_ext_bot()  # build a bot
+               ^^^^^^^^^^^^^^^^^^^^^
+  File "C:\Users\Robert\miniconda3\envs\tradingbot\Lib\site-packages\telegram\ext\_applicationbuilder.py", line 272, in _build_ext_bot
+    return ExtBot(
+           ^^^^^^^
+  File "C:\Users\Robert\miniconda3\envs\tradingbot\Lib\site-packages\telegram\ext\_extbot.py", line 229, in __init__
+    super().__init__(
+  File "C:\Users\Robert\miniconda3\envs\tradingbot\Lib\site-packages\telegram\_bot.py", line 256, in __init__
+    raise InvalidToken("You must pass the token you received from https://t.me/Botfather!")
+telegram.error.InvalidToken: You must pass the token you received from https://t.me/Botfather!
+Traceback (most recent call last):
+  File "<frozen runpy>", line 198, in _run_module_as_main
+  File "<frozen runpy>", line 88, in _run_code
+  File "D:\tradingbot\app\telegram_bot.py", line 37, in <module>
+    asyncio.run(main())
+  File "C:\Users\Robert\miniconda3\envs\tradingbot\Lib\asyncio\runners.py", line 190, in run
+    return runner.run(main)
+           ^^^^^^^^^^^^^^^^
+  File "C:\Users\Robert\miniconda3\envs\tradingbot\Lib\asyncio\runners.py", line 118, in run
+    return self._loop.run_until_complete(task)
+           ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "C:\Users\Robert\miniconda3\envs\tradingbot\Lib\asyncio\base_events.py", line 654, in run_until_complete
+    return future.result()
+           ^^^^^^^^^^^^^^^
+  File "D:\tradingbot\app\telegram_bot.py", line 31, in main
+    app = Application.builder().token(TELEGRAM_BOT_TOKEN).build()
+          ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "C:\Users\Robert\miniconda3\envs\tradingbot\Lib\site-packages\telegram\ext\_applicationbuilder.py", line 310, in build
+    bot: Bot = self._build_ext_bot()  # build a bot
+               ^^^^^^^^^^^^^^^^^^^^^
+  File "C:\Users\Robert\miniconda3\envs\tradingbot\Lib\site-packages\telegram\ext\_applicationbuilder.py", line 272, in _build_ext_bot
+    return ExtBot(
+           ^^^^^^^
+  File "C:\Users\Robert\miniconda3\envs\tradingbot\Lib\site-packages\telegram\ext\_extbot.py", line 229, in __init__
+    super().__init__(
+  File "C:\Users\Robert\miniconda3\envs\tradingbot\Lib\site-packages\telegram\_bot.py", line 256, in __init__
+    raise InvalidToken("You must pass the token you received from https://t.me/Botfather!")
+telegram.error.InvalidToken: You must pass the token you received from https://t.me/Botfather!

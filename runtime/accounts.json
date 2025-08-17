@@ -1,0 +1,12 @@
+{
+  "accounts": [
+    {
+      "name": "Binance spot",
+      "type": "spot",
+      "total": 0.0,
+      "available": 0.0,
+      "active_trades": 2
+    }
+  ],
+  "updated": "2025-08-10 10:10:02"
+}

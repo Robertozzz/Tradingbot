@@ -1,0 +1,16 @@
+{
+  "accounts": [
+    {
+      "id": 1,
+      "name": "Binance Spot",
+      "exchange": "Binance",
+      "status": "Active",
+      "totals": {
+        "usd": 0
+      },
+      "available": {
+        "usd": 0
+      }
+    }
+  ]
+}
