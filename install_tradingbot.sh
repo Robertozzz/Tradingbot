@@ -58,7 +58,7 @@ apt-get install -y \
   libxcomposite1 libxdamage1 libxfixes3 libxss1 libxtst6 libxi6 libxrandr2 \
   libnss3 libasound2 libatk1.0-0 libatk-bridge2.0-0 libcups2 \
   libx11-xcb1 libxcb1 libxcb-render0 libxcb-shm0 libdrm2 libgbm1 \
-  libfontconfig1 fonts-dejavu-core
+  libfontconfig1 fonts-dejavu-core jq
 
 # ---- Users / dirs ----
 id -u ibkr >/dev/null 2>&1 || useradd -m -s /bin/bash ibkr
