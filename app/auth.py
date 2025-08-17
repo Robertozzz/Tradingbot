@@ -1,5 +1,4 @@
 
-from __future__ import annotations
 import os, json, time, hmac, hashlib, base64
 from pathlib import Path
 from typing import Optional
@@ -119,6 +118,7 @@ class LoginReq(BaseModel):
     username: str
     password: str
     code: Optional[str] = None
+    remember: Optional[bool] = None 
 
 @router.post("/login")
 def login(body: LoginReq, response: Response):

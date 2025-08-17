@@ -52,7 +52,7 @@ apt-get install -y \
   python3 python3-venv python3-pip python3-uvicorn python3-fastapi \
   python3-passlib python3-pyotp python3-qrcode \
   unzip curl ca-certificates git rsync \
-  xvfb openbox x11vnc novnc websockify \
+  xvfb openbox x11vnc novnc websockify wmctrl xdotool \
   nginx certbot python3-certbot-nginx \
   libgtk-3-0 libglib2.0-0 libpango-1.0-0 libcairo2 libgdk-pixbuf-2.0-0 \
   libxcomposite1 libxdamage1 libxfixes3 libxss1 libxtst6 libxi6 libxrandr2 \
@@ -261,7 +261,7 @@ set -euo pipefail
 
 export DISPLAY=${DISPLAY:-:1}
 XVFB_W=${XVFB_W:-1280}
-XVFB_H=${XVFB_H:-800}
+XVFB_H=${XVFB_H:-820}
 XVFB_D=${XVFB_D:-24}
 
 IB_HOME="${IB_HOME:-$HOME/Jts/ibgateway/1037}"
@@ -326,6 +326,37 @@ sudo -u ibkr bash -lc 'mkdir -p ~/Downloads && \
    curl -fL -o ~/Downloads/ibgateway.sh https://download2.interactivebrokers.com/installers/ibgateway/latest-standalone/ibgateway-latest-standalone-linux-x64.sh) && \
   chmod +x ~/Downloads/ibgateway.sh && \
   ~/Downloads/ibgateway.sh -q -dir $HOME/Jts/ibgateway/1037 || true'
+  
+# ---- Openbox tweaks: single desktop, no wheel-switching, maximize IB Gateway ----
+sudo -u ibkr mkdir -p /home/ibkr/.config/openbox
+sudo -u ibkr tee /home/ibkr/.config/openbox/rc.xml >/dev/null <<'XML'
+<?xml version="1.0" encoding="UTF-8"?>
+<openbox_config xmlns="http://openbox.org/3.4/rc">
+  <desktops>
+    <number>1</number>
+    <firstdesk>1</firstdesk>
+  </desktops>
+  <mouse>
+    <dragThreshold>8</dragThreshold>
+    <doubleClickTime>200</doubleClickTime>
+    <screenEdgeStrength>0</screenEdgeStrength>
+    <!-- Disable wheel to change desktop on background -->
+    <context name="Root">
+      <mousebind button="Up" action="Click"/>
+      <mousebind button="Down" action="Click"/>
+    </context>
+  </mouse>
+  <theme>
+    <name>Clearlooks</name>
+    <titleLayout>NLIMC</titleLayout>
+  </theme>
+  <applications/>
+</openbox_config>
+XML
+sudo -u ibkr tee /home/ibkr/.config/openbox/autostart >/dev/null <<'SH'
+(sleep 8; wmctrl -r "IB Gateway" -b add,maximized_vert,maximized_horz) &
+SH
+sudo chmod +x /home/ibkr/.config/openbox/autostart
 
 # ---- Systemd: uvicorn + ibgateway ----
 PYBIN="/usr/bin/python3"
@@ -381,8 +412,8 @@ After=network-online.target
 Type=simple
 User=ibkr
 Environment=DISPLAY=:1
-Environment=XVFB_W=1400
-Environment=XVFB_H=900
+Environment=XVFB_W=1280
+Environment=XVFB_H=820
 ExecStart=/opt/ibkr/run-ibgateway.sh
 Restart=always
 RestartSec=5
@@ -393,6 +424,7 @@ UNIT
 
 systemctl daemon-reload
 systemctl enable --now ibgateway.service
+systemctl restart ibgateway.service || true
 systemctl enable --now uvicorn.service
 
 # ---- Nginx site (HTTP dev vs HTTPS prod) ----
