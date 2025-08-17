@@ -8,6 +8,7 @@ from pydantic import BaseModel
 from passlib.context import CryptContext
 import pyotp
 import re
+from typing import Optional
 
 
 router = APIRouter(prefix="/auth", tags=["auth"])
@@ -19,6 +20,7 @@ AUTH_FILE = DATA_DIR / "auth.json"
 pwd_ctx = CryptContext(schemes=["bcrypt"], deprecated="auto")
 COOKIE_NAME = "tb_session"
 COOKIE_TTL = 60 * 60 * 8  # 8h
+COOKIE_TTL_LONG = 60 * 60 * 24 * 30  # 30 days for "Remember me"
 NAME_RX = re.compile(r"^[A-Za-z0-9_.-]{3,32}$")
 
 def _now() -> int: return int(time.time())
@@ -138,9 +140,13 @@ def login(body: LoginReq, response: Response):
     if not (body.code and totp.verify(body.code, valid_window=1)):
         raise HTTPException(401, "Invalid TOTP")
     session = _make_cookie(data["user"], data["session_key"])
+    ttl = COOKIE_TTL_LONG if body.remember else COOKIE_TTL
     response.set_cookie(
-        COOKIE_NAME, session, max_age=COOKIE_TTL, httponly=True, secure=(os.environ.get("TB_INSECURE_COOKIES")!="1"), samesite="Strict", path="/"
-    )
+         COOKIE_NAME, session, max_age=ttl,
+         httponly=True,
+         secure=(os.environ.get("TB_INSECURE_COOKIES")!="1"),
+         samesite="Strict",
+         path="/",    )
     return {"ok": True}
 
 @router.post("/logout")
@@ -170,3 +176,23 @@ def state():
     if not data.get("enrolled"):
         return {"stage": "enroll"}    # show QR + verify first TOTP
     return {"stage": "login"}         # normal login thereafter
+
+class ResetReq(BaseModel):
+    confirm: bool = False
+
+@router.post("/reset")
+def reset_account(body: ResetReq, response: Response):
+    """
+    Delete the auth store so the next visit goes through first-run setup again.
+    Intended for single-user/self-hosted installs.
+    """
+    if not body.confirm:
+        raise HTTPException(400, "confirm=true required")
+    try:
+        AUTH_FILE.unlink(missing_ok=True)
+    except Exception:
+        # fall through; if it doesn't exist we're effectively reset anyway
+        pass
+    # drop any existing session cookie
+    response.delete_cookie(COOKIE_NAME, path="/")
+    return {"ok": True, "stage": "init"}
