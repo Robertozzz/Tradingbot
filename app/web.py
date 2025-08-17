@@ -36,12 +36,50 @@ async def coi_headers(request: Request, call_next):
         resp.headers.setdefault("Content-Type", "text/javascript")
     return resp
 
-# Optional: include your other routers first
+import logging
+logging.basicConfig(level=logging.INFO)          # <— add this once
+mount_log = logging.getLogger("mount")           # <— rename
+
 try:
     from .api import router as api_router
-    app.include_router(api_router, prefix="")
-except Exception:
-    pass
+    app.include_router(api_router, prefix="")    # router already has prefix="/api"
+    mount_log.info("Mounted /api router")
+except Exception as e:
+    mount_log.exception("Failed to mount /api router")
+
+try:
+    from .ibkr_api import router as ibkr_router
+    app.include_router(ibkr_router)              # exposes /ibkr/*
+    mount_log.info("Mounted /ibkr router")
+except Exception as e:
+    mount_log.exception("Failed to mount /ibkr router")
+    from fastapi import APIRouter
+    mock = APIRouter(prefix="/ibkr", tags=["ibkr-mock"])
+
+    @mock.get("/ping")
+    async def _mock_ping():
+        return {"connected": False, "server_time": None, "mock": True}
+
+    @mock.get("/accounts")
+    async def _mock_accounts():
+        return {"DU1234567": {"NetLiquidation": "100000", "TotalCashValue": "20000"}}
+
+    @mock.get("/positions")
+    async def _mock_positions():
+        return [
+            {"account":"DU1234567","symbol":"AAPL","secType":"STK","currency":"USD","exchange":"SMART","position":50,"avgCost":172.12},
+            {"account":"DU1234567","symbol":"MSFT","secType":"STK","currency":"USD","exchange":"SMART","position":20,"avgCost":318.40},
+        ]
+    app.include_router(mock)
+
+# separate logger for auth mount
+auth_log = logging.getLogger("auth")
+try:
+    from .auth import router as auth_router
+    app.include_router(auth_router, prefix="")
+    auth_log.info("Mounted /auth router")
+except Exception as e:
+    auth_log.exception("Failed to mount auth router")
     
 import logging
 log = logging.getLogger("auth")
