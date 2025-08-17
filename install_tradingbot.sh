@@ -247,9 +247,10 @@ if [[ -f /opt/tradingbot/requirements.txt ]]; then
   echo "[VENV] Installing Python deps"
   cd /opt/tradingbot
   python3 -m venv .venv
-  . .venv/bin/activate
-  pip install --upgrade pip wheel
-  pip install -r requirements.txt
+  chown -R www-data:www-data .venv
+  # install as www-data so future pip installs also work
+  sudo -u www-data -H /opt/tradingbot/.venv/bin/pip install --upgrade pip wheel
+  sudo -u www-data -H /opt/tradingbot/.venv/bin/pip install -r requirements.txt
   USE_VENV=1
 fi
 

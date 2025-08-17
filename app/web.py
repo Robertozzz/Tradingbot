@@ -43,11 +43,14 @@ try:
 except Exception:
     pass
     
+import logging
+log = logging.getLogger("auth")
+    
 try:
     from .auth import router as auth_router
     app.include_router(auth_router, prefix="")
-except Exception:
-    pass
+except Exception as e:
+    log.exception("Failed to mount auth router")
 
 def _runtime_dir() -> Path:
     for p in [
