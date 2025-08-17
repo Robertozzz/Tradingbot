@@ -56,20 +56,24 @@ def _load_auth():
 def _save_auth(data: dict):
     AUTH_FILE.write_text(json.dumps(data), encoding="utf-8")
 
-class LoginReq(BaseModel):
-    username: str
-    password: str
-    code: Optional[str] = None
+class InitReq(BaseModel):
+    username: str | None = None
+    new_password: str
 
 @router.post("/init")
 def init_account(body: InitReq):
     data = _load_auth()
     if data.get("password_hash"):
         raise HTTPException(400, "Already initialized")
-    if len(body.new_password) < 8:
+    if len(body.new_password or "") < 8:
         raise HTTPException(400, "Password too short")
+
+    user = (body.username or "admin").strip()
+    if not NAME_RX.match(user):
+        raise HTTPException(400, "Invalid username (3–32 chars: letters, digits, _.-)")
+
+    data["user"] = user
     data["password_hash"] = pwd_ctx.hash(body.new_password)
-    # Generate TOTP secret now; enrollment will show the QR
     data["totp_secret"] = pyotp.random_base32()
     data["enrolled"] = False
     _save_auth(data)
@@ -110,6 +114,11 @@ def enroll(body: EnrollReq):
     data["enrolled"] = True
     _save_auth(data)
     return {"ok": True}
+
+class LoginReq(BaseModel):
+    username: str
+    password: str
+    code: Optional[str] = None
 
 @router.post("/login")
 def login(body: LoginReq, response: Response):
@@ -161,26 +170,3 @@ def state():
     if not data.get("enrolled"):
         return {"stage": "enroll"}    # show QR + verify first TOTP
     return {"stage": "login"}         # normal login thereafter
-
-class InitReq(BaseModel):
-    username: str | None = None
-    new_password: str
-
-@router.post("/init")
-def init_account(body: InitReq):
-    data = _load_auth()
-    if data.get("password_hash"):
-        raise HTTPException(400, "Already initialized")
-    if len(body.new_password or "") < 8:
-        raise HTTPException(400, "Password too short")
-
-    user = (body.username or "admin").strip()
-    if not NAME_RX.match(user):
-        raise HTTPException(400, "Invalid username (3–32 chars: letters, digits, _.-)")
-
-    data["user"] = user
-    data["password_hash"] = pwd_ctx.hash(body.new_password)
-    data["totp_secret"] = pyotp.random_base32()
-    data["enrolled"] = False
-    _save_auth(data)
-    return {"ok": True, "stage": "enroll"}
