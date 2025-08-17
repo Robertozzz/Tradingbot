@@ -115,7 +115,7 @@ XVFB_D=${XVFB_D:-24}
 
 IB_HOME="${IB_HOME:-$HOME/Jts/ibgateway/1037}"
 IB_BIN="${IB_BIN:-$IB_HOME/ibgateway}"
-IBC_INI="${IBC_INI:-$HOME/.ibc/gateway-paper.ini}"
+IBC_INI="${IBC_INI:-$HOME/.ibc/gateway-live.ini}"
 
 mkdir -p "$(dirname "$IBC_INI")"
 
@@ -157,11 +157,11 @@ UseRemoteSettings=yes
 LoginDialogDisplayTimeout=20
 IbDir=${IB_HOME}
 FIX=no
-TradingMode=paper
+TradingMode=live
 MinimizeMainWindow=no
 AcceptNonBrokerageAccountWarning=yes
 ExitAfterAcceptingUserAgreement=no
-OverrideTwsApiPort=4002
+OverrideTwsApiPort=4001
 CFG
 fi
 
@@ -228,6 +228,9 @@ Type=simple
 User=www-data
 WorkingDirectory=/opt/tradingbot
 Environment=TB_RUNTIME_DIR=/opt/tradingbot/runtime
+Environment=IB_HOST=127.0.0.1
+Environment=IB_PORT=4001
+Environment=IB_CLIENT_ID=11
 Environment=TB_INSECURE_COOKIES=1
 ExecStart=$PYBIN -m uvicorn app.web:app --host 127.0.0.1 --port 8000
 Restart=always
@@ -247,6 +250,9 @@ Type=simple
 User=www-data
 WorkingDirectory=/opt/tradingbot
 Environment=TB_RUNTIME_DIR=/opt/tradingbot/runtime
+Environment=IB_HOST=127.0.0.1
+Environment=IB_PORT=4001
+Environment=IB_CLIENT_ID=11
 ExecStart=$PYBIN -m uvicorn app.web:app --host 127.0.0.1 --port 8000
 Restart=always
 RestartSec=3

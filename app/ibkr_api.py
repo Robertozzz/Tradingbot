@@ -7,7 +7,8 @@ from ib_insync import IB, util
 router = APIRouter(prefix="/ibkr", tags=["ibkr"])
 
 IB_HOST = os.getenv("IB_HOST", "127.0.0.1")
-IB_PORT = int(os.getenv("IB_PORT", "4002"))  # paper by default
+# Live by default; override with IB_PORT if you want paper (4002)
+IB_PORT = int(os.getenv("IB_PORT", "4001"))
 IB_CLIENT_ID = int(os.getenv("IB_CLIENT_ID", "11"))
 
 ib = IB()
