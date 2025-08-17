@@ -1,5 +1,4 @@
 
-from __future__ import annotations
 import os, json, time, hmac, hashlib, base64
 from pathlib import Path
 from typing import Optional
@@ -8,6 +7,8 @@ from fastapi.responses import JSONResponse, StreamingResponse
 from pydantic import BaseModel
 from passlib.context import CryptContext
 import pyotp
+import re
+
 
 router = APIRouter(prefix="/auth", tags=["auth"])
 
@@ -18,6 +19,7 @@ AUTH_FILE = DATA_DIR / "auth.json"
 pwd_ctx = CryptContext(schemes=["bcrypt"], deprecated="auto")
 COOKIE_NAME = "tb_session"
 COOKIE_TTL = 60 * 60 * 8  # 8h
+NAME_RX = re.compile(r"^[A-Za-z0-9_.-]{3,32}$")
 
 def _now() -> int: return int(time.time())
 
@@ -54,6 +56,7 @@ def _save_auth(data: dict):
     AUTH_FILE.write_text(json.dumps(data), encoding="utf-8")
 
 class InitReq(BaseModel):
+    username: str | None = None
     new_password: str
 
 @router.post("/init")
@@ -61,10 +64,15 @@ def init_account(body: InitReq):
     data = _load_auth()
     if data.get("password_hash"):
         raise HTTPException(400, "Already initialized")
-    if len(body.new_password) < 8:
+    if len(body.new_password or "") < 8:
         raise HTTPException(400, "Password too short")
+
+    user = (body.username or "admin").strip()
+    if not NAME_RX.match(user):
+        raise HTTPException(400, "Invalid username (3–32 chars: letters, digits, _.-)")
+
+    data["user"] = user
     data["password_hash"] = pwd_ctx.hash(body.new_password)
-    # Generate TOTP secret now; enrollment will show the QR
     data["totp_secret"] = pyotp.random_base32()
     data["enrolled"] = False
     _save_auth(data)
@@ -110,6 +118,7 @@ class LoginReq(BaseModel):
     username: str
     password: str
     code: Optional[str] = None
+    remember: Optional[bool] = None 
 
 @router.post("/login")
 def login(body: LoginReq, response: Response):
@@ -152,3 +161,12 @@ def require_session(request: Request):
 @router.get("/validate")
 def validate(_: str = Depends(require_session)):
     return {"ok": True}
+
+@router.get("/state")
+def state():
+    data = _load_auth()
+    if not data.get("password_hash"):
+        return {"stage": "init"}      # first run → set password
+    if not data.get("enrolled"):
+        return {"stage": "enroll"}    # show QR + verify first TOTP
+    return {"stage": "login"}         # normal login thereafter

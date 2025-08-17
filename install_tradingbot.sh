@@ -1,18 +1,23 @@
 #!/usr/bin/env bash
 # install_tradingbot.sh
-# One-shot installer for Debian 12/13 (no GUI).
-# Sets up: FastAPI (uvicorn), auth (password + TOTP), Nginx (+TLS optional),
-# noVNC + websockify, and IBKR Gateway (Xvfb + openbox + x11vnc).
+# One-shot installer for a fresh Debian 12/13 (no GUI).
+# - Sets up Python/FastAPI backend (uvicorn), auth (password + TOTP), Nginx (HTTPS), noVNC,
+#   and IBKR Gateway (headless via Xvfb + x11vnc + websockify).
+# - Deploys your app under /opt/tradingbot with your existing tree (app/, base.py, web.py, ui_build/ ...).
 #
 # Usage (pick ONE source method):
+#   curl -fsSLO https://YOUR_HOST/install_tradingbot.sh && sudo bash install_tradingbot.sh \
+#     --domain bot.example.com --email you@example.com \
+#     --zip https://yourserver/path/tradingbot_bundle.zip
+#
+#   # or from git:
 #   sudo bash install_tradingbot.sh --domain bot.example.com --email you@example.com \
-#     --git https://github.com/you/your-tradingbot.git --branch main
-#   # OR
-#   sudo bash install_tradingbot.sh --domain bot.example.com --email you@example.com \
-#     --zip https://example.com/tradingbot_bundle.zip
-#   # Dev mode (HTTP only, no TLS):
-#   sudo bash install_tradingbot.sh --no-tls --domain myvm.local --email you@example.com \
-#     --git https://github.com/you/your-tradingbot.git --branch main
+#     --git https://github.com/you/your-tradingbot-repo.git --branch main
+#
+#   # or from a local file copied in (e.g., scp tradingbot_bundle.zip debian:/tmp/)
+#   sudo bash install_tradingbot.sh --domain bot.example.com --email you@example.com --zip /tmp/tradingbot_bundle.zip
+#
+# The ZIP/TGZ or git repo must contain: app/, base.py, web.py, ui_build/ (Flutter web build).
 
 set -euo pipefail
 
@@ -42,7 +47,7 @@ if [[ -z "$DOMAIN" || -z "$EMAIL" ]]; then
 fi
 
 if [[ -z "$ZIP_SRC" && -z "$GIT_URL" ]]; then
-  echo "NOTE: No --zip or --git specified. The installer will create /opt/tradingbot; you can rsync your code later."
+  echo "NOTE: No --zip or --git specified. The installer will create an empty skeleton in /opt/tradingbot; you can rsync your code later."
 fi
 
 # ---- Basics ----
@@ -51,8 +56,8 @@ apt-get update
 apt-get install -y \
   python3 python3-venv python3-pip python3-uvicorn python3-fastapi \
   python3-passlib python3-pyotp python3-qrcode \
-  unzip curl ca-certificates git rsync \
-  xvfb openbox x11vnc novnc websockify wmctrl xdotool \
+  unzip curl ca-certificates git rsync\
+  xvfb openbox x11vnc novnc websockify \
   nginx certbot python3-certbot-nginx \
   libgtk-3-0 libglib2.0-0 libpango-1.0-0 libcairo2 libgdk-pixbuf-2.0-0 \
   libxcomposite1 libxdamage1 libxfixes3 libxss1 libxtst6 libxi6 libxrandr2 \
@@ -78,6 +83,7 @@ if [[ -n "$ZIP_SRC" ]]; then
     cp "$ZIP_SRC" "$TMPD/bundle.zip"
   fi
   unzip -q "$TMPD/bundle.zip" -d "$TMPD/extract"
+  # If the zip wraps contents in a top-level folder, try to locate it
   SRC_ROOT="$(find "$TMPD/extract" -maxdepth 2 -type d -name app -printf '%h\n' | head -n1 || true)"
   [[ -z "$SRC_ROOT" ]] && SRC_ROOT="$TMPD/extract"
   rsync -a --delete "$SRC_ROOT"/ /opt/tradingbot/
@@ -85,14 +91,14 @@ elif [[ -n "$GIT_URL" ]]; then
   git clone --depth 1 --branch "$GIT_BRANCH" "$GIT_URL" "$TMPD/repo"
   rsync -a --delete "$TMPD/repo"/ /opt/tradingbot/
 else
-  echo "[SKIP] Using empty skeleton; ensure /opt/tradingbot has app/, base.py, web.py, ui_build/ after you copy your code."
+  echo "[SKIP] Using empty skeleton; make sure /opt/tradingbot has app/, base.py, web.py, ui_build/ after you copy your code."
 fi
-chown -R www-data:www-data /opt/tradingbot
 
-# ---- Add auth router (only if missing) ----
-if ! [ -f /opt/tradingbot/app/auth.py ]; then
-  echo "[ADD] Installing app/auth.py"
+# ---- Add auth router (if missing) ----
+if ! grep -q "app/auth.py" <(find /opt/tradingbot/app -maxdepth 1 -name auth.py 2>/dev/null || true); then
+  echo "[ADD] Installing auth.py"
   install -D -m 0644 /dev/stdin /opt/tradingbot/app/auth.py <<'PYCODE'
+
 from __future__ import annotations
 import os, json, time, hmac, hashlib, base64
 from pathlib import Path
@@ -141,6 +147,7 @@ def _load_auth():
             return json.loads(AUTH_FILE.read_text("utf-8"))
         except Exception:
             pass
+    # default: first run, no password yet
     return {"user": "admin", "password_hash": None, "totp_secret": None, "enrolled": False, "created_ts": _now(), "session_key": base64.urlsafe_b64encode(os.urandom(24)).decode()}
 
 def _save_auth(data: dict):
@@ -157,6 +164,7 @@ def init_account(body: InitReq):
     if len(body.new_password) < 8:
         raise HTTPException(400, "Password too short")
     data["password_hash"] = pwd_ctx.hash(body.new_password)
+    # Generate TOTP secret now; enrollment will show the QR
     data["totp_secret"] = pyotp.random_base32()
     data["enrolled"] = False
     _save_auth(data)
@@ -173,13 +181,17 @@ def enroll_qr():
     secret = data.get("totp_secret") or pyotp.random_base32()
     data["totp_secret"] = secret
     _save_auth(data)
+    # Build provisioning URI
     issuer = "TradingBot"
     account = data.get("user","admin")
     uri = pyotp.totp.TOTP(secret).provisioning_uri(name=account, issuer_name=issuer)
-    import qrcode, io
+    # Generate PNG QR (lazy dependency: qrcode)
+    import qrcode
+    import io
     buf = io.BytesIO()
     img = qrcode.make(uri)
-    img.save(buf, format="PNG"); buf.seek(0)
+    img.save(buf, format="PNG")
+    buf.seek(0)
     return StreamingResponse(buf, media_type="image/png")
 
 @router.post("/enroll")
@@ -203,19 +215,22 @@ class LoginReq(BaseModel):
 def login(body: LoginReq, response: Response):
     data = _load_auth()
     if not data.get("password_hash"):
+        # not initialized: ask to set password
         return JSONResponse({"ok": False, "stage": "init"}, status_code=403)
-    if body.username != data.get("user") or not pwd_ctx.verify(body.password, data["password_hash"]):
+    if body.username != data.get("user"):
+        raise HTTPException(401, "Invalid credentials")
+    if not pwd_ctx.verify(body.password, data["password_hash"]):
         raise HTTPException(401, "Invalid credentials")
     if not data.get("enrolled"):
+        # Require enrollment step
         return JSONResponse({"ok": False, "stage": "enroll"}, status_code=403)
+    # Verify TOTP
     totp = pyotp.TOTP(data["totp_secret"])
     if not (body.code and totp.verify(body.code, valid_window=1)):
         raise HTTPException(401, "Invalid TOTP")
     session = _make_cookie(data["user"], data["session_key"])
     response.set_cookie(
-        COOKIE_NAME, session, max_age=COOKIE_TTL, httponly=True,
-        secure=(os.environ.get("TB_INSECURE_COOKIES")!="1"),
-        samesite="Strict", path="/"
+        COOKIE_NAME, session, max_age=COOKIE_TTL, httponly=True, secure=True, samesite="Strict", path="/"
     )
     return {"ok": True}
 
@@ -237,90 +252,177 @@ def require_session(request: Request):
 @router.get("/validate")
 def validate(_: str = Depends(require_session)):
     return {"ok": True}
+
 PYCODE
 fi
-chown -R www-data:www-data /opt/tradingbot/app
 
 # ---- venv & deps (optional) ----
-USE_VENV=0
 if [[ -f /opt/tradingbot/requirements.txt ]]; then
   echo "[VENV] Installing Python deps"
   cd /opt/tradingbot
   python3 -m venv .venv
-  chown -R www-data:www-data .venv
-  # install as www-data so future pip installs also work
-  sudo -u www-data -H /opt/tradingbot/.venv/bin/pip install --upgrade pip wheel
-  sudo -u www-data -H /opt/tradingbot/.venv/bin/pip install -r requirements.txt
-  USE_VENV=1
+  . .venv/bin/activate
+  pip install --upgrade pip wheel
+  pip install -r requirements.txt || true
 fi
 
-# ---- IB Gateway runner ----
+# ---- IB Gateway ----
 install -D -m 0755 /dev/stdin /opt/ibkr/run-ibgateway.sh <<'BASH'
-#!/usr/bin/env bash
-set -euo pipefail
 
-export DISPLAY=${DISPLAY:-:1}
-XVFB_W=${XVFB_W:-800}
-XVFB_H=${XVFB_H:-610}
-XVFB_D=${XVFB_D:-24}
+from __future__ import annotations
+import os, json, time, hmac, hashlib, base64
+from pathlib import Path
+from typing import Optional
+from fastapi import APIRouter, HTTPException, Request, Response, Depends
+from fastapi.responses import JSONResponse, StreamingResponse
+from pydantic import BaseModel
+from passlib.context import CryptContext
+import pyotp
 
-IB_HOME="${IB_HOME:-$HOME/Jts/ibgateway/1037}"
-IB_BIN="${IB_BIN:-$IB_HOME/ibgateway}"
-IBC_INI="${IBC_INI:-$HOME/.ibc/gateway-paper.ini}"
+router = APIRouter(prefix="/auth", tags=["auth"])
 
-mkdir -p "$(dirname "$IBC_INI")"
+DATA_DIR = Path(os.environ.get("TB_RUNTIME_DIR") or Path.cwd() / "runtime")
+DATA_DIR.mkdir(parents=True, exist_ok=True)
+AUTH_FILE = DATA_DIR / "auth.json"
 
-cleanup() {
-  pkill -f "websockify.*6080" || true
-  pkill -f "x11vnc.*$DISPLAY" || true
-  pkill -f "openbox" || true
-  pkill -f "Xvfb $DISPLAY" || true
-}
-trap cleanup EXIT
+pwd_ctx = CryptContext(schemes=["bcrypt"], deprecated="auto")
+COOKIE_NAME = "tb_session"
+COOKIE_TTL = 60 * 60 * 8  # 8h
 
-if ! pgrep -f "Xvfb $DISPLAY" >/dev/null; then
-  Xvfb $DISPLAY -screen 0 ${XVFB_W}x${XVFB_H}x${XVFB_D} -nolisten tcp &
-  sleep 0.5
-fi
+def _now() -> int: return int(time.time())
 
-if ! pgrep -f "openbox" >/dev/null; then
-  openbox >/tmp/openbox.log 2>&1 &
-  sleep 0.5
-fi
+def _sign(value: str, key: str) -> str:
+    mac = hmac.new(key.encode(), value.encode(), hashlib.sha256).digest()
+    return base64.urlsafe_b64encode(mac).decode().rstrip("=")
 
-if ! pgrep -f "x11vnc.*$DISPLAY" >/dev/null; then
-  x11vnc -display $DISPLAY \
-         -localhost -forever -shared \
-         -rfbport 5901 -quiet \
-         -noxdamage -noxrecord -xkb -repeat \
-         -cursor most &
-  sleep 0.5
-fi
+def _make_cookie(user: str, key: str) -> str:
+    exp = _now() + COOKIE_TTL
+    payload = f"{user}.{exp}"
+    sig = _sign(payload, key)
+    return f"{payload}.{sig}"
 
-if ! pgrep -f "websockify.*6080" >/dev/null; then
-  websockify --web=/usr/share/novnc/ 127.0.0.1:6080 127.0.0.1:5901 >/tmp/websockify.log 2>&1 &
-fi
+def _verify_cookie(cookie: str, key: str) -> Optional[str]:
+    try:
+        user, exp, sig = cookie.split(".", 2)
+        payload = f"{user}.{exp}"
+        if hmac.compare_digest(sig, _sign(payload, key)) and _now() < int(exp):
+            return user
+    except Exception:
+        pass
+    return None
 
-if [ ! -f "$IBC_INI" ]; then
-  cat > "$IBC_INI" <<CFG
-[Login]
-UseRemoteSettings=yes
-LoginDialogDisplayTimeout=20
-IbDir=${IB_HOME}
-FIX=no
-TradingMode=paper
-MinimizeMainWindow=no
-AcceptNonBrokerageAccountWarning=yes
-ExitAfterAcceptingUserAgreement=no
-OverrideTwsApiPort=4002
-CFG
-fi
+def _load_auth():
+    if AUTH_FILE.exists():
+        try:
+            return json.loads(AUTH_FILE.read_text("utf-8"))
+        except Exception:
+            pass
+    # default: first run, no password yet
+    return {"user": "admin", "password_hash": None, "totp_secret": None, "enrolled": False, "created_ts": _now(), "session_key": base64.urlsafe_b64encode(os.urandom(24)).decode()}
 
-"$IB_BIN" >/tmp/ibgateway.log 2>&1 &
+def _save_auth(data: dict):
+    AUTH_FILE.write_text(json.dumps(data), encoding="utf-8")
 
-while pgrep -f "ibgateway|Xvfb $DISPLAY|x11vnc.*$DISPLAY|websockify.*6080" >/dev/null; do
-  sleep 2
-done
+class InitReq(BaseModel):
+    new_password: str
+
+@router.post("/init")
+def init_account(body: InitReq):
+    data = _load_auth()
+    if data.get("password_hash"):
+        raise HTTPException(400, "Already initialized")
+    if len(body.new_password) < 8:
+        raise HTTPException(400, "Password too short")
+    data["password_hash"] = pwd_ctx.hash(body.new_password)
+    # Generate TOTP secret now; enrollment will show the QR
+    data["totp_secret"] = pyotp.random_base32()
+    data["enrolled"] = False
+    _save_auth(data)
+    return {"ok": True, "stage": "enroll"}
+
+class EnrollReq(BaseModel):
+    code: str
+
+@router.get("/enroll_qr")
+def enroll_qr():
+    data = _load_auth()
+    if not data.get("password_hash"):
+        raise HTTPException(400, "Not initialized")
+    secret = data.get("totp_secret") or pyotp.random_base32()
+    data["totp_secret"] = secret
+    _save_auth(data)
+    # Build provisioning URI
+    issuer = "TradingBot"
+    account = data.get("user","admin")
+    uri = pyotp.totp.TOTP(secret).provisioning_uri(name=account, issuer_name=issuer)
+    # Generate PNG QR (lazy dependency: qrcode)
+    import qrcode
+    import io
+    buf = io.BytesIO()
+    img = qrcode.make(uri)
+    img.save(buf, format="PNG")
+    buf.seek(0)
+    return StreamingResponse(buf, media_type="image/png")
+
+@router.post("/enroll")
+def enroll(body: EnrollReq):
+    data = _load_auth()
+    if not data.get("password_hash"):
+        raise HTTPException(400, "Not initialized")
+    totp = pyotp.TOTP(data["totp_secret"])
+    if not totp.verify(body.code, valid_window=1):
+        raise HTTPException(401, "Invalid TOTP")
+    data["enrolled"] = True
+    _save_auth(data)
+    return {"ok": True}
+
+class LoginReq(BaseModel):
+    username: str
+    password: str
+    code: Optional[str] = None
+
+@router.post("/login")
+def login(body: LoginReq, response: Response):
+    data = _load_auth()
+    if not data.get("password_hash"):
+        # not initialized: ask to set password
+        return JSONResponse({"ok": False, "stage": "init"}, status_code=403)
+    if body.username != data.get("user"):
+        raise HTTPException(401, "Invalid credentials")
+    if not pwd_ctx.verify(body.password, data["password_hash"]):
+        raise HTTPException(401, "Invalid credentials")
+    if not data.get("enrolled"):
+        # Require enrollment step
+        return JSONResponse({"ok": False, "stage": "enroll"}, status_code=403)
+    # Verify TOTP
+    totp = pyotp.TOTP(data["totp_secret"])
+    if not (body.code and totp.verify(body.code, valid_window=1)):
+        raise HTTPException(401, "Invalid TOTP")
+    session = _make_cookie(data["user"], data["session_key"])
+    response.set_cookie(
+        COOKIE_NAME, session, max_age=COOKIE_TTL, httponly=True, secure=True, samesite="Strict", path="/"
+    )
+    return {"ok": True}
+
+@router.post("/logout")
+def logout(response: Response):
+    response.delete_cookie(COOKIE_NAME, path="/")
+    return {"ok": True}
+
+def require_session(request: Request):
+    data = _load_auth()
+    session = request.cookies.get(COOKIE_NAME)
+    if not session:
+        raise HTTPException(401, "No session")
+    user = _verify_cookie(session, data["session_key"])
+    if not user:
+        raise HTTPException(401, "Invalid session")
+    return user
+
+@router.get("/validate")
+def validate(_: str = Depends(require_session)):
+    return {"ok": True}
+
 BASH
 chown -R ibkr:ibkr /opt/ibkr
 
@@ -330,84 +432,9 @@ sudo -u ibkr bash -lc 'mkdir -p ~/Downloads && \
    curl -fL -o ~/Downloads/ibgateway.sh https://download2.interactivebrokers.com/installers/ibgateway/latest-standalone/ibgateway-latest-standalone-linux-x64.sh) && \
   chmod +x ~/Downloads/ibgateway.sh && \
   ~/Downloads/ibgateway.sh -q -dir $HOME/Jts/ibgateway/1037 || true'
-  
-# ---- Openbox tweaks: single desktop, no wheel-switching, maximize IB Gateway ----
-sudo -u ibkr mkdir -p /home/ibkr/.config/openbox
-sudo -u ibkr tee /home/ibkr/.config/openbox/rc.xml >/dev/null <<'XML'
-<?xml version="1.0" encoding="UTF-8"?>
-<openbox_config xmlns="http://openbox.org/3.4/rc">
-  <desktops>
-    <number>1</number>
-    <firstdesk>1</firstdesk>
-  </desktops>
-  <mouse>
-    <dragThreshold>8</dragThreshold>
-    <doubleClickTime>200</doubleClickTime>
-    <screenEdgeStrength>0</screenEdgeStrength>
-    <!-- Disable wheel to change desktop on background -->
-    <context name="Root">
-      <mousebind button="Up" action="Click"/>
-      <mousebind button="Down" action="Click"/>
-    </context>
-  </mouse>
-  <theme>
-    <name>Clearlooks</name>
-    <titleLayout>NLIMC</titleLayout>
-  </theme>
-  <applications/>
-</openbox_config>
-XML
-sudo -u ibkr tee /home/ibkr/.config/openbox/autostart >/dev/null <<'SH'
-(sleep 8; wmctrl -r "IB Gateway" -b add,maximized_vert,maximized_horz) &
-SH
-sudo chmod +x /home/ibkr/.config/openbox/autostart
 
-# ---- Systemd: uvicorn + ibgateway ----
-PYBIN="/usr/bin/python3"
-if [[ $USE_VENV -eq 1 && -x /opt/tradingbot/.venv/bin/python ]]; then
-  PYBIN="/opt/tradingbot/.venv/bin/python"
-fi
-
-if [[ $NO_TLS -eq 1 ]]; then
-  cat > /etc/systemd/system/uvicorn.service <<UNIT
-[Unit]
-Description=Uvicorn TradingBot backend (FastAPI)
-After=network-online.target
-
-[Service]
-Type=simple
-User=www-data
-WorkingDirectory=/opt/tradingbot
-Environment=TB_RUNTIME_DIR=/opt/tradingbot/runtime
-Environment=TB_INSECURE_COOKIES=1
-ExecStart=$PYBIN -m uvicorn app.web:app --host 127.0.0.1 --port 8000
-Restart=always
-RestartSec=3
-
-[Install]
-WantedBy=multi-user.target
-UNIT
-else
-  cat > /etc/systemd/system/uvicorn.service <<UNIT
-[Unit]
-Description=Uvicorn TradingBot backend (FastAPI)
-After=network-online.target
-
-[Service]
-Type=simple
-User=www-data
-WorkingDirectory=/opt/tradingbot
-Environment=TB_RUNTIME_DIR=/opt/tradingbot/runtime
-ExecStart=$PYBIN -m uvicorn app.web:app --host 127.0.0.1 --port 8000
-Restart=always
-RestartSec=3
-
-[Install]
-WantedBy=multi-user.target
-UNIT
-fi
-
-cat > /etc/systemd/system/ibgateway.service <<'UNIT'
+# ---- Systemd units ----
+install -D -m 0644 /dev/stdin /etc/systemd/system/ibgateway.service <<'UNIT'
 [Unit]
 Description=IBKR Gateway headless (Xvfb + x11vnc + websockify)
 After=network-online.target
@@ -416,60 +443,94 @@ After=network-online.target
 Type=simple
 User=ibkr
 Environment=DISPLAY=:1
-Environment=XVFB_W=800
-Environment=XVFB_H=610
+Environment=XVFB_W=1400
+Environment=XVFB_H=900
 ExecStart=/opt/ibkr/run-ibgateway.sh
 Restart=always
 RestartSec=5
 
 [Install]
 WantedBy=multi-user.target
+
+UNIT
+
+install -D -m 0644 /dev/stdin /etc/systemd/system/uvicorn.service <<'UNIT'
+[Unit]
+Description=Uvicorn TradingBot backend (FastAPI)
+After=network-online.target
+
+[Service]
+Type=simple
+User=www-data
+WorkingDirectory=/opt/tradingbot
+Environment=TB_RUNTIME_DIR=/opt/tradingbot/runtime
+ExecStart=/usr/bin/python3 -m uvicorn app.web:app --host 127.0.0.1 --port 8000
+Restart=always
+RestartSec=3
+
+[Install]
+WantedBy=multi-user.target
+
 UNIT
 
 systemctl daemon-reload
 systemctl enable --now ibgateway.service
-systemctl restart ibgateway.service || true
 systemctl enable --now uvicorn.service
 
-# ---- Nginx site (HTTP dev vs HTTPS prod) ----
-if [[ $NO_TLS -eq 1 ]]; then
-  cat > /etc/nginx/sites-available/tradingbot <<'NGINX'
+# ---- Nginx ----
+install -D -m 0644 /dev/stdin /etc/nginx/sites-available/tradingbot <<'NGINX'
+
+# Place under /etc/nginx/sites-available/tradingbot and symlink to sites-enabled
 server {
     listen 80;
-    server_name $DOMAIN;
+    server_name _;
+    # Redirect to HTTPS
+    return 301 https://$host$request_uri;
+}
 
-    # Auth gate
+server {
+    listen 443 ssl http2;
+    server_name _;
+
+    # TLS will be populated by certbot
+    ssl_certificate     /etc/letsencrypt/live/your.domain/fullchain.pem;
+    ssl_certificate_key /etc/letsencrypt/live/your.domain/privkey.pem;
+
+    # ---- Auth gate for everything ----
     location = /auth/validate {
         proxy_pass http://127.0.0.1:8000/auth/validate;
         proxy_set_header Host $host;
         proxy_set_header X-Real-IP $remote_addr;
-        proxy_set_header X-Forwarded-Proto http;
+        proxy_set_header X-Forwarded-Proto https;
     }
 
+    # Apply auth to all routes (except init/login/enroll and ACME)
     location / {
         auth_request /auth/validate;
         error_page 401 = @unauth;
+
         proxy_pass http://127.0.0.1:8000;
         proxy_set_header Host $host;
         proxy_set_header X-Real-IP $remote_addr;
-        proxy_set_header X-Forwarded-Proto http;
+        proxy_set_header X-Forwarded-Proto https;
     }
 
     location @unauth {
+        # Allow public paths used for first-time setup & login
         proxy_pass http://127.0.0.1:8000;
         proxy_set_header Host $host;
         proxy_set_header X-Real-IP $remote_addr;
-        proxy_set_header X-Forwarded-Proto http;
+        proxy_set_header X-Forwarded-Proto https;
     }
 
-    # noVNC static
+    # Serve noVNC static UI
     location /novnc/ {
         auth_request /auth/validate;
         alias /usr/share/novnc/;
         autoindex off;
     }
 
-    # websockify (noVNC WebSocket)
+    # WebSocket for noVNC/websockify
     location /websockify {
         auth_request /auth/validate;
         proxy_http_version 1.1;
@@ -478,92 +539,25 @@ server {
         proxy_pass http://127.0.0.1:6080;
     }
 
-    # ACME (not used in --no-tls, but harmless)
+    # ACME
     location ^~ /.well-known/acme-challenge/ {
         root /var/www/html;
         try_files $uri =404;
         allow all;
     }
 }
+
 NGINX
-else
-  cat > /etc/nginx/sites-available/tradingbot <<NGINX
-server {
-    listen 80;
-    server_name $DOMAIN;
-    return 301 https://\$host\$request_uri;
-}
-
-server {
-    listen 443 ssl http2;
-    server_name $DOMAIN;
-
-    # Filled by Certbot later
-    ssl_certificate     /etc/letsencrypt/live/$DOMAIN/fullchain.pem;
-    ssl_certificate_key /etc/letsencrypt/live/$DOMAIN/privkey.pem;
-
-    location = /auth/validate {
-        proxy_pass http://127.0.0.1:8000/auth/validate;
-        proxy_set_header Host \$host;
-        proxy_set_header X-Real-IP \$remote_addr;
-        proxy_set_header X-Forwarded-Proto https;
-    }
-
-    location / {
-        auth_request /auth/validate;
-        error_page 401 = @unauth;
-        proxy_pass http://127.0.0.1:8000;
-        proxy_set_header Host \$host;
-        proxy_set_header X-Real-IP \$remote_addr;
-        proxy_set_header X-Forwarded-Proto https;
-    }
-
-    location @unauth {
-        proxy_pass http://127.0.0.1:8000;
-        proxy_set_header Host \$host;
-        proxy_set_header X-Real-IP \$remote_addr;
-        proxy_set_header X-Forwarded-Proto https;
-    }
-
-    location /novnc/ {
-        auth_request /auth/validate;
-        alias /usr/share/novnc/;
-        autoindex off;
-    }
-
-    location /websockify {
-        auth_request /auth/validate;
-        proxy_http_version 1.1;
-        proxy_set_header Upgrade \$http_upgrade;
-        proxy_set_header Connection "upgrade";
-        proxy_pass http://127.0.0.1:6080;
-    }
-
-    location ^~ /.well-known/acme-challenge/ {
-        root /var/www/html;
-        try_files \$uri =404;
-        allow all;
-    }
-}
-NGINX
-fi
 
 ln -sf /etc/nginx/sites-available/tradingbot /etc/nginx/sites-enabled/tradingbot
-rm -f /etc/nginx/sites-enabled/default || true
 nginx -t && systemctl reload nginx
 
-if [[ $NO_TLS -eq 0 ]]; then
-  certbot --nginx -d "$DOMAIN" -m "$EMAIL" --agree-tos --no-eff-email -n || true
-  systemctl reload nginx
-else
-  echo "[DEV] Running without TLS. Cookies allowed over HTTP via TB_INSECURE_COOKIES=1 in uvicorn service."
-fi
+# ---- TLS ----
+certbot --nginx -d "$DOMAIN" -m "$EMAIL" --agree-tos --no-eff-email -n || true
+systemctl reload nginx
 
 echo "---------------------------------------------"
-if [[ $NO_TLS -eq 1 ]]; then
-  echo "Install complete (DEV, HTTP). Open:  http://$DOMAIN"
-else
-  echo "Install complete (PROD, HTTPS). Open: https://$DOMAIN"
-fi
+echo "Install complete."
+echo "Open: https://$DOMAIN"
 echo "First run: set password -> scan TOTP QR -> enter code -> login."
-echo "Settings page will show the IBKR gateway console (noVNC)."
+echo "Go to Settings to see the IBKR gateway console."
