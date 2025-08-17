@@ -1,6 +1,7 @@
 # app/ibkr_api.py
 from __future__ import annotations
 import os
+import math
 from fastapi import APIRouter, HTTPException
 from ib_insync import IB, util
 
@@ -27,6 +28,16 @@ async def ping():
     # server time proves the API session is alive
     dt = await ib.reqCurrentTimeAsync()
     return {"connected": ib.isConnected(), "server_time": dt.isoformat()}
+    
+def _num_or_none(x):
+    """Cast to float and drop NaN/Inf to None so JSON stays valid."""
+    if x is None:
+        return None
+    try:
+        v = float(x)
+        return v if math.isfinite(v) else None
+    except Exception:
+        return None
 
 @router.get("/accounts")
 async def accounts():
@@ -50,8 +61,8 @@ async def positions():
             "secType": p.contract.secType,
             "currency": p.contract.currency,
             "exchange": p.contract.exchange,
-            "position": p.position,
-            "avgCost": p.avgCost,
+            "position": _num_or_none(p.position),
+            "avgCost": _num_or_none(p.avgCost),
         }
         for p in pos
     ]
