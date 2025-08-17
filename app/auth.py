@@ -152,3 +152,12 @@ def require_session(request: Request):
 @router.get("/validate")
 def validate(_: str = Depends(require_session)):
     return {"ok": True}
+
+@router.get("/state")
+def state():
+    data = _load_auth()
+    if not data.get("password_hash"):
+        return {"stage": "init"}      # first run → set password
+    if not data.get("enrolled"):
+        return {"stage": "enroll"}    # show QR + verify first TOTP
+    return {"stage": "login"}         # normal login thereafter
