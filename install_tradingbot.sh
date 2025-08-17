@@ -261,7 +261,7 @@ set -euo pipefail
 
 export DISPLAY=${DISPLAY:-:1}
 XVFB_W=${XVFB_W:-800}
-XVFB_H=${XVFB_H:-600}
+XVFB_H=${XVFB_H:-610}
 XVFB_D=${XVFB_D:-24}
 
 IB_HOME="${IB_HOME:-$HOME/Jts/ibgateway/1037}"
@@ -417,7 +417,7 @@ Type=simple
 User=ibkr
 Environment=DISPLAY=:1
 Environment=XVFB_W=800
-Environment=XVFB_H=600
+Environment=XVFB_H=610
 ExecStart=/opt/ibkr/run-ibgateway.sh
 Restart=always
 RestartSec=5
