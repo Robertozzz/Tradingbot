@@ -52,7 +52,7 @@ apt-get install -y \
   python3 python3-venv python3-pip python3-uvicorn python3-fastapi \
   python3-passlib python3-pyotp python3-qrcode \
   unzip curl ca-certificates git rsync \
-  xvfb openbox x11vnc novnc websockify \
+  xvfb openbox x11vnc novnc websockify wmctrl xdotool \
   nginx certbot python3-certbot-nginx \
   libgtk-3-0 libglib2.0-0 libpango-1.0-0 libcairo2 libgdk-pixbuf-2.0-0 \
   libxcomposite1 libxdamage1 libxfixes3 libxss1 libxtst6 libxi6 libxrandr2 \
@@ -247,9 +247,10 @@ if [[ -f /opt/tradingbot/requirements.txt ]]; then
   echo "[VENV] Installing Python deps"
   cd /opt/tradingbot
   python3 -m venv .venv
-  . .venv/bin/activate
-  pip install --upgrade pip wheel
-  pip install -r requirements.txt
+  chown -R www-data:www-data .venv
+  # install as www-data so future pip installs also work
+  sudo -u www-data -H /opt/tradingbot/.venv/bin/pip install --upgrade pip wheel
+  sudo -u www-data -H /opt/tradingbot/.venv/bin/pip install -r requirements.txt
   USE_VENV=1
 fi
 
@@ -325,6 +326,7 @@ sudo -u ibkr bash -lc 'mkdir -p ~/Downloads && \
    curl -fL -o ~/Downloads/ibgateway.sh https://download2.interactivebrokers.com/installers/ibgateway/latest-standalone/ibgateway-latest-standalone-linux-x64.sh) && \
   chmod +x ~/Downloads/ibgateway.sh && \
   ~/Downloads/ibgateway.sh -q -dir $HOME/Jts/ibgateway/1037 || true'
+  
 
 # ---- Systemd: uvicorn + ibgateway ----
 PYBIN="/usr/bin/python3"
@@ -380,8 +382,8 @@ After=network-online.target
 Type=simple
 User=ibkr
 Environment=DISPLAY=:1
-Environment=XVFB_W=1400
-Environment=XVFB_H=900
+Environment=XVFB_W=1280
+Environment=XVFB_H=800
 ExecStart=/opt/ibkr/run-ibgateway.sh
 Restart=always
 RestartSec=5
@@ -512,6 +514,7 @@ NGINX
 fi
 
 ln -sf /etc/nginx/sites-available/tradingbot /etc/nginx/sites-enabled/tradingbot
+rm -f /etc/nginx/sites-enabled/default || true
 nginx -t && systemctl reload nginx
 
 if [[ $NO_TLS -eq 0 ]]; then
