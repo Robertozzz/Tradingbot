@@ -105,7 +105,7 @@ def enroll_qr():
     return StreamingResponse(buf, media_type="image/png")
 
 @router.post("/enroll")
-def enroll(body: EnrollReq):
+def enroll(body: EnrollReq, response: Response):
     data = _load_auth()
     if not data.get("password_hash"):
         raise HTTPException(400, "Not initialized")
@@ -114,6 +114,17 @@ def enroll(body: EnrollReq):
         raise HTTPException(401, "Invalid TOTP")
     data["enrolled"] = True
     _save_auth(data)
+    # First-run quality of life: set a session cookie right after enrollment
+    session = _make_cookie(data["user"], data["session_key"])
+    response.set_cookie(
+        COOKIE_NAME,
+        session,
+        max_age=COOKIE_TTL,
+        httponly=True,
+        secure=(os.environ.get("TB_INSECURE_COOKIES") != "1"),
+        samesite="Strict",
+        path="/",
+    )
     return {"ok": True}
 
 class LoginReq(BaseModel):
