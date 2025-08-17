@@ -42,6 +42,12 @@ try:
     app.include_router(api_router, prefix="")
 except Exception:
     pass
+    
+try:
+    from .auth import router as auth_router
+    app.include_router(auth_router, prefix="")
+except Exception:
+    pass
 
 def _runtime_dir() -> Path:
     for p in [
@@ -99,7 +105,7 @@ async def system_control(request: Request):
     body = await request.json()
     module = (body.get("module") or "").strip().lower()
     action = (body.get("action") or "").strip().lower()
-    if module not in {"engine","web","telegram","api","base"}:
+    if module not in {"engine","web","telegram","api","base","ibgateway"}:
         raise HTTPException(400, "Unknown module")
     if action not in {"start","stop","restart","drain"}:
         raise HTTPException(400, "Unknown action")
