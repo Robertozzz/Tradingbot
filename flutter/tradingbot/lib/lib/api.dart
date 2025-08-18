@@ -39,4 +39,122 @@ class Api {
   static Future<Map<String, dynamic>> ibkrAccounts() =>
       _getObj('/ibkr/accounts');
   static Future<List<dynamic>> ibkrPositions() => _getList('/ibkr/positions');
+  static Future<List<dynamic>> ibkrSearch(String q) =>
+      _getList('/ibkr/search?${Uri(queryParameters: {'q': q}).query}');
+
+  static Future<Map<String, dynamic>> ibkrQuote({
+    String? symbol,
+    int? conId,
+    String secType = 'STK',
+    String exchange = 'SMART',
+    String currency = 'USD',
+  }) async {
+    final params = <String, String>{};
+    if (symbol != null && symbol.isNotEmpty) params['symbol'] = symbol;
+    if (conId != null) params['conId'] = '$conId';
+    params['secType'] = secType;
+    params['exchange'] = exchange;
+    params['currency'] = currency;
+    final q = Uri(queryParameters: params).query;
+    return _getObj('/ibkr/quote?$q');
+  }
+
+  static Future<Map<String, dynamic>> ibkrHistory({
+    String? symbol,
+    int? conId,
+    String secType = 'STK',
+    String exchange = 'SMART',
+    String currency = 'USD',
+    String duration = '1 D',
+    String barSize = '5 mins',
+    String what = 'TRADES',
+    bool useRTH = true,
+  }) async {
+    final params = <String, String>{
+      'duration': duration,
+      'barSize': barSize,
+      'what': what,
+      'useRTH': useRTH.toString(),
+      'secType': secType,
+      'exchange': exchange,
+      'currency': currency,
+    };
+    if (symbol != null && symbol.isNotEmpty) params['symbol'] = symbol;
+    if (conId != null) params['conId'] = '$conId';
+    final q = Uri(queryParameters: params).query;
+    return _getObj('/ibkr/history?$q');
+  }
+
+  static Future<List<dynamic>> ibkrOpenOrders() =>
+      _getList('/ibkr/orders/open');
+  static Future<List<dynamic>> ibkrOrdersHistory({int limit = 200}) =>
+      _getList('/ibkr/orders/history?${Uri(queryParameters: {
+            'limit': '$limit'
+          }).query}');
+  static Future<Map<String, dynamic>> ibkrPnlSingle(int conId) => _getObj(
+      '/ibkr/pnl/single?${Uri(queryParameters: {'conId': '$conId'}).query}');
+
+  static Future<Map<String, dynamic>> ibkrPnlSummary() =>
+      _getObj('/ibkr/pnl/summary');
+
+  static Future<Map<String, dynamic>> ibkrPortfolioSpark(
+          {String duration = '1 D', String barSize = '5 mins'}) =>
+      _getObj('/ibkr/portfolio/spark?${Uri(queryParameters: {
+            'duration': duration,
+            'barSize': barSize
+          }).query}');
+
+  static Future<Map<String, dynamic>> ibkrPlaceOrder({
+    String? symbol,
+    int? conId,
+    String secType = 'STK',
+    String exchange = 'SMART',
+    String currency = 'USD',
+    required String side, // BUY/SELL
+    required String type, // MKT/LMT
+    required num qty,
+    num? limitPrice,
+    String tif = 'DAY',
+  }) async {
+    final payload = <String, dynamic>{
+      if (symbol != null && symbol.isNotEmpty) 'symbol': symbol,
+      if (conId != null) 'conId': conId,
+      'secType': secType,
+      'exchange': exchange,
+      'currency': currency,
+      'side': side,
+      'type': type,
+      'qty': qty,
+      if (limitPrice != null) 'limitPrice': limitPrice,
+      'tif': tif,
+    };
+    final r = await http.post(
+      _uri('/ibkr/orders/place'),
+      headers: {'Content-Type': 'application/json'},
+      body: jsonEncode(payload),
+    );
+    if (r.statusCode != 200) {
+      throw Exception('POST /ibkr/orders/place -> ${r.statusCode} ${r.body}');
+    }
+    final d = jsonDecode(r.body);
+    return d is Map<String, dynamic> ? d : {'ok': true};
+  }
+
+  static Future<void> ibkrCancelOrder(int orderId) async {
+    final r = await http.post(_uri('/ibkr/orders/cancel'),
+        headers: {'Content-Type': 'application/json'},
+        body: jsonEncode({'orderId': orderId}));
+    if (r.statusCode != 200) throw Exception('cancel -> ${r.statusCode}');
+  }
+
+  static Future<Map<String, dynamic>> ibkrReplaceOrder(
+      Map<String, dynamic> payload) async {
+    final r = await http.post(_uri('/ibkr/orders/replace'),
+        headers: {'Content-Type': 'application/json'},
+        body: jsonEncode(payload));
+    if (r.statusCode != 200) {
+      throw Exception('replace -> ${r.statusCode} ${r.body}');
+    }
+    return jsonDecode(r.body) as Map<String, dynamic>;
+  }
 }

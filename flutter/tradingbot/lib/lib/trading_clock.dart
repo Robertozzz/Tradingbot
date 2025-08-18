@@ -1584,8 +1584,8 @@ class _CenteredTapePainter extends CustomPainter {
             ),
             const Radius.circular(999),
           );
-          canvas.drawRRect(
-              pill, Paint()..color = fitting.first.color.withOpacity(0.95));
+          canvas.drawRRect(pill,
+              Paint()..color = fitting.first.color.withValues(alpha: 0.95));
           tp.paint(canvas, Offset(cx - tp.width / 2, cy - tp.height / 2));
         }
       }

@@ -54,7 +54,7 @@ class AccountsPage extends StatefulWidget {
 }
 
 class _AccountsPageState extends State<AccountsPage> {
-  late List<AccountModel> accounts;
+  List<AccountModel> accounts = [];
   late Map<Timeframe, List<FlSpot>> portfolioSeries;
   Timeframe selectedTf = Timeframe.d1;
   String search = '';
@@ -64,12 +64,11 @@ class _AccountsPageState extends State<AccountsPage> {
   @override
   void initState() {
     super.initState();
-    accounts = _demoAccounts();
-    portfolioSeries = _demoPortfolioSeries();
-    _mergeIbkr(); // add IBKR as another account, keep demo intact
+    portfolioSeries = _demoPortfolioSeries(); // keep dashboard chart for now
+    _loadIbkrAccounts(); // IBKR only
   }
 
-  Future<void> _mergeIbkr() async {
+  Future<void> _loadIbkrAccounts() async {
     try {
       final obj = await Api.ibkrAccounts(); // Map<String, dynamic>
       if (obj.isEmpty) return;
@@ -96,8 +95,8 @@ class _AccountsPageState extends State<AccountsPage> {
           List<double>.generate(24, (i) => base * (0.995 + i * 0.0002));
 
       setState(() {
-        accounts = List.of(accounts)
-          ..add(AccountModel(
+        accounts = [
+          AccountModel(
             id: 'ibkr_sum',
             name: 'IBKR',
             provider: 'Interactive Brokers',
@@ -107,10 +106,11 @@ class _AccountsPageState extends State<AccountsPage> {
             dayChangePct: 0,
             spark: spark,
             color: const Color(0xFFFF6B57),
-          ));
+          ),
+        ];
       });
     } catch (e) {
-      // keep demo visible; optionally log e
+      //  optionally log e
     }
   }
 
@@ -118,46 +118,6 @@ class _AccountsPageState extends State<AccountsPage> {
     if (v == null) return null;
     if (v is num) return v;
     return num.tryParse(v.toString().replaceAll(',', ''));
-  }
-
-  // --- Demo data generators ---
-  List<AccountModel> _demoAccounts() {
-    final rnd = Random(42);
-    List<Color> colors = const [
-      Color(0xFF60A5FA),
-      Color(0xFF4CC38A),
-      Color(0xFFF59E0B),
-      Color(0xFFE879F9),
-      Color(0xFF22D3EE),
-      Color(0xFF7DD3FC),
-    ];
-    List<String> names = [
-      'Binance spot',
-      'Universal Crypto Signals',
-      'Binance futures'
-    ];
-    List<String> providers = ['Binance', 'Binance', 'Binance Futures'];
-    List<AccountModel> out = [];
-    for (int i = 0; i < names.length; i++) {
-      final base = 42000 + rnd.nextInt(6000);
-      final spark =
-          List<double>.generate(24, (j) => base + rnd.nextInt(2000) - 1000)
-              .map((e) => e.toDouble())
-              .toList();
-      final pct = (rnd.nextDouble() * 6 - 3);
-      out.add(AccountModel(
-        id: 'acc_$i',
-        name: names[i],
-        provider: providers[i],
-        active: true,
-        total: base.toDouble() + rnd.nextInt(5000),
-        available: base * 0.17,
-        dayChangePct: pct,
-        spark: spark,
-        color: colors[i % colors.length],
-      ));
-    }
-    return out;
   }
 
   Map<Timeframe, List<FlSpot>> _demoPortfolioSeries() {

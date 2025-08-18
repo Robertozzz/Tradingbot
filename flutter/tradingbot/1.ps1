@@ -1,4 +1,4 @@
-cd "D:\Flutter\tradingbot"
+cd "D:\tradingbot\Flutter\tradingbot"
 
 # rebuild
 flutter build web --release --wasm --base-href /
@@ -14,7 +14,7 @@ if (Test-Path $dst) {
 }
 
 # Copy new build
-Copy-Item -Path "D:\Flutter\tradingbot\build\web\*" -Destination $dst -Recurse -Force
+Copy-Item -Path "D:\tradingbot\Flutter\tradingbot\build\web\*" -Destination $dst -Recurse -Force
 Write-Host "✅ Deployed to $dst" -ForegroundColor Green
 
 # Git commit & push
@@ -24,4 +24,4 @@ git commit -m "Bugfixes"
 git push -u origin main
 
 # Return to Flutter project dir
-cd "D:\Flutter\tradingbot"
+cd "D:\tradingbot\Flutter\tradingbot"

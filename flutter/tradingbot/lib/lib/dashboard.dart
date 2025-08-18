@@ -13,6 +13,7 @@ class DashboardPage extends StatefulWidget {
 
 class _DashboardPageState extends State<DashboardPage> {
   Map<String, dynamic>? summary;
+  Map<String, dynamic>? pnl;
   Timer? timer;
   String range = '1D';
   final fMoney = NumberFormat.compactCurrency(symbol: '\$');
@@ -21,7 +22,11 @@ class _DashboardPageState extends State<DashboardPage> {
   void initState() {
     super.initState();
     _load();
-    timer = Timer.periodic(const Duration(seconds: 15), (_) => _load());
+    _loadPnl();
+    timer = Timer.periodic(const Duration(seconds: 15), (_) {
+      _load();
+      _loadPnl();
+    });
   }
 
   @override
@@ -34,6 +39,13 @@ class _DashboardPageState extends State<DashboardPage> {
     try {
       final d = await Api.summary();
       setState(() => summary = d);
+    } catch (_) {}
+  }
+
+  Future<void> _loadPnl() async {
+    try {
+      final d = await Api.ibkrPnlSummary();
+      setState(() => pnl = d);
     } catch (_) {}
   }
 
@@ -88,16 +100,10 @@ class _DashboardPageState extends State<DashboardPage> {
               _kpi('Total portfolio', fMoney.format(total)),
               _kpi('Portfolio change (24h)',
                   '${changePct >= 0 ? '+' : ''}${changePct.toStringAsFixed(2)}%'),
-              _kpi(
-                  'Realized PnL (24h)',
-                  s?['realized_24h'] != null
-                      ? fMoney.format((s!['realized_24h'] as num).toDouble())
-                      : '\$0'),
-              _kpi(
-                  'Unrealized PnL',
-                  s?['unrealized'] != null
-                      ? fMoney.format((s!['unrealized'] as num).toDouble())
-                      : '\$0'),
+              _kpi('Realized PnL (today)',
+                  fMoney.format((pnl?['realized'] as num? ?? 0).toDouble())),
+              _kpi('Unrealized PnL',
+                  fMoney.format((pnl?['unrealized'] as num? ?? 0).toDouble())),
             ],
           ),
           const SizedBox(height: 12),

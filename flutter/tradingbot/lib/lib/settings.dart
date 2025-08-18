@@ -30,7 +30,7 @@ class SettingsPage extends StatelessWidget {
           // ===== Tape Clock (combined controls) =====
           Card(
             elevation: 0,
-            color: scheme.surface.withOpacity(.6),
+            color: scheme.surface.withValues(alpha: .6),
             shape:
                 RoundedRectangleBorder(borderRadius: BorderRadius.circular(16)),
             child: Padding(
@@ -95,7 +95,7 @@ class SettingsPage extends StatelessWidget {
           // ===== Markets (compact chips) =====
           Card(
             elevation: 0,
-            color: scheme.surface.withOpacity(.6),
+            color: scheme.surface.withValues(alpha: .6),
             shape:
                 RoundedRectangleBorder(borderRadius: BorderRadius.circular(16)),
             child: Padding(

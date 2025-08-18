@@ -232,8 +232,9 @@ class _SidePanel extends StatelessWidget {
       final (icon, label) = data;
       final selected = selectedIndex == i;
       final bg =
-          selected ? scheme.primary.withOpacity(.12) : Colors.transparent;
-      final fg = selected ? scheme.primary : Colors.white.withOpacity(.88);
+          selected ? scheme.primary.withValues(alpha: .12) : Colors.transparent;
+      final fg =
+          selected ? scheme.primary : Colors.white.withValues(alpha: .88);
       return Tooltip(
         message: label,
         waitDuration: const Duration(milliseconds: 400),
@@ -246,7 +247,7 @@ class _SidePanel extends StatelessWidget {
               color: bg,
               borderRadius: BorderRadius.circular(12),
               border: selected
-                  ? Border.all(color: scheme.primary.withOpacity(.35))
+                  ? Border.all(color: scheme.primary.withValues(alpha: .35))
                   : null,
             ),
             padding: EdgeInsets.symmetric(horizontal: expanded ? 12 : 0),
@@ -273,9 +274,9 @@ class _SidePanel extends StatelessWidget {
       curve: Curves.easeOutCubic,
       width: width,
       decoration: BoxDecoration(
-        color: Theme.of(context).colorScheme.surface.withOpacity(.6),
+        color: Theme.of(context).colorScheme.surface.withValues(alpha: .6),
         border: Border(
-          right: BorderSide(color: Colors.white.withOpacity(.06)),
+          right: BorderSide(color: Colors.white.withValues(alpha: .06)),
         ),
       ),
       child: SafeArea(
@@ -313,7 +314,7 @@ class _SidePanel extends StatelessWidget {
                 ],
               ),
               const SizedBox(height: 4),
-              Divider(color: Colors.white.withOpacity(.08)),
+              Divider(color: Colors.white.withValues(alpha: .08)),
               const SizedBox(height: 8),
 
               // Core
@@ -330,7 +331,7 @@ class _SidePanel extends StatelessWidget {
                       )),
 
               const SizedBox(height: 8),
-              Divider(color: Colors.white.withOpacity(.08)),
+              Divider(color: Colors.white.withValues(alpha: .08)),
               const SizedBox(height: 8),
               if (expanded)
                 Padding(

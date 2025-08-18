@@ -162,7 +162,8 @@ class _AuthGateState extends State<AuthGate> {
       case AuthStage.init:
         return _InitPassword(onSubmit: _initPassword, msg: msg);
       case AuthStage.enroll:
-        return _EnrollTotp(onSubmit: _enroll, msg: msg);
+        return _EnrollTotp(
+            onSubmit: _enroll, msg: msg, baseUrl: widget.baseUrl);
       case AuthStage.login:
         return _Login(onSubmit: _login, msg: msg, onReset: _resetAccount);
     }
@@ -302,9 +303,10 @@ class _InitPasswordState extends State<_InitPassword> {
 
 class _EnrollTotp extends StatefulWidget {
   final Future<void> Function(String) onSubmit;
-
   final String msg;
-  const _EnrollTotp({required this.onSubmit, required this.msg});
+  final String baseUrl;
+  const _EnrollTotp(
+      {required this.onSubmit, required this.msg, required this.baseUrl});
   @override
   State<_EnrollTotp> createState() => _EnrollTotpState();
 }
@@ -320,8 +322,10 @@ class _EnrollTotpState extends State<_EnrollTotp> {
           const SizedBox(height: 12),
           // cache-busting query param
           Image.network(
-              '/auth/enroll_qr?ts=${DateTime.now().millisecondsSinceEpoch}',
-              height: 180),
+            _u('/auth/enroll_qr?ts=${DateTime.now().millisecondsSinceEpoch}',
+                widget.baseUrl),
+            height: 180,
+          ),
           const SizedBox(height: 12),
           TextField(
               controller: c,
