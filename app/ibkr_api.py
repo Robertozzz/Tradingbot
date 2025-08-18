@@ -66,31 +66,42 @@ async def accounts():
 @router.get("/positions")
 async def positions():
     await _ensure_connected()
+
+    # Prefer modern coroutine API; fall back to legacy stream API.
     try:
-        pos = await ib.positionsAsync()
+        if hasattr(ib, "reqPositionsAsync"):
+            pos = await ib.reqPositionsAsync()
+        else:
+            ib.reqPositions()
+            await ib.sleep(1.0)  # brief window to collect snapshots
+            pos = list(ib.positions())
     except Exception as e:
-        raise HTTPException(status_code=502, detail=f"positionsAsync failed: {e!s}")
+        raise HTTPException(status_code=502, detail=f"reqPositions failed: {e!s}")
+    finally:
+        try:
+            ib.cancelPositions()
+        except Exception:
+            pass
 
     out = []
-    for p in pos:
+    for p in (pos or []):
         try:
             c = p.contract
-            # Some contracts miss localSymbol/primaryExchange
-            symbol   = _safe_get(c, "localSymbol") or _safe_get(c, "symbol") or str(_safe_get(c, "conId", ""))
-            secType  = _safe_get(c, "secType")
-            currency = _safe_get(c, "currency")
-            exchange = _safe_get(c, "primaryExchange") or _safe_get(c, "exchange")
+            symbol   = getattr(c, "localSymbol", None) or getattr(c, "symbol", None) or str(getattr(c, "conId", ""))
+            secType  = getattr(c, "secType", None)
+            currency = getattr(c, "currency", None)
+            exchange = getattr(c, "primaryExchange", None) or getattr(c, "exchange", None)
             out.append({
                 "account": p.account,
                 "symbol": symbol,
                 "secType": secType,
                 "currency": currency,
                 "exchange": exchange,
-                "position": _num_or_none(p.position),
-                "avgCost": _num_or_none(p.avgCost),
+                "position": float(p.position),
+                "avgCost": float(p.avgCost),
             })
         except Exception:
-            # Log and skip any weird row rather than 500 the whole endpoint
-            log.exception("Failed to normalize IBKR position row")
+            # Skip malformed rows instead of failing the whole endpoint
+            import logging; logging.getLogger("ibkr").exception("normalize position row")
             continue
     return out
