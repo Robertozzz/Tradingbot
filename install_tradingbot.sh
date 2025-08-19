@@ -6,13 +6,11 @@
 #
 # Usage (pick ONE source method):
 #   sudo bash install_tradingbot.sh --domain bot.example.com --email you@example.com \
-#     --git https://github.com/you/your-tradingbot.git --branch main
+#     --git https://github.com/you/your-tradingbot.git --ref main
 #   # OR
-#   sudo bash install_tradingbot.sh --domain bot.example.com --email you@example.com \
-#     --zip https://example.com/tradingbot_bundle.zip
 #   # Dev mode (HTTP only, no TLS):
 #   sudo bash install_tradingbot.sh --no-tls --domain myvm.local --email you@example.com \
-#     --git https://github.com/you/your-tradingbot.git --branch main
+#     --git https://github.com/you/your-tradingbot.git --ref main
 
 set -euo pipefail
 
@@ -21,7 +19,8 @@ DOMAIN=""
 EMAIL=""
 ZIP_SRC=""
 GIT_URL=""
-GIT_BRANCH="main"
+# Default ref if none provided: main
+GIT_REF="main"
 NO_TLS=0
 
 while [[ $# -gt 0 ]]; do
@@ -30,7 +29,11 @@ while [[ $# -gt 0 ]]; do
     --email) EMAIL="$2"; shift 2 ;;
     --zip) ZIP_SRC="$2"; shift 2 ;;
     --git) GIT_URL="$2"; shift 2 ;;
-    --branch) GIT_BRANCH="$2"; shift 2 ;;
+    # Preferred: can be branch, tag, or commit SHA
+    --ref) GIT_REF="$2"; shift 2 ;;
+    # Back-compat aliases
+    --branch) GIT_REF="$2"; shift 2 ;;
+    --commit) GIT_REF="$2"; shift 2 ;;
     --no-tls) NO_TLS=1; shift 1 ;;
     *) echo "Unknown arg: $1" >&2; exit 1 ;;
   esac
@@ -85,8 +88,21 @@ if [[ -n "$ZIP_SRC" ]]; then
   [[ -z "$SRC_ROOT" ]] && SRC_ROOT="$TMPD/extract"
   rsync -av --delete "${RSYNC_EXCLUDES[@]}" "$SRC_ROOT"/ /opt/tradingbot/
 elif [[ -n "$GIT_URL" ]]; then
-  git clone --depth 1 --branch "$GIT_BRANCH" "$GIT_URL" "$TMPD/repo"
-  rsync -av --delete "${RSYNC_EXCLUDES[@]}" "$TMPD/repo"/ /opt/tradingbot/
+  echo "[GIT] Fetching ref '$GIT_REF' from $GIT_URL"
+  mkdir -p "$TMPD/repo"
+  git -C "$TMPD/repo" init -q
+  git -C "$TMPD/repo" remote add origin "$GIT_URL"
+  # Try shallow fetch of the specific ref (works for branch, tag, or reachable commit SHA).
+  if git -C "$TMPD/repo" fetch -q --depth 1 origin "$GIT_REF"; then
+    git -C "$TMPD/repo" -c advice.detachedHead=false checkout -q --detach FETCH_HEAD
+  else
+    echo "[GIT] Shallow fetch failed, falling back to full fetch of ref '$GIT_REF'..."
+    git -C "$TMPD/repo" fetch -q origin "$GIT_REF"
+    git -C "$TMPD/repo" -c advice.detachedHead=false checkout -q --detach FETCH_HEAD
+  fi
+  echo "[GIT] Using commit $(git -C "$TMPD/repo" rev-parse --short HEAD)"
+  # Be verbose about what changes are being copied over
+  rsync -ai --delete "${RSYNC_EXCLUDES[@]}" "$TMPD/repo"/ /opt/tradingbot/
 else
   echo "[SKIP] Using empty skeleton; ensure /opt/tradingbot has app/, base.py, web.py, ui_build/ after you copy your code."
 fi
