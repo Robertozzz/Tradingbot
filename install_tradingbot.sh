@@ -102,10 +102,16 @@ if [[ -f /opt/tradingbot/requirements.txt ]]; then
     python3 -m venv .venv
     chown -R www-data:www-data .venv
   fi
-  # install/upgrade only what’s needed; fast on re-runs
-  sudo -u www-data -H /opt/tradingbot/.venv/bin/pip install --upgrade pip wheel
-  sudo -u www-data -H /opt/tradingbot/.venv/bin/pip install --upgrade -r requirements.txt --upgrade-strategy only-if-needed
 
+  # setup pip cache dir inside app path (owned by www-data)
+  export PIP_CACHE_DIR=/opt/tradingbot/.cache/pip
+  install -d -o www-data -g www-data -m 700 "$PIP_CACHE_DIR"
+
+  # install/upgrade only what’s needed; fast on re-runs
+  sudo -u www-data -H env PIP_CACHE_DIR=$PIP_CACHE_DIR \
+    /opt/tradingbot/.venv/bin/pip install --upgrade pip wheel
+  sudo -u www-data -H env PIP_CACHE_DIR=$PIP_CACHE_DIR \
+    /opt/tradingbot/.venv/bin/pip install --upgrade -r requirements.txt --upgrade-strategy only-if-needed
   USE_VENV=1
 fi
 
