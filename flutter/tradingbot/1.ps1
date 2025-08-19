@@ -14,8 +14,8 @@ if (Test-Path $dst) {
 }
 
 # Copy new build
-Copy-Item -Path "D:\tradingbot\Flutter\tradingbot\build\web\*" -Destination $dst -Recurse -Force
-Write-Host "✅ Deployed to $dst" -ForegroundColor Green
+Copy-Item -Path "D:\TradingBot\flutter\tradingbot\build\web\*" -Destination $dst -Recurse -Force
+Write-Host "Deployed to $dst" -ForegroundColor Green
 
 # Git commit & push
 cd "D:\Tradingbot"
