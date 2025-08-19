@@ -67,6 +67,9 @@ install -d -o www-data -g www-data -m 0755 /opt/tradingbot
 install -d -o www-data -g www-data -m 0755 /opt/tradingbot/runtime
 install -d -o www-data -g www-data -m 0755 /opt/tradingbot/logs
 
+# Reuse heavy dirs on re-runs (don’t delete these during rsync)
+RSYNC_EXCLUDES=(--exclude='.venv/' --exclude='runtime/' --exclude='logs/')
+
 # ---- Fetch code ----
 TMPD="$(mktemp -d)"
 if [[ -n "$ZIP_SRC" ]]; then
@@ -80,10 +83,10 @@ if [[ -n "$ZIP_SRC" ]]; then
   unzip -q "$TMPD/bundle.zip" -d "$TMPD/extract"
   SRC_ROOT="$(find "$TMPD/extract" -maxdepth 2 -type d -name app -printf '%h\n' | head -n1 || true)"
   [[ -z "$SRC_ROOT" ]] && SRC_ROOT="$TMPD/extract"
-  rsync -a --delete "$SRC_ROOT"/ /opt/tradingbot/
+  rsync -a --delete "${RSYNC_EXCLUDES[@]}" "$SRC_ROOT"/ /opt/tradingbot/
 elif [[ -n "$GIT_URL" ]]; then
   git clone --depth 1 --branch "$GIT_BRANCH" "$GIT_URL" "$TMPD/repo"
-  rsync -a --delete "$TMPD/repo"/ /opt/tradingbot/
+  rsync -a --delete "${RSYNC_EXCLUDES[@]}" "$TMPD/repo"/ /opt/tradingbot/
 else
   echo "[SKIP] Using empty skeleton; ensure /opt/tradingbot has app/, base.py, web.py, ui_build/ after you copy your code."
 fi
@@ -93,13 +96,16 @@ chown -R www-data:www-data /opt/tradingbot/app
 # ---- venv & deps (optional) ----
 USE_VENV=0
 if [[ -f /opt/tradingbot/requirements.txt ]]; then
-  echo "[VENV] Installing Python deps"
+  echo "[VENV] Using/creating Python venv"
   cd /opt/tradingbot
-  python3 -m venv .venv
-  chown -R www-data:www-data .venv
-  # install as www-data so future pip installs also work
+  if [[ ! -d .venv ]]; then
+    python3 -m venv .venv
+    chown -R www-data:www-data .venv
+  fi
+  # install/upgrade only what’s needed; fast on re-runs
   sudo -u www-data -H /opt/tradingbot/.venv/bin/pip install --upgrade pip wheel
-  sudo -u www-data -H /opt/tradingbot/.venv/bin/pip install -r requirements.txt
+  sudo -u www-data -H /opt/tradingbot/.venv/bin/pip install --upgrade -r requirements.txt --upgrade-strategy only-if-needed
+
   USE_VENV=1
 fi
 
