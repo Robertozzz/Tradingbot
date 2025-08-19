@@ -1,4 +1,4 @@
-# web.py — serve Flutter Web + API, watchdog control, SSE, and log tails  // No Auth
+# web.py — serve Flutter Web + API, watchdog control, SSE, and log tails  // New main
 from __future__ import annotations
 import json, time, mimetypes, asyncio, io, os
 from pathlib import Path

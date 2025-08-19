@@ -1,3 +1,4 @@
+import 'package:flutter/foundation.dart';
 import 'package:flutter/material.dart';
 import 'lib/auth_gate.dart';
 import 'lib/dashboard.dart';
@@ -8,20 +9,32 @@ import 'lib/settings.dart';
 import 'lib/api.dart';
 import 'lib/trading_clock.dart';
 import 'lib/ibkr_page.dart';
-import 'dart:io' show Platform;
 
 void main() async {
   WidgetsFlutterBinding.ensureInitialized();
-  await initTz(); // timezone DB
-  // Default from --dart-define
+
+  // Don't let tz init kill the app if the web asset isn't present yet.
+  try {
+    await initTz(); // timezone DB (safe to skip on web if asset missing)
+  } catch (_) {
+    // ignore; UI should still boot
+  }
+
+  // From --dart-define if provided
   var url = const String.fromEnvironment('API_BASE_URL', defaultValue: '');
 
-  // If nothing defined, fallback depending on platform
+  // Sensible defaults by platform
   if (url.isEmpty) {
-    if (Platform.isWindows) {
-      url = 'http://192.168.133.130'; // Windows desktop default
+    if (kIsWeb) {
+      url = ''; // same-origin for web (backend at the same host)
     } else {
-      url = 'http://127.0.0.1'; // Fallback for others
+      switch (defaultTargetPlatform) {
+        case TargetPlatform.windows:
+          url = 'http://192.168.133.130';
+          break;
+        default:
+          url = 'http://127.0.0.1';
+      }
     }
   }
 
