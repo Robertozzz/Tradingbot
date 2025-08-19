@@ -83,10 +83,10 @@ if [[ -n "$ZIP_SRC" ]]; then
   unzip -q "$TMPD/bundle.zip" -d "$TMPD/extract"
   SRC_ROOT="$(find "$TMPD/extract" -maxdepth 2 -type d -name app -printf '%h\n' | head -n1 || true)"
   [[ -z "$SRC_ROOT" ]] && SRC_ROOT="$TMPD/extract"
-  rsync -a --delete "${RSYNC_EXCLUDES[@]}" "$SRC_ROOT"/ /opt/tradingbot/
+  rsync -av --delete "${RSYNC_EXCLUDES[@]}" "$SRC_ROOT"/ /opt/tradingbot/
 elif [[ -n "$GIT_URL" ]]; then
   git clone --depth 1 --branch "$GIT_BRANCH" "$GIT_URL" "$TMPD/repo"
-  rsync -a --delete "${RSYNC_EXCLUDES[@]}" "$TMPD/repo"/ /opt/tradingbot/
+  rsync -av --delete "${RSYNC_EXCLUDES[@]}" "$TMPD/repo"/ /opt/tradingbot/
 else
   echo "[SKIP] Using empty skeleton; ensure /opt/tradingbot has app/, base.py, web.py, ui_build/ after you copy your code."
 fi
