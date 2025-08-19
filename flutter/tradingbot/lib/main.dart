@@ -58,12 +58,13 @@ class MainApp extends StatelessWidget {
       debugShowCheckedModeBanner: false,
       title: 'TradingBot',
       theme: theme,
-      home: AuthGate(
-        // For desktop/mobile, supply where the backend lives.
-        // e.g. flutter run -d windows --dart-define=API_BASE_URL=http://192.168.133.130
-        baseUrl: Api.baseUrl,
-        child: const Shell(), // your existing scaffold/nav/pages
-      ),
+      // home: AuthGate(
+      //   // For desktop/mobile, supply where the backend lives.
+      //   // e.g. flutter run -d windows --dart-define=API_BASE_URL=http://192.168.133.130
+      //  baseUrl: Api.baseUrl,
+      //   child: const Shell(), // your existing scaffold/nav/pages
+      // ),
+      home: const Shell(),
     );
   }
 }
