@@ -20,7 +20,7 @@ Write-Host "Deployed to $dst" -ForegroundColor Green
 # Git commit & push
 cd "D:\Tradingbot"
 git add .
-git commit -m "removed ADMIN"
+git commit -m "Updated installer to take commit"
 git push -u origin main
 
 # Return to Flutter project dir
