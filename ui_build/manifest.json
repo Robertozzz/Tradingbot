@@ -1,6 +1,6 @@
 {
-    "name": "tradingbot",
-    "short_name": "tradingbot",
+    "name": "testapp",
+    "short_name": "testapp",
     "start_url": ".",
     "display": "standalone",
     "background_color": "#0175C2",
