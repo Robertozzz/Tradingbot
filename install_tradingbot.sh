@@ -179,12 +179,27 @@ done
 BASH
 chown -R ibkr:ibkr /opt/ibkr
 
-# Install Gateway under ibkr
-sudo -u ibkr bash -lc 'mkdir -p ~/Downloads && \
-  (curl -fL -o ~/Downloads/ibgateway.sh https://download2.interactivebrokers.com/installers/ibgateway/stable-standalone/ibgateway-stable-standalone-linux-x64.sh || \
-   curl -fL -o ~/Downloads/ibgateway.sh https://download2.interactivebrokers.com/installers/ibgateway/latest-standalone/ibgateway-latest-standalone-linux-x64.sh) && \
-  chmod +x ~/Downloads/ibgateway.sh && \
-  ~/Downloads/ibgateway.sh -q -dir $HOME/Jts/ibgateway/1037 || true'
+# Install Gateway under ibkr (idempotent)
+# We use the same path as the runner script: $HOME/Jts/ibgateway/1037
+sudo -u ibkr bash -lc '
+  set -euo pipefail
+  IB_DIR="$HOME/Jts/ibgateway/1037"
+  IB_BIN="$IB_DIR/ibgateway"
+  if [[ -x "$IB_BIN" ]]; then
+    echo "[IBKR] Found existing IB Gateway at $IB_BIN — skipping download/install."
+  else
+    echo "[IBKR] Installing IB Gateway into $IB_DIR ..."
+    mkdir -p ~/Downloads
+    # Cache the installer to avoid re-downloading on failures/retries
+    INST_SH=~/Downloads/ibgateway.sh
+    if [[ ! -s "$INST_SH" ]]; then
+      curl -fL -o "$INST_SH" https://download2.interactivebrokers.com/installers/ibgateway/stable-standalone/ibgateway-stable-standalone-linux-x64.sh || \
+      curl -fL -o "$INST_SH" https://download2.interactivebrokers.com/installers/ibgateway/latest-standalone/ibgateway-latest-standalone-linux-x64.sh
+      chmod +x "$INST_SH"
+    fi
+    "$INST_SH" -q -dir "$IB_DIR" || true
+  fi
+'
   
 # ---- Openbox tweaks: single desktop, no wheel-switching, maximize IB Gateway ----
 sudo -u ibkr mkdir -p /home/ibkr/.config/openbox
