@@ -356,7 +356,7 @@ class _Login extends StatefulWidget {
 }
 
 class _LoginState extends State<_Login> {
-  final u = TextEditingController(text: 'admin');
+  final u = TextEditingController(text: '');
   final p = TextEditingController();
   final c = TextEditingController();
   bool remember = false;

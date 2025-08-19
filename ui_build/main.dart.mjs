@@ -4828,7 +4828,6 @@ class CompiledApp {
 "enroll",
 "login",
 "material",
-"admin",
 "Username",
 "Password",
 "6-digit TOTP code",
