@@ -2,8 +2,6 @@ import 'package:flutter/foundation.dart'
     show kIsWeb, defaultTargetPlatform, TargetPlatform;
 import 'package:flutter/material.dart';
 import 'package:webview_windows/webview_windows.dart' as winwv;
-import 'package:path_provider/path_provider.dart';
-import 'package:path/path.dart' as p;
 
 // Web-only factory (HtmlElementView) implemented below
 import 'tv_iframe_stub.dart' if (dart.library.html) 'tv_iframe_web.dart';
@@ -18,8 +16,6 @@ class TradingViewWidget extends StatefulWidget {
 
 class _TradingViewWidgetState extends State<TradingViewWidget> {
   winwv.WebviewController? _win;
-  // Reuse WebView2 per symbol so drawings/layout remain in-memory too.
-  static final Map<String, winwv.WebviewController> _winCache = {};
 
   @override
   void initState() {
@@ -31,25 +27,12 @@ class _TradingViewWidgetState extends State<TradingViewWidget> {
 
   Future<void> _initWin() async {
     try {
-      // Reuse an existing controller if we already opened this symbol.
-      if (_winCache.containsKey(widget.symbol)) {
-        _win = _winCache[widget.symbol];
-        setState(() {});
-        return;
-      }
-
       final w = winwv.WebviewController();
-
-      // Persistent profile so localStorage/cookies stick across instances.
-      final supportDir = await getApplicationSupportDirectory();
-      final userDataDir = p.join(supportDir.path, 'webview2', 'tradingview');
-      // await w.initialize(userDataFolder: userDataDir);
-
+      await w.initialize();
       await w.setBackgroundColor(Colors.transparent);
       await w.setPopupWindowPolicy(winwv.WebviewPopupWindowPolicy.deny);
       await w.loadStringContent(_winHtml(widget.symbol));
       if (!mounted) return;
-      _winCache[widget.symbol] = w;
       setState(() => _win = w);
     } catch (_) {
       // leave null → show fallback
@@ -65,14 +48,7 @@ class _TradingViewWidgetState extends State<TradingViewWidget> {
       setState(() {});
     } else if (defaultTargetPlatform == TargetPlatform.windows &&
         _win != null) {
-      // Switch to (or create) the cached controller for the new symbol.
-      final cached = _winCache[widget.symbol];
-      if (cached != null) {
-        setState(() => _win = cached);
-      } else {
-        _win = null;
-        _initWin();
-      }
+      _win!.loadStringContent(_winHtml(widget.symbol));
     }
   }
 
@@ -88,7 +64,7 @@ class _TradingViewWidgetState extends State<TradingViewWidget> {
 
   @override
   void dispose() {
-    // _win?.dispose();
+    _win?.dispose();
     super.dispose();
   }
 
