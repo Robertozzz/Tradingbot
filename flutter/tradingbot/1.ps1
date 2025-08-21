@@ -23,6 +23,8 @@ Write-Host "Deployed to $dst" -ForegroundColor Green
 
 # Git commit & push
 cd "D:\Tradingbot"
+git rm -r --cached ui_build  
+git add ui_build
 git add .
 git commit -m "$CommitMessage"
 git push -u origin main
