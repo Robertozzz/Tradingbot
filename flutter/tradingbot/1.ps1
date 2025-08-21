@@ -5,7 +5,7 @@ param(
 cd "D:\tradingbot\Flutter\tradingbot"
 
 # rebuild
-flutter build web --release --web-renderer html --base-href /
+flutter build web --release --base-href /
 
 # Deployment directory
 $dst = "D:\TradingBot\ui_build"
