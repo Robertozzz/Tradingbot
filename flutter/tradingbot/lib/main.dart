@@ -45,7 +45,7 @@ class MainApp extends StatelessWidget {
 
     return MaterialApp(
       debugShowCheckedModeBanner: false,
-      title: 'TradingBoT',
+      title: 'TradingBot',
       theme: theme,
       home: AuthGate(
         child: const Shell(), // your existing scaffold/nav/pages
@@ -113,7 +113,7 @@ class _ShellState extends State<Shell> {
     ];
 
     return Scaffold(
-      appBar: AppBar(title: const Text('TradingBot')),
+      appBar: AppBar(title: const Text('TradingBoT')),
       body: Column(
         children: [
           Expanded(
@@ -283,7 +283,7 @@ class _SidePanel extends StatelessWidget {
                       children: [
                         const Icon(Icons.show_chart, size: 20),
                         const SizedBox(width: 8),
-                        Text('TRADINGBOT',
+                        Text('TradinGBoT',
                             style: sectionStyle.copyWith(
                               fontWeight: FontWeight.w700,
                               letterSpacing: 1.6,

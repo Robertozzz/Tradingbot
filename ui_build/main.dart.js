@@ -99010,7 +99010,7 @@ A.aE7.prototype={
 $1(a){return a.a+"="+a.b},
 $S:665}
 A.Pk.prototype={
-H(a){return new A.Cr(new A.zy(B.abe,null),"TradingBoT",A.xa(B.Fz,B.an,B.ds,B.Iw,B.JS,B.ahN,!0),!1,null)}}
+H(a){return new A.Cr(new A.zy(B.abe,null),"TradingBot",A.xa(B.Fz,B.an,B.ds,B.Iw,B.JS,B.ahN,!0),!1,null)}}
 A.Eu.prototype={
 ai(){return new A.a03(A.af(["NYSE",!0,"LONDON",!0,"TOKYO",!0,"NASDAQ",!1,"TSX",!1,"FRANKFURT",!1,"PARIS",!1,"ZURICH",!1,"MADRID",!1,"HONG KONG",!1,"SHANGHAI",!1,"SINGAPORE",!1,"SYDNEY",!1,"NZX",!1,"TADAWUL",!1,"DUBAI",!1],t.N,t.y))}}
 A.a03.prototype={
@@ -99076,7 +99076,7 @@ r=i?B.aE:B.F
 q=i?B.j1:B.et
 p=t.p
 o=A.c([],p)
-if(i)o.push(A.co(A.c([B.MZ,B.ck,A.aF("TRADINGBOT",k,k,k,f.Xf(B.bm,1.6),k,k)],p),B.F,B.B,B.E,0,k))
+if(i)o.push(A.co(A.c([B.MZ,B.ck,A.aF("TradinGBoT",k,k,k,f.Xf(B.bm,1.6),k,k)],p),B.F,B.B,B.E,0,k))
 n=i?"Collapse":"Expand"
 o.push(A.kv(k,k,k,A.nE(i?B.Mr:B.Ms,k,k,k),k,k,this.f,k,k,k,n))
 q=A.co(o,B.F,q,B.E,0,k)
@@ -106863,7 +106863,7 @@ B.aiv=new A.aZ("Total",null,B.ho,null,null,null,null,null,null)
 B.aix=new A.aZ("Sell",null,null,null,null,null,null,null,null)
 B.EQ=new A.aZ("Open Orders",null,B.c5,null,null,null,null,null,null)
 B.aiC=new A.aZ("Delete account & start fresh",null,null,null,null,null,null,null,null)
-B.aiF=new A.aZ("TradingBot",null,null,null,null,null,null,null,null)
+B.aiF=new A.aZ("TradingBoT",null,null,null,null,null,null,null,null)
 B.aiH=new A.aZ("IBKR Gateway",null,null,null,null,null,null,null,null)
 B.aiI=new A.aZ("This will delete the current account. You will set up a new username, password, and TOTP. Continue?",null,null,null,null,null,null,null,null)
 B.aiJ=new A.aZ("Search Assets",null,B.c5,null,null,null,null,null,null)
