@@ -97172,7 +97172,7 @@ this.a.r.n(0,this.b,s)
 return s},
 $S:0}
 A.aqd.prototype={
-$2(a,b){var s=null,r=t.p,q=A.co(A.c([B.aiJ,B.bF,A.kv(s,s,s,B.MU,s,s,new A.aqa(this.b),s,s,s,s)],r),B.F,B.B,B.E,0,s),p=this.a,o=A.jQ(p.d,B.Nt,s,s,!1,s,new A.aqb(p),s),n=p.f,m=A.Z(n).i("a2<1,it>")
+$2(a,b){var s=null,r=t.p,q=A.co(A.c([B.aiI,B.bF,A.kv(s,s,s,B.MU,s,s,new A.aqa(this.b),s,s,s,s)],r),B.F,B.B,B.E,0,s),p=this.a,o=A.jQ(p.d,B.Nt,s,s,!1,s,new A.aqb(p),s),n=p.f,m=A.Z(n).i("a2<1,it>")
 p=A.a_(new A.a2(n,new A.aqc(p),m),m.i("a9.E"))
 return new A.bi(B.bz,A.dH(A.c([q,B.bE,o,B.aH,A.hi(A.t1(A.a6h(B.PO,p),b,s,s,B.al),1)],r),B.F,B.B,B.E),s)},
 $S:628}
@@ -98298,7 +98298,7 @@ return A.S($async$$0,r)},
 $S:13}
 A.awP.prototype={
 $1(a){var s=null
-return new A.u8(B.aiL,B.aiI,A.c([A.t7(!1,B.EP,s,s,s,s,s,s,new A.awN(a),s,s),A.B3(B.ai3,new A.awO(a),s)],t.p),s)},
+return new A.u8(B.aiK,B.aiH,A.c([A.t7(!1,B.EP,s,s,s,s,s,s,new A.awN(a),s,s),A.B3(B.ai3,new A.awO(a),s)],t.p),s)},
 $S:642}
 A.awN.prototype={
 $0(){A.fs(this.a,!1).pK(!1)
@@ -98427,7 +98427,7 @@ $0(){var s=this.b
 return this.a.r=s.gaa(s)},
 $S:0}
 A.OD.prototype={
-H(a){return A.aHm(A.aK3(B.aiH),new A.bi(B.at,A.C2(new A.ab4()),null),null)}}
+H(a){return A.aHm(A.aK3(B.aiG),new A.bi(B.at,A.C2(new A.ab4()),null),null)}}
 A.ab4.prototype={
 $2(a,b){return B.ack},
 $S:646}
@@ -99014,11 +99014,11 @@ A.aE7.prototype={
 $1(a){return a.a+"="+a.b},
 $S:665}
 A.Pk.prototype={
-H(a){return new A.Cr(new A.zy(B.abe,null),"Tradingbot",A.xa(B.Fz,B.an,B.ds,B.Iw,B.JS,B.ahN,!0),!1,null)}}
+H(a){return new A.Cr(new A.zy(B.abe,null),"TradingbotTtt",A.xa(B.Fz,B.an,B.ds,B.Iw,B.JS,B.ahN,!0),!1,null)}}
 A.Eu.prototype={
 ai(){return new A.a03(A.af(["NYSE",!0,"LONDON",!0,"TOKYO",!0,"NASDAQ",!1,"TSX",!1,"FRANKFURT",!1,"PARIS",!1,"ZURICH",!1,"MADRID",!1,"HONG KONG",!1,"SHANGHAI",!1,"SINGAPORE",!1,"SYDNEY",!1,"NZX",!1,"TADAWUL",!1,"DUBAI",!1],t.N,t.y))}}
 A.a03.prototype={
-H(a){var s=this,r=null,q=A.bH(a,r,t.l).w.a.a>=1100,p=s.f,o=s.w,n=s.r,m=A.aK3(B.aiF),l=t.p,k=A.c([],l)
+H(a){var s=this,r=null,q=A.bH(a,r,t.l).w.a.a>=1100,p=s.f,o=s.w,n=s.r,m=A.aK3(B.aiN),l=t.p,k=A.c([],l)
 if(q)k.push(new A.a09(s.e,s.d,new A.aAv(s),new A.aAw(s),r))
 k.push(A.hi([B.Kx,B.Fs,B.FC,B.aiX,B.Ml,new A.RR(p,new A.aAx(s),o,new A.aAy(s),n,new A.aAz(s),r)][s.d],1))
 p=A.c([A.hi(A.co(k,B.F,B.B,B.E,0,r),1)],l)
@@ -99080,7 +99080,7 @@ r=i?B.aE:B.F
 q=i?B.j1:B.et
 p=t.p
 o=A.c([],p)
-if(i)o.push(A.co(A.c([B.MZ,B.ck,A.aF("Tradingbot",k,k,k,f.Xf(B.bm,1.6),k,k)],p),B.F,B.B,B.E,0,k))
+if(i)o.push(A.co(A.c([B.MZ,B.ck,A.aF("Tradingbottt",k,k,k,f.Xf(B.bm,1.6),k,k)],p),B.F,B.B,B.E,0,k))
 n=i?"Collapse":"Expand"
 o.push(A.kv(k,k,k,A.nE(i?B.Mr:B.Ms,k,k,k),k,k,this.f,k,k,k,n))
 q=A.co(o,B.F,q,B.E,0,k)
@@ -103633,12 +103633,12 @@ B.ai6=new A.aZ("Type",null,null,null,null,null,null,null,null)
 B.ib=new A.dc(B.ai6)
 B.aik=new A.aZ("Limit",null,null,null,null,null,null,null,null)
 B.q6=new A.dc(B.aik)
-B.aiG=new A.aZ("TIF",null,null,null,null,null,null,null,null)
-B.q4=new A.dc(B.aiG)
+B.aiF=new A.aZ("TIF",null,null,null,null,null,null,null,null)
+B.q4=new A.dc(B.aiF)
 B.ai_=new A.aZ("Status",null,null,null,null,null,null,null,null)
 B.q_=new A.dc(B.ai_)
-B.aiM=new A.aZ("Filled",null,null,null,null,null,null,null,null)
-B.q5=new A.dc(B.aiM)
+B.aiL=new A.aZ("Filled",null,null,null,null,null,null,null,null)
+B.q5=new A.dc(B.aiL)
 B.ahT=new A.aZ("Remaining",null,null,null,null,null,null,null,null)
 B.KB=new A.dc(B.ahT)
 B.EP=new A.aZ("Cancel",null,null,null,null,null,null,null,null)
@@ -103721,8 +103721,8 @@ B.ahS=new A.aZ("Price",null,null,null,null,null,null,null,null)
 B.KA=new A.dc(B.ahS)
 B.aih=new A.aZ("Avg Cost",null,null,null,null,null,null,null,null)
 B.KF=new A.dc(B.aih)
-B.aiK=new A.aZ("Unrl P&L",null,null,null,null,null,null,null,null)
-B.Kz=new A.dc(B.aiK)
+B.aiJ=new A.aZ("Unrl P&L",null,null,null,null,null,null,null,null)
+B.Kz=new A.dc(B.aiJ)
 B.aiA=new A.aZ("Rlzd P&L",null,null,null,null,null,null,null,null)
 B.KK=new A.dc(B.aiA)
 B.aiB=new A.aZ("CCY",null,null,null,null,null,null,null,null)
@@ -103760,8 +103760,8 @@ B.KH=new A.dc(B.aia)
 B.aiE=new A.aZ("Trade",null,null,null,null,null,null,null,null)
 B.KE=new A.dc(B.aiE)
 B.PO=s([B.le,B.KI,B.ib,B.KH,B.q0,B.q3,B.KE],t.UR)
-B.aiN=new A.aZ("Side",null,null,null,null,null,null,null,null)
-B.KG=new A.dc(B.aiN)
+B.aiM=new A.aZ("Side",null,null,null,null,null,null,null,null)
+B.KG=new A.dc(B.aiM)
 B.ai0=new A.aZ("Remain",null,null,null,null,null,null,null,null)
 B.Ky=new A.dc(B.ai0)
 B.PP=s([B.q1,B.KG,B.lf,B.ib,B.q6,B.q4,B.q_,B.q5,B.Ky,B.q2],t.UR)
@@ -106867,11 +106867,11 @@ B.aiv=new A.aZ("Total",null,B.ho,null,null,null,null,null,null)
 B.aix=new A.aZ("Sell",null,null,null,null,null,null,null,null)
 B.EQ=new A.aZ("Open Orders",null,B.c5,null,null,null,null,null,null)
 B.aiC=new A.aZ("Delete account & start fresh",null,null,null,null,null,null,null,null)
-B.aiF=new A.aZ("Tradingbot",null,null,null,null,null,null,null,null)
-B.aiH=new A.aZ("IBKR Gateway",null,null,null,null,null,null,null,null)
-B.aiI=new A.aZ("This will delete the current account. You will set up a new username, password, and TOTP. Continue?",null,null,null,null,null,null,null,null)
-B.aiJ=new A.aZ("Search Assets",null,B.c5,null,null,null,null,null,null)
-B.aiL=new A.aZ("Reset account?",null,null,null,null,null,null,null,null)
+B.aiG=new A.aZ("IBKR Gateway",null,null,null,null,null,null,null,null)
+B.aiH=new A.aZ("This will delete the current account. You will set up a new username, password, and TOTP. Continue?",null,null,null,null,null,null,null,null)
+B.aiI=new A.aZ("Search Assets",null,B.c5,null,null,null,null,null,null)
+B.aiK=new A.aZ("Reset account?",null,null,null,null,null,null,null,null)
+B.aiN=new A.aZ("Tradingbottt",null,null,null,null,null,null,null,null)
 B.amm=new A.aog(0,"system")
 B.a8k=new A.h(0.056,0.024)
 B.a8B=new A.h(0.108,0.3085)
