@@ -283,7 +283,7 @@ class _SidePanel extends StatelessWidget {
                       children: [
                         const Icon(Icons.show_chart, size: 20),
                         const SizedBox(width: 8),
-                        Text('TradinGBoT',
+                        Text('Tradingbot',
                             style: sectionStyle.copyWith(
                               fontWeight: FontWeight.w700,
                               letterSpacing: 1.6,

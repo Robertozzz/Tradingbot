@@ -26,15 +26,36 @@ app.add_middleware(
 @app.middleware("http")
 async def coi_headers(request: Request, call_next):
     resp = await call_next(request)
+
+    # Keep COOP (for cross-origin isolation)
     resp.headers["Cross-Origin-Opener-Policy"] = "same-origin"
-    resp.headers["Cross-Origin-Embedder-Policy"] = "require-corp"
+
+    # Allow third-party iframes (TradingView) while preserving COI for WASM/Threads
+    resp.headers["Cross-Origin-Embedder-Policy"] = "credentialless"
+
     resp.headers["Cross-Origin-Resource-Policy"] = "same-origin"
+
+    # Content Security Policy – allow TradingView
+    allowed_csp = (
+        "default-src 'self'; "
+        "img-src 'self' https: data:; "
+        "style-src 'self' 'unsafe-inline' https://*.tradingview.com; "
+        "script-src 'self' 'unsafe-inline' 'unsafe-eval' https://s3.tradingview.com https://*.tradingview.com; "
+        "connect-src 'self' https://*.tradingview.com https://*.cloudfront.net; "
+        "frame-src https://s.tradingview.com https://*.tradingview.com https://*.cloudfront.net; "
+        "child-src https://s.tradingview.com https://*.tradingview.com https://*.cloudfront.net; "
+        "worker-src 'self' blob:;"
+    )
+    resp.headers["Content-Security-Policy"] = allowed_csp
+
     if request.url.path in ("/", "/index.html"):
         resp.headers["Cache-Control"] = "no-store"
     if request.url.path.startswith("/flutter_service_worker.js"):
         resp.headers["Service-Worker-Allowed"] = "/"
         resp.headers.setdefault("Content-Type", "text/javascript")
+
     return resp
+
 
 import logging
 logging.basicConfig(level=logging.INFO)          # <— add this once

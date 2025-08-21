@@ -99076,7 +99076,7 @@ r=i?B.aE:B.F
 q=i?B.j1:B.et
 p=t.p
 o=A.c([],p)
-if(i)o.push(A.co(A.c([B.MZ,B.ck,A.aF("TradinGBoT",k,k,k,f.Xf(B.bm,1.6),k,k)],p),B.F,B.B,B.E,0,k))
+if(i)o.push(A.co(A.c([B.MZ,B.ck,A.aF("Tradingbot",k,k,k,f.Xf(B.bm,1.6),k,k)],p),B.F,B.B,B.E,0,k))
 n=i?"Collapse":"Expand"
 o.push(A.kv(k,k,k,A.nE(i?B.Mr:B.Ms,k,k,k),k,k,this.f,k,k,k,n))
 q=A.co(o,B.F,q,B.E,0,k)
