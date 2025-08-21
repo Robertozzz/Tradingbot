@@ -55,7 +55,7 @@ apt-get install -y \
   python3 python3-venv python3-pip python3-uvicorn python3-fastapi \
   python3-passlib python3-pyotp python3-qrcode \
   unzip curl ca-certificates git rsync \
-  xvfb openbox x11vnc novnc websockify wmctrl xdotool \
+  xpra xvfb wmctrl xdotool \
   nginx certbot python3-certbot-nginx \
   libgtk-3-0 libglib2.0-0 libpango-1.0-0 libcairo2 libgdk-pixbuf-2.0-0 \
   libxcomposite1 libxdamage1 libxfixes3 libxss1 libxtst6 libxi6 libxrandr2 \
@@ -131,73 +131,26 @@ if [[ -f /opt/tradingbot/requirements.txt ]]; then
   USE_VENV=1
 fi
 
-# ---- IB Gateway runner ----
-install -D -m 0755 /dev/stdin /opt/ibkr/run-ibgateway.sh <<'BASH'
+# ---- IB Gateway runner with XPRA (HTML5, seamless windows) ----
+install -D -m 0755 /dev/stdin /opt/ibkr/run-ibgateway-xpra.sh <<'BASH'
 #!/usr/bin/env bash
 set -euo pipefail
 
-export DISPLAY=${DISPLAY:-:1}
-XVFB_W=${XVFB_W:-800}
-XVFB_H=${XVFB_H:-610}
-XVFB_D=${XVFB_D:-24}
+XPRA_PORT=${XPRA_PORT:-14500}
+DISPLAY_ID=${DISPLAY_ID:-100}
 
 IB_HOME="${IB_HOME:-$HOME/Jts/ibgateway/1037}"
 IB_BIN="${IB_BIN:-$IB_HOME/ibgateway}"
-IBC_INI="${IBC_INI:-$HOME/.ibc/gateway-paper.ini}"
 
-mkdir -p "$(dirname "$IBC_INI")"
-
-cleanup() {
-  pkill -f "websockify.*6080" || true
-  pkill -f "x11vnc.*$DISPLAY" || true
-  pkill -f "openbox" || true
-  pkill -f "Xvfb $DISPLAY" || true
-}
-trap cleanup EXIT
-
-if ! pgrep -f "Xvfb $DISPLAY" >/dev/null; then
-  Xvfb $DISPLAY -screen 0 ${XVFB_W}x${XVFB_H}x${XVFB_D} -nolisten tcp &
-  sleep 0.5
-fi
-
-if ! pgrep -f "openbox" >/dev/null; then
-  openbox >/tmp/openbox.log 2>&1 &
-  sleep 0.5
-fi
-
-if ! pgrep -f "x11vnc.*$DISPLAY" >/dev/null; then
-  x11vnc -display $DISPLAY \
-         -localhost -forever -shared \
-         -rfbport 5901 -quiet \
-         -noxdamage -noxrecord -xkb -repeat \
-         -cursor most &
-  sleep 0.5
-fi
-
-if ! pgrep -f "websockify.*6080" >/dev/null; then
-  websockify --web=/usr/share/novnc/ 127.0.0.1:6080 127.0.0.1:5901 >/tmp/websockify.log 2>&1 &
-fi
-
-if [ ! -f "$IBC_INI" ]; then
-  cat > "$IBC_INI" <<CFG
-[Login]
-UseRemoteSettings=yes
-LoginDialogDisplayTimeout=20
-IbDir=${IB_HOME}
-FIX=no
-TradingMode=paper
-MinimizeMainWindow=no
-AcceptNonBrokerageAccountWarning=yes
-ExitAfterAcceptingUserAgreement=no
-OverrideTwsApiPort=4002
-CFG
-fi
-
-"$IB_BIN" >/tmp/ibgateway.log 2>&1 &
-
-while pgrep -f "ibgateway|Xvfb $DISPLAY|x11vnc.*$DISPLAY|websockify.*6080" >/dev/null; do
-  sleep 2
-done
+# xpra serves the HTML5 client itself; we proxy /xpra/ to 127.0.0.1:$XPRA_PORT
+exec xpra start ":${DISPLAY_ID}" \
+  --daemon=no \
+  --html=on \
+  --bind-tcp=127.0.0.1:${XPRA_PORT} \
+  --exit-with-children=yes \
+  --start-child="${IB_BIN}" \
+  --speaker=off --microphone=off --pulseaudio=no \
+  --printing=no --clipboard=yes --mdns=no
 BASH
 chown -R ibkr:ibkr /opt/ibkr
 
@@ -223,36 +176,7 @@ sudo -u ibkr bash -lc '
   fi
 '
   
-# ---- Openbox tweaks: single desktop, no wheel-switching, maximize IB Gateway ----
-sudo -u ibkr mkdir -p /home/ibkr/.config/openbox
-sudo -u ibkr tee /home/ibkr/.config/openbox/rc.xml >/dev/null <<'XML'
-<?xml version="1.0" encoding="UTF-8"?>
-<openbox_config xmlns="http://openbox.org/3.4/rc">
-  <desktops>
-    <number>1</number>
-    <firstdesk>1</firstdesk>
-  </desktops>
-  <mouse>
-    <dragThreshold>8</dragThreshold>
-    <doubleClickTime>200</doubleClickTime>
-    <screenEdgeStrength>0</screenEdgeStrength>
-    <!-- Disable wheel to change desktop on background -->
-    <context name="Root">
-      <mousebind button="Up" action="Click"/>
-      <mousebind button="Down" action="Click"/>
-    </context>
-  </mouse>
-  <theme>
-    <name>Clearlooks</name>
-    <titleLayout>NLIMC</titleLayout>
-  </theme>
-  <applications/>
-</openbox_config>
-XML
-sudo -u ibkr tee /home/ibkr/.config/openbox/autostart >/dev/null <<'SH'
-(sleep 8; wmctrl -r "IB Gateway" -b add,maximized_vert,maximized_horz) &
-SH
-sudo chmod +x /home/ibkr/.config/openbox/autostart
+# (Openbox/Xvfb/noVNC not needed with xpra)
 
 # ---- Systemd: uvicorn + ibgateway ----
 PYBIN="/usr/bin/python3"
@@ -305,18 +229,21 @@ WantedBy=multi-user.target
 UNIT
 fi
 
-cat > /etc/systemd/system/ibgateway.service <<'UNIT'
+## Old ibgateway.service (Xvfb + noVNC) is replaced by xpra:
+## stop/disable if it exists
+systemctl disable --now ibgateway.service 2>/dev/null || true
+
+cat > /etc/systemd/system/xpra-ibgateway.service <<'UNIT'
 [Unit]
-Description=IBKR Gateway headless (Xvfb + x11vnc + websockify)
+Description=IBKR Gateway via XPRA (HTML5 seamless windows)
 After=network-online.target
 
 [Service]
 Type=simple
 User=ibkr
-Environment=DISPLAY=:1
-Environment=XVFB_W=800
-Environment=XVFB_H=610
-ExecStart=/opt/ibkr/run-ibgateway.sh
+Environment=XPRA_PORT=14500
+Environment=DISPLAY_ID=100
+ExecStart=/opt/ibkr/run-ibgateway-xpra.sh
 Restart=always
 RestartSec=5
 
@@ -325,8 +252,8 @@ WantedBy=multi-user.target
 UNIT
 
 systemctl daemon-reload
-systemctl enable --now ibgateway.service
-systemctl restart ibgateway.service || true
+systemctl enable --now xpra-ibgateway.service
+systemctl restart xpra-ibgateway.service || true
 systemctl enable --now uvicorn.service
 
 # ---- Nginx site (HTTP dev vs HTTPS prod) ----
@@ -359,6 +286,17 @@ server {
         proxy_set_header X-Real-IP $remote_addr;
         proxy_set_header X-Forwarded-Proto http;
     }
+	
+    # XPRA HTML5 (IB Gateway windows)
+    location /xpra/ {
+        auth_request /auth/validate;
+        proxy_http_version 1.1;
+        proxy_set_header Upgrade $http_upgrade;
+        proxy_set_header Connection "upgrade";
+        proxy_set_header Host $host;
+        proxy_read_timeout 86400;
+        proxy_pass http://127.0.0.1:14500/;
+    }
 
     # noVNC static
     location /novnc/ {
@@ -367,14 +305,7 @@ server {
         autoindex off;
     }
 
-    # websockify (noVNC WebSocket)
-    location /websockify {
-        auth_request /auth/validate;
-        proxy_http_version 1.1;
-        proxy_set_header Upgrade $http_upgrade;
-        proxy_set_header Connection "upgrade";
-        proxy_pass http://127.0.0.1:6080;
-    }
+# (legacy noVNC websocket removed; xpra handles HTML+WS itself)
 
     # ACME (not used in --no-tls, but harmless)
     location ^~ /.well-known/acme-challenge/ {
@@ -423,18 +354,23 @@ server {
         proxy_set_header X-Forwarded-Proto https;
     }
 
+    # XPRA HTML5 (IB Gateway windows)
+    location /xpra/ {
+        auth_request /auth/validate;
+        proxy_http_version 1.1;
+        proxy_set_header Upgrade $http_upgrade;
+        proxy_set_header Connection "upgrade";
+        proxy_set_header Host $host;
+        proxy_read_timeout 86400;
+        proxy_pass http://127.0.0.1:14500/;
+    }
+
+    # (legacy noVNC websocket removed; xpra handles HTML+WS itself)
+
     location /novnc/ {
         auth_request /auth/validate;
         alias /usr/share/novnc/;
         autoindex off;
-    }
-
-    location /websockify {
-        auth_request /auth/validate;
-        proxy_http_version 1.1;
-        proxy_set_header Upgrade \$http_upgrade;
-        proxy_set_header Connection "upgrade";
-        proxy_pass http://127.0.0.1:6080;
     }
 
     location ^~ /.well-known/acme-challenge/ {
