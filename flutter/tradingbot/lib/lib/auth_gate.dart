@@ -1,15 +1,12 @@
 import 'dart:convert';
-import 'package:flutter/foundation.dart' show kIsWeb;
 import 'package:flutter/material.dart';
 import 'package:http/http.dart' as http;
 
 /// Relative URLs work for web (same origin behind Nginx).
 /// For desktop/mobile later, pass a baseUrl via constructor/env.
 String _u(String path, [String base = '']) {
-  if (kIsWeb) return path.startsWith('/') ? path : '/$path';
-  // TODO: when you ship desktop/mobile, set a real server base here.
-  return (base.isEmpty ? 'http://127.0.0.1' : base) +
-      (path.startsWith('/') ? path : '/$path');
+  return path.startsWith('/') ? path : '/$path';
+  //return ('http://192.168.133.130${path.startsWith('/') ? path : '/$path'}');
 }
 
 enum AuthStage { checking, init, enroll, login, ready }

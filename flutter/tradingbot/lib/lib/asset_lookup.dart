@@ -18,6 +18,9 @@ class _AssetLookupSheetState extends State<AssetLookupSheet> {
   List<Map<String, dynamic>> _rows = const [];
   // key: conId as string when available, else symbol
   final Map<String, List<double>> _sparks = {};
+  // tiny semaphore to avoid IBKR historical pacing
+  static int _inflight = 0;
+  static const int _maxInflight = 3;
 
   @override
   void initState() {
@@ -53,24 +56,37 @@ class _AssetLookupSheetState extends State<AssetLookupSheet> {
       setState(() => _rows = cast.take(30).toList());
       // best-effort sparks
       for (final r in cast.take(12)) {
+        // keep the cap (good!)
         final sym = (r['symbol'] ?? '').toString();
         final cid = (r['conId'] as num?)?.toInt();
+        final sec = (r['secType'] ?? '').toString();
         final key = cid != null ? cid.toString() : sym;
         if (sym.isEmpty || _sparks.containsKey(key)) continue;
-        _loadSpark(symbol: sym, conId: cid);
+        _loadSpark(symbol: sym, conId: cid, secType: sec);
       }
     } catch (_) {}
   }
 
-  Future<void> _loadSpark({String? symbol, int? conId}) async {
+  Future<void> _loadSpark({String? symbol, int? conId, String? secType}) async {
     try {
+      // pick 'what' + useRTH based on secType (FX/indices => MIDPOINT)
+      final st = (secType ?? '').toUpperCase();
+      final what =
+          (st == 'FX' || st == 'CASH' || st == 'IND') ? 'MIDPOINT' : 'TRADES';
+      final useRth = !(st == 'FX' || st == 'CASH'); // RTH meaningless for FX
+
+      // light throttle (<=3 concurrent)
+      while (_inflight >= _maxInflight) {
+        await Future.delayed(const Duration(milliseconds: 180));
+      }
+      _inflight++;
       final h = await Api.ibkrHistory(
         symbol: symbol,
         conId: conId,
         duration: '1 D',
         barSize: '5 mins',
-        what: 'TRADES',
-        useRTH: true,
+        what: what,
+        useRTH: useRth,
       );
       final bars = (h['bars'] as List?) ?? const [];
       final vals = bars.map((b) => (b['c'] as num).toDouble()).toList();
@@ -85,7 +101,10 @@ class _AssetLookupSheetState extends State<AssetLookupSheet> {
           setState(() => _sparks[key] = norm);
         }
       }
-    } catch (_) {}
+    } catch (_) {
+    } finally {
+      _inflight = (_inflight - 1).clamp(0, _maxInflight);
+    }
   }
 
   @override

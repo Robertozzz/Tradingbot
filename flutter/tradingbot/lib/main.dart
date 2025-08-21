@@ -1,4 +1,3 @@
-import 'package:flutter/foundation.dart';
 import 'package:flutter/material.dart';
 import 'lib/auth_gate.dart';
 import 'lib/dashboard.dart';
@@ -6,39 +5,16 @@ import 'lib/accounts.dart';
 import 'lib/assets.dart';
 import 'lib/trades.dart';
 import 'lib/settings.dart';
-import 'lib/api.dart';
 import 'lib/trading_clock.dart';
 import 'lib/ibkr_page.dart';
 
 void main() async {
   WidgetsFlutterBinding.ensureInitialized();
-
-  // Don't let tz init kill the app if the web asset isn't present yet.
   try {
     await initTz(); // timezone DB (safe to skip on web if asset missing)
   } catch (_) {
     // ignore; UI should still boot
   }
-
-  // From --dart-define if provided
-  var url = const String.fromEnvironment('API_BASE_URL', defaultValue: '');
-
-  // Sensible defaults by platform
-  if (url.isEmpty) {
-    if (kIsWeb) {
-      url = ''; // same-origin for web (backend at the same host)
-    } else {
-      switch (defaultTargetPlatform) {
-        case TargetPlatform.windows:
-          url = 'http://192.168.133.130';
-          break;
-        default:
-          url = 'http://127.0.0.1';
-      }
-    }
-  }
-
-  Api.baseUrl = url;
   runApp(const MainApp());
 }
 
@@ -72,9 +48,6 @@ class MainApp extends StatelessWidget {
       title: 'TradingBot',
       theme: theme,
       home: AuthGate(
-        // For desktop/mobile, supply where the backend lives.
-        // e.g. flutter run -d windows --dart-define=API_BASE_URL=http://192.168.133.130
-        baseUrl: Api.baseUrl,
         child: const Shell(), // your existing scaffold/nav/pages
       ),
     );
@@ -328,49 +301,53 @@ class _SidePanel extends StatelessWidget {
               ),
               const SizedBox(height: 4),
               Divider(color: Colors.white.withValues(alpha: .08)),
-              const SizedBox(height: 8),
-
-              // Core
-              if (expanded)
-                Padding(
-                  padding: const EdgeInsets.only(left: 6, bottom: 8),
-                  child: Text('CORE', style: sectionStyle),
-                ),
-              ...List.generate(
-                  _itemsCore.length,
-                  (i) => Padding(
+              // Scrollable middle section (prevents overflow)
+              Expanded(
+                child: ListView(
+                  padding: const EdgeInsets.only(top: 8, bottom: 8),
+                  physics: const ClampingScrollPhysics(),
+                  children: [
+                    if (expanded)
+                      Padding(
+                        padding: const EdgeInsets.only(left: 6, bottom: 8),
+                        child: Text('CORE', style: sectionStyle),
+                      ),
+                    ...List.generate(
+                      _itemsCore.length,
+                      (i) => Padding(
                         padding: const EdgeInsets.symmetric(vertical: 4),
                         child: buildTile(i, _itemsCore[i]),
-                      )),
-
-              const SizedBox(height: 8),
-              Divider(color: Colors.white.withValues(alpha: .08)),
-              const SizedBox(height: 8),
-              if (expanded)
-                Padding(
-                  padding: const EdgeInsets.only(left: 6, bottom: 8),
-                  child: Text('SYSTEM', style: sectionStyle),
+                      ),
+                    ),
+                    const SizedBox(height: 8),
+                    Divider(color: Colors.white.withValues(alpha: .08)),
+                    const SizedBox(height: 8),
+                    if (expanded)
+                      Padding(
+                        padding: const EdgeInsets.only(left: 6, bottom: 8),
+                        child: Text('SYSTEM', style: sectionStyle),
+                      ),
+                    Padding(
+                      padding: const EdgeInsets.symmetric(vertical: 4),
+                      child: buildTile(4, _itemsSystem[0]),
+                    ),
+                    Padding(
+                      padding: const EdgeInsets.symmetric(vertical: 4),
+                      child: buildTile(5, _itemsSystem[1]),
+                    ),
+                  ],
                 ),
-              // System group:
-              // IBKR is index 4, Settings moves to index 5
-              Padding(
-                padding: const EdgeInsets.symmetric(vertical: 4),
-                child: buildTile(4, _itemsSystem[0]),
               ),
-              Padding(
-                padding: const EdgeInsets.symmetric(vertical: 4),
-                child: buildTile(5, _itemsSystem[1]),
-              ),
-
-              const Spacer(),
-              // Small footer hint
+              // Footer stays visible without causing overflow
               if (expanded)
                 Padding(
                   padding: const EdgeInsets.only(left: 6, bottom: 8, top: 8),
                   child: Text(
                     'v1.0 • Dark',
                     style: sectionStyle.copyWith(
-                        fontSize: 11, color: Colors.white54),
+                      fontSize: 11,
+                      color: Colors.white54,
+                    ),
                   ),
                 ),
             ],

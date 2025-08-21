@@ -1,15 +1,15 @@
 import 'dart:async';
 import 'dart:convert';
 import 'package:http/http.dart' as http;
-import 'package:flutter/foundation.dart' show kIsWeb;
 
 class Api {
   static String baseUrl = '';
 
   static Uri _uri(String path) {
-    if (kIsWeb) return Uri.parse(path.startsWith('/') ? path : '/$path');
-    final base = baseUrl.isEmpty ? 'http://127.0.0.1' : baseUrl;
-    return Uri.parse(base + (path.startsWith('/') ? path : '/$path'));
+    // TODO
+    return Uri.parse(path.startsWith('/') ? path : '/$path'); // RELEASE
+    // return Uri.parse(
+    //     'http://192.168.133.130${path.startsWith('/') ? path : '/$path'}'); // FLUTTER DEV
   }
 
   static Future<Map<String, dynamic>> _getObj(String path) async {
