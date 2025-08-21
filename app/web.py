@@ -26,24 +26,20 @@ app.add_middleware(
 @app.middleware("http")
 async def coi_headers(request: Request, call_next):
     resp = await call_next(request)
-
-    # Keep COOP (for cross-origin isolation)
-    resp.headers["Cross-Origin-Opener-Policy"] = "same-origin"
-
-    # Allow third-party iframes like TradingView while preserving COI for WASM:
-    resp.headers["Cross-Origin-Embedder-Policy"] = "credentialless"
-
-    resp.headers["Cross-Origin-Resource-Policy"] = "same-origin"
-
+    # If you build Flutter with the HTML renderer, do NOT set COOP/COEP at all.
+    # These headers block third-party iframes like TradingView.
+    # If you *must* keep them for some routes, guard them and leave the main UI un-isolated.
+    # Example (commented out intentionally):
+    # if request.url.path.startswith("/_iso"):  # hypothetical isolated area
+    #     resp.headers["Cross-Origin-Opener-Policy"] = "same-origin"
+    #     resp.headers["Cross-Origin-Embedder-Policy"] = "require-corp"
+    #     resp.headers["Cross-Origin-Resource-Policy"] = "same-origin"
     if request.url.path in ("/", "/index.html"):
         resp.headers["Cache-Control"] = "no-store"
     if request.url.path.startswith("/flutter_service_worker.js"):
         resp.headers["Service-Worker-Allowed"] = "/"
         resp.headers.setdefault("Content-Type", "text/javascript")
-
-    # (add CSP below)
     return resp
-
 
 import logging
 logging.basicConfig(level=logging.INFO)          # <— add this once
@@ -235,11 +231,4 @@ if FLUTTER_BUILD and FLUTTER_BUILD.exists():
         if not index.exists():
             return JSONResponse({"error": "index.html not found"}, status_code=404)
         return FileResponse(index)
-else:
-    @app.get("/")
-    def root_placeholder():
-        return JSONResponse({
-            "message": "Flutter build not found. Build with "
-                       "`flutter build web --release --wasm --base-href /` "
-                       "and copy build/web/* into ui_build/."
-        })
+

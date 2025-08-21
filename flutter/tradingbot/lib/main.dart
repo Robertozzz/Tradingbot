@@ -45,7 +45,7 @@ class MainApp extends StatelessWidget {
 
     return MaterialApp(
       debugShowCheckedModeBanner: false,
-      title: 'TradingBot',
+      title: 'Tradingbot',
       theme: theme,
       home: AuthGate(
         child: const Shell(), // your existing scaffold/nav/pages
