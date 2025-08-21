@@ -99010,7 +99010,7 @@ A.aE7.prototype={
 $1(a){return a.a+"="+a.b},
 $S:665}
 A.Pk.prototype={
-H(a){return new A.Cr(new A.zy(B.abe,null),"TradingBot",A.xa(B.Fz,B.an,B.ds,B.Iw,B.JS,B.ahN,!0),!1,null)}}
+H(a){return new A.Cr(new A.zy(B.abe,null),"TradingBoT",A.xa(B.Fz,B.an,B.ds,B.Iw,B.JS,B.ahN,!0),!1,null)}}
 A.Eu.prototype={
 ai(){return new A.a03(A.af(["NYSE",!0,"LONDON",!0,"TOKYO",!0,"NASDAQ",!1,"TSX",!1,"FRANKFURT",!1,"PARIS",!1,"ZURICH",!1,"MADRID",!1,"HONG KONG",!1,"SHANGHAI",!1,"SINGAPORE",!1,"SYDNEY",!1,"NZX",!1,"TADAWUL",!1,"DUBAI",!1],t.N,t.y))}}
 A.a03.prototype={
