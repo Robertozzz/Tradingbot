@@ -389,21 +389,6 @@ server {
         proxy_pass http://127.0.0.1:14500;
     }
 	
-    # TEMP: Xpra WebSocket for MAIN (absolute /connect used by the HTML5 client)
-    # This ensures the main iframe can draw immediately. We'll split login later.
-    location = /connect {
-        auth_request off;
-        proxy_http_version 1.1;
-        proxy_set_header Upgrade $http_upgrade;
-        proxy_set_header Connection "upgrade";
-        proxy_set_header Host $host;
-        proxy_read_timeout 86400;
-        proxy_buffering off;
-        proxy_hide_header X-Frame-Options;
-        proxy_hide_header Content-Security-Policy;
-        proxy_pass http://127.0.0.1:14500;
-    }
-
     # XPRA HTML5 LOGIN (no auth gate; iframe+WS)
     location /xpra-login/ {
         auth_request off;
@@ -466,9 +451,9 @@ server {
     location = /connect {
         auth_request off;
         proxy_http_version 1.1;
-        proxy_set_header Upgrade $http_upgrade;
+        proxy_set_header Upgrade \$http_upgrade;
         proxy_set_header Connection "upgrade";
-        proxy_set_header Host $host;
+        proxy_set_header Host \$host;
         proxy_read_timeout 86400;
         proxy_buffering off;
         proxy_hide_header X-Frame-Options;
