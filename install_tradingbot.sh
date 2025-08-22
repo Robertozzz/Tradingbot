@@ -578,25 +578,3 @@ if [[ $NO_TLS -eq 1 ]]; then
 else
   echo "Install complete (PROD, HTTPS). Open: https://$DOMAIN"
 fi
-
-sudo tee /var/www/html/xpra_iframe_test.html >/dev/null <<'HTML'
-<!doctype html>
-<html>
-<head>
-  <meta charset="utf-8">
-  <title>Xpra iframe test</title>
-  <style>html,body,#wrap{height:100%;margin:0}</style>
-</head>
-<body>
-  <div id="wrap">
-    <iframe
-      id="xpra"
-      src="/xpra/"
-      style="width:100%;height:100%;border:0"
-      allow="clipboard-read; clipboard-write; fullscreen *"
-      allowfullscreen>
-    </iframe>
-  </div>
-</body>
-</html>
-HTML
