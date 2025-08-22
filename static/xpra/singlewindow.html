@@ -6,22 +6,23 @@
   <meta name="viewport" content="width=device-width, initial-scale=1">
 	<style>
 	  html,body { margin:0; padding:0; background:#000; overflow-x:auto; overflow-y:hidden }
-	  #wrap { display:flex; flex-direction:row; height:100vh; width:max-content }
-	  iframe { border:0; display:none; flex:0 0 auto; min-width:1px; min-height:1px; width:1px; height:1px }
+	  #wrap { display:flex; flex-direction:row; align-items:flex-start; height:100vh; width:max-content }
+	  /* Show immediately at a sensible fallback size; JS will right-size it */
+	  iframe { border:0; display:block; flex:0 0 auto; min-width:640px; min-height:480px; width:640px; height:480px }
 	</style>
 </head>
 <body>
   <div id="wrap">
-    <iframe id="xpra-main"  src="/xpra-main/?scaling=off"  title="IBKR Gateway Main"></iframe>
-    <iframe id="xpra-login" src="/xpra-login/?scaling=off" title="IBKR Gateway Login"></iframe>
+    <iframe id="xpra-main"  src="/xpra-main/index.html?scaling=off"  title="IBKR Gateway Main"></iframe>
+    <iframe id="xpra-login" src="/xpra-login/index.html?scaling=off" title="IBKR Gateway Login"></iframe>
   </div>
 	<script>
 	  function handleMsg(id,e){
 		const s = e.data && e.data.xpraWindowSize;
 		if(!(s && s.w && s.h)) return;
 		const ifr=document.getElementById(id);
-		ifr.style.display="block";
 		ifr.style.flex="0 0 "+s.w+"px";
+		ifr.style.width = s.w + "px";
 		ifr.style.height=s.h+"px";
 		// make sure the inner doc is scrolled to top-left
 		try { ifr.contentWindow && ifr.contentWindow.scrollTo(0,0); } catch(_){}
@@ -33,6 +34,8 @@
 		  handleMsg(id,e);
 		}
 	  });
+	  // Safety: if no message arrives, keep iframes visible at fallback size
+	  setTimeout(()=>{ try{document.getElementById('xpra-main').contentWindow.scrollTo(0,0)}catch(_){}} , 800);
 	</script>
 </body>
 </html>

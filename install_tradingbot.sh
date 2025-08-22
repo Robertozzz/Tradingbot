@@ -99,6 +99,8 @@ install -d -o root -g root -m 0755 /opt
 install -d -o www-data -g www-data -m 0755 /opt/tradingbot
 install -d -o www-data -g www-data -m 0755 /opt/tradingbot/runtime
 install -d -o www-data -g www-data -m 0755 /opt/tradingbot/logs
+install -d -o www-data -g www-data -m 0755 /opt/tradingbot/app
+install -d -o www-data -g www-data -m 0755 /opt/tradingbot/static/xpra
 
 # Reuse heavy dirs on re-runs (don’t delete these during rsync)
 RSYNC_EXCLUDES=(--exclude='.venv/' --exclude='runtime/' --exclude='logs/')
@@ -163,6 +165,29 @@ fi
 
 # ---- Remove legacy standalone xpra runner if present (prevents port clashes) ----
 rm -f /opt/ibkr/run-ibgateway-xpra.sh 2>/dev/null || true
+
+# ---- Helper: pin IBKR window to top-left without resizing ----
+install -D -m 0755 /dev/stdin /usr/local/bin/pin-ibgw.sh <<'PINSH'
+#!/usr/bin/env bash
+set -euo pipefail
+# Wait up to ~20s for the window to appear
+for i in {1..40}; do
+  # Try exact title first, then a loose match (case-sensitive)
+  WID="$(xdotool search --name '^IB Gateway$' 2>/dev/null | head -n1 || true)"
+  [[ -z "${WID:-}" ]] && WID="$(xdotool search --name 'IB.*Gateway' 2>/dev/null | head -n1 || true)"
+  if [[ -n "${WID:-}" ]]; then
+    # De-maximize if maximized, then move to 0,0 and keep on top & sticky
+    xdotool windowunmaximize "$WID" 2>/dev/null || true
+    xdotool windowmove --sync "$WID" 0 0 || true
+    wmctrl -i -r "$WID" -b add,above,sticky || true
+    exit 0
+  fi
+  sleep 0.5
+done
+exit 0
+PINSH
+
+chown root:root /usr/local/bin/pin-ibgw.sh
 
 # Install Gateway under ibkr (idempotent)
 # We use the same path as the runner script: $HOME/Jts/ibgateway/1037
@@ -257,10 +282,8 @@ ExecStart=/usr/bin/xpra start :100 \
   --bind-tcp=127.0.0.1:14500 \
   --exit-with-children=yes \
   --start-child=/usr/bin/openbox \
-  --start-child='bash -lc "sleep 2; \
-    wmctrl -F -r \"IB Gateway\" -e 0,0,0,-1,-1 || true; \
-    wmctrl -F -r \"IB Gateway\" -b add,above,sticky || true"' \
-  --start-child=/home/ibkr/Jts/ibgateway/1037/ibgateway
+  --start-child=/home/ibkr/Jts/ibgateway/1037/ibgateway \
+  --start-child=/bin/bash -lc "/usr/local/bin/pin-ibgw.sh"
 Restart=always
 RestartSec=5
 
@@ -355,6 +378,8 @@ server {
         sub_filter_types text/html;
         sub_filter_once off;
         sub_filter '<meta http-equiv="Content-Security-Policy"' '<meta http-equiv="x-removed-CSP">';
+        # nudge view to top-left on load just in case
+        sub_filter '<body>' '<body><script>try{scrollTo(0,0)}catch(e){}</script>';
 
         # hide Xpra chrome, transparent background
         sub_filter '</head>' '<style id="xpra-embed">
@@ -410,6 +435,9 @@ server {
         sub_filter_types text/html;
         sub_filter_once off;
         sub_filter '<meta http-equiv="Content-Security-Policy"' '<meta http-equiv="x-removed-CSP">';
+        # nudge view to top-left on load just in case
+        sub_filter '<body>' '<body><script>try{scrollTo(0,0)}catch(e){}</script>';
+
         sub_filter '</head>' '<style id="xpra-embed">
           #toolbar,#menubar,#footer,#taskbar,#sidepanel,#notifications{display:none!important}
           html,body,#workspace{margin:0;padding:0;width:100%;height:100%;background:transparent}
@@ -719,4 +747,5 @@ else
   echo "Install complete (PROD, HTTPS). Open: https://$DOMAIN"
 fi
 
-sudo chown -R www-data:www-data /opt/tradingbot/static/xpra
+# ensure the dir exists and is owned, even if no files yet
+install -d -o www-data -g www-data -m 0755 /opt/tradingbot/static/xpra
