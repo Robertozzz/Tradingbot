@@ -340,7 +340,7 @@ server {
         proxy_read_timeout 86400;
         proxy_buffering off;
         # strip the /xpra/ prefix so Xpra’s absolute paths (/connect, /favicon.ico, etc) resolve
-        rewrite ^/xpra/(.*)$ /$1 break;
+        rewrite ^/xpra/(.*)$ /\$1 break;
         proxy_pass http://127.0.0.1:14500;
     }
 
@@ -448,7 +448,7 @@ server {
         proxy_read_timeout 86400;
         proxy_buffering off;
         # strip the /xpra/ prefix so Xpra’s absolute paths (/connect, /favicon.ico, etc) resolve
-        rewrite ^/xpra/(.*)$ /$1 break;
+        rewrite ^/xpra/(.*)$ /\$1 break;
         proxy_pass http://127.0.0.1:14500;
     }
 
