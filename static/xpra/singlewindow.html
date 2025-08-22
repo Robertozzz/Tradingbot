@@ -4,39 +4,34 @@
   <meta charset="utf-8">
   <title>IB Gateway (tight)</title>
   <meta name="viewport" content="width=device-width, initial-scale=1">
-  <style>
-    html,body { margin:0; padding:0; background:#000; overflow:hidden }
-    #wrap { display:inline-block; line-height:0; position:fixed; left:0; top:0 }
-    #xpra { border:0; display:block; width:1px; height:1px }
-  </style>
+	<style>
+	  html,body { margin:0; padding:0; background:#000; overflow-x:auto; overflow-y:hidden }
+	  #wrap { display:flex; flex-direction:row; height:100vh; width:max-content }
+	  iframe { border:0; display:none; flex:0 0 auto; min-width:1px; min-height:1px; width:1px; height:1px }
+	</style>
 </head>
 <body>
-  <div id="wrap"><iframe id="xpra" src="/xpra/?scaling=off" title="IBKR Gateway"></iframe></div>
+  <div id="wrap">
+    <iframe id="xpra-main"  src="/xpra-main/?scaling=off"  title="IBKR Gateway Main"></iframe>
+    <iframe id="xpra-login" src="/xpra-login/?scaling=off" title="IBKR Gateway Login"></iframe>
+  </div>
+
   <script>
-    const wrap = document.getElementById('wrap');
-    const ifr  = document.getElementById('xpra');
-
-    // Resize the iframe to match the IBKR window
-    function setSize(w,h){
-      ifr.style.width  = w + 'px';
-      ifr.style.height = h + 'px';
-      wrap.style.width  = w + 'px';
-      wrap.style.height = h + 'px';
-      // center in viewport (optional)
-      wrap.style.left = Math.max(0, (innerWidth  - w)/2) + 'px';
-      wrap.style.top  = Math.max(0, (innerHeight - h)/2) + 'px';
+    function handleMsg(id,e){
+      const s = e.data && e.data.xpraWindowSize;
+      if(!(s && s.w && s.h)) return;
+      const ifr=document.getElementById(id);
+      ifr.style.display="block";
+      ifr.style.flex="0 0 "+s.w+"px";
+      ifr.style.height=s.h+"px";
     }
-
-    // Listen for size messages from /xpra/ (injected script sends {xpraWindowSize:{w,h}})
-	addEventListener('message', (e) => {
-	  console.log("msg from", e.origin, "data:", e.data);
-	  // temporarily skip origin check
-	  const s = e.data && e.data.xpraWindowSize;
-	  if (s && s.w && s.h) setSize(s.w, s.h);
-	});
-
-    // Keep centered on browser resizes (the xpra page also re-posts periodically)
-    addEventListener('resize', () => postMessage({ping:true}, location.origin));
+    addEventListener("message", e=>{
+      if(e.origin!==location.origin) return;
+      if(e.source && e.source.frameElement){
+        const id=e.source.frameElement.id;
+        handleMsg(id,e);
+      }
+    });
   </script>
 </body>
 </html>

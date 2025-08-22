@@ -259,34 +259,45 @@ WantedBy=multi-user.target
 UNIT
 fi
 
-## Old ibgateway.service (Xvfb + noVNC) is replaced by xpra:
-## stop/disable if it exists
+# Stop/disable any legacy single xpra unit if present
 systemctl disable --now ibgateway.service 2>/dev/null || true
 
-# /etc/systemd/system/xpra-ibgateway.service
-cat > /etc/systemd/system/xpra-ibgateway.service <<'UNIT'
+# /etc/systemd/system/xpra-ibgateway-main.service
+cat > /etc/systemd/system/xpra-ibgateway-main.service <<'UNIT'
 [Unit]
-Description=Xpra session for IB Gateway (window-only streaming)
-Wants=network-online.target
+Description=Xpra session for IB Gateway main
 After=network-online.target
 
 [Service]
-Type=simple
 User=ibkr
-# Give xpra a writable runtime dir:
-RuntimeDirectory=xpra-ibgateway
-Environment=XDG_RUNTIME_DIR=/run/xpra-ibgateway
-Environment=DISPLAY=:100
-# Foreground server with HTML5 bound to loopback:14500
+RuntimeDirectory=xpra-main
+Environment=XDG_RUNTIME_DIR=/run/xpra-main
 ExecStart=/usr/bin/xpra start :100 \
-  --daemon=no \
-  --html=on \
+  --daemon=no --html=on \
   --bind-tcp=127.0.0.1:14500 \
   --exit-with-children=yes \
-  --start-child=/home/ibkr/Jts/ibgateway/1037/ibgateway \
-  --speaker=off --microphone=off --pulseaudio=no \
-  --printing=no --clipboard=yes --mdns=no
-ExecStop=/usr/bin/xpra stop :100 --wait=yes
+  --start-child=/home/ibkr/Jts/ibgateway/1037/ibgateway
+Restart=always
+RestartSec=5
+
+[Install]
+WantedBy=multi-user.target
+UNIT
+
+# /etc/systemd/system/xpra-ibgateway-login.service
+cat > /etc/systemd/system/xpra-ibgateway-login.service <<'UNIT'
+[Unit]
+Description=Xpra session for IB Gateway login
+After=network-online.target
+
+[Service]
+User=ibkr
+RuntimeDirectory=xpra-login
+Environment=XDG_RUNTIME_DIR=/run/xpra-login
+ExecStart=/usr/bin/xpra start :101 \
+  --daemon=no --html=on \
+  --bind-tcp=127.0.0.1:14501 \
+  --exit-with-children=yes
 Restart=always
 RestartSec=5
 
@@ -295,8 +306,10 @@ WantedBy=multi-user.target
 UNIT
 
 systemctl daemon-reload
-systemctl enable --now xpra-ibgateway.service
-systemctl restart xpra-ibgateway.service || true
+systemctl enable --now xpra-ibgateway-main.service
+systemctl enable --now xpra-ibgateway-login.service
+systemctl restart xpra-ibgateway-main.service || true
+systemctl restart xpra-ibgateway-login.service || true
 systemctl enable --now uvicorn.service
 
 # ---- Nginx site (HTTP dev vs HTTPS prod) ----
@@ -305,16 +318,10 @@ if [[ $NO_TLS -eq 1 ]]; then
 server {
     listen 80;
     server_name $DOMAIN _;
-	
-    # Serve a simple iframe test page from same-origin:
-    location = /xpra_iframe_test.html {
-        auth_request off;
-        root /var/www/html;
-        default_type text/html;
-    }
 
-    # /xpra without trailing slash -> /xpra/
-    location = /xpra { return 301 /xpra/; }
+    # convenience redirects without trailing slash
+    location = /xpra-main { return 301 /xpra-main/; }
+    location = /xpra-login { return 301 /xpra-login/; }
 
     # Auth gate
     location = /auth/validate {
@@ -344,8 +351,8 @@ server {
         proxy_set_header X-Forwarded-Proto http;
     }
 	
-    # XPRA HTML5 (IB Gateway windows) - no auth gate (iframe+WS)
-    location /xpra/ {
+    # XPRA HTML5 MAIN (no auth gate; iframe+WS)
+    location /xpra-main/ {
         auth_request off;
         proxy_http_version 1.1;
         proxy_set_header Upgrade \$http_upgrade;
@@ -373,7 +380,7 @@ server {
         </style></head>';
 
         # emit size of first app window (or canvas) to parent, ensure native pixels (no scaling)
-		sub_filter '</body>' '<script>
+        sub_filter '</body>' '<script>
 		  (function(){
 			try{ if(!/scaling=/.test(location.search)) history.replaceState(null,"",location.pathname+"?scaling=off"); }catch(e){}
 			function findTarget(){
@@ -392,17 +399,17 @@ server {
 			// First attempt shortly after load
 			setTimeout(pulse,200);
 		  })();
-		</script></body>';
+        </script></body>';
 
-        # strip the /xpra/ prefix so Xpra’s absolute paths (/connect, /favicon.ico, etc) resolve
-        rewrite ^/xpra/(.*)$ /\$1 break;
-        # and rewrite any absolute redirect back under /xpra/ for the browser
-        proxy_redirect ~^(/.*)$ /xpra\$1;
+        # strip the /xpra-main/ prefix so Xpra’s absolute paths (/connect, /favicon.ico, etc) resolve
+        rewrite ^/xpra-main/(.*)$ /\$1 break;
+        # and rewrite any absolute redirect back under /xpra-main/ for the browser
+        proxy_redirect ~^(/.*)$ /xpra-main\$1;
         proxy_pass http://127.0.0.1:14500;
     }
 
-    # Xpra websocket uses absolute /connect - no auth gate
-    location /connect {
+    # XPRA HTML5 LOGIN (no auth gate; iframe+WS)
+    location /xpra-login/ {
         auth_request off;
         proxy_http_version 1.1;
         proxy_set_header Upgrade \$http_upgrade;
@@ -412,10 +419,41 @@ server {
         proxy_buffering off;
         proxy_hide_header X-Frame-Options;
         proxy_hide_header Content-Security-Policy;
-        proxy_pass http://127.0.0.1:14500;
+        add_header X-Frame-Options "SAMEORIGIN" always;
+        add_header Content-Security-Policy "frame-ancestors 'self' http://\$host https://\$host" always;
+
+        proxy_set_header Accept-Encoding "";
+        sub_filter_types text/html;
+        sub_filter_once off;
+        sub_filter '<meta http-equiv="Content-Security-Policy"' '<meta http-equiv="x-removed-CSP">';
+        sub_filter '</head>' '<style id="xpra-embed">
+          #toolbar,#menubar,#footer,#taskbar,#sidepanel,#notifications{display:none!important}
+          html,body,#workspace{margin:0;padding:0;width:100%;height:100%;background:transparent}
+          .window{box-shadow:none!important;border:none!important}
+        </style></head>';
+        sub_filter '</body>' '<script>
+          (function(){
+            try{ if(!/scaling=/.test(location.search)) history.replaceState(null,"",location.pathname+"?scaling=off"); }catch(e){}
+            function findTarget(){ return document.querySelector(".window") || document.querySelector("#screen canvas"); }
+            function pulse(){
+              const el = findTarget(); if(!el) return;
+              const r = el.getBoundingClientRect();
+              const msg = { xpraWindowSize: { w: Math.round(r.width), h: Math.round(r.height) } };
+              try { parent.postMessage(msg, location.origin); } catch(e) {}
+            }
+            new MutationObserver(pulse).observe(document.documentElement,{subtree:true,childList:true,attributes:true});
+            addEventListener("resize",pulse);
+            setInterval(pulse,500);
+            setTimeout(pulse,200);
+          })();
+        </script></body>';
+
+        rewrite ^/xpra-login/(.*)$ /\$1 break;
+        proxy_redirect ~^(/.*)$ /xpra-login\$1;
+        proxy_pass http://127.0.0.1:14501;
     }
 	
-    # Xpra absolute-path assets (no auth gate)
+    # Xpra MAIN absolute-path assets (no auth gate)
     location = /favicon.ico {
         auth_request off;
         proxy_http_version 1.1;
@@ -477,9 +515,10 @@ server {
 server {
     listen 443 ssl http2;
     server_name $DOMAIN _;
-	
-    # /xpra without trailing slash -> /xpra/
-    location = /xpra { return 301 /xpra/; }
+
+    # convenience redirects without trailing slash
+    location = /xpra-main { return 301 /xpra-main/; }
+    location = /xpra-login { return 301 /xpra-login/; }
 
     # Filled by Certbot later
     ssl_certificate     /etc/letsencrypt/live/$DOMAIN/fullchain.pem;
@@ -512,8 +551,8 @@ server {
         proxy_set_header X-Forwarded-Proto https;
     }
 
-    # XPRA HTML5 (IB Gateway windows) - no auth gate (iframe+WS)
-    location /xpra/ {
+    # XPRA HTML5 MAIN (no auth gate; iframe+WS)
+    location /xpra-main/ {
         auth_request off;
         proxy_http_version 1.1;
         proxy_set_header Upgrade \$http_upgrade;
@@ -540,8 +579,8 @@ server {
           .window{box-shadow:none!important;border:none!important}
         </style></head>';
 
-		# emit size of first app window (or canvas) to parent, ensure native pixels (no scaling)
-		sub_filter '</body>' '<script>
+        # emit size of first app window (or canvas) to parent, ensure native pixels (no scaling)
+        sub_filter '</body>' '<script>
 		  (function(){
 			try{ if(!/scaling=/.test(location.search)) history.replaceState(null,"",location.pathname+"?scaling=off"); }catch(e){}
 			function findTarget(){
@@ -562,15 +601,15 @@ server {
 		  })();
 		</script></body>';
 
-        # strip the /xpra/ prefix so Xpra’s absolute paths (/connect, /favicon.ico, etc) resolve
-        rewrite ^/xpra/(.*)$ /\$1 break;
-        # and rewrite any absolute redirect back under /xpra/ for the browser
-        proxy_redirect ~^(/.*)$ /xpra\$1;
+        # strip the /xpra-main/ prefix so Xpra’s absolute paths (/connect, /favicon.ico, etc) resolve
+        rewrite ^/xpra-main/(.*)$ /\$1 break;
+        # and rewrite any absolute redirect back under /xpra-main/ for the browser
+        proxy_redirect ~^(/.*)$ /xpra-main\$1;
         proxy_pass http://127.0.0.1:14500;
     }
 
-    # Xpra websocket uses absolute /connect - no auth gate
-    location /connect {
+    # XPRA HTML5 LOGIN (no auth gate; iframe+WS)
+    location /xpra-login/ {
         auth_request off;
         proxy_http_version 1.1;
         proxy_set_header Upgrade \$http_upgrade;
@@ -580,10 +619,41 @@ server {
         proxy_buffering off;
         proxy_hide_header X-Frame-Options;
         proxy_hide_header Content-Security-Policy;
-        proxy_pass http://127.0.0.1:14500;
+        add_header X-Frame-Options "SAMEORIGIN" always;
+        add_header Content-Security-Policy "frame-ancestors 'self' http://\$host https://\$host" always;
+
+        proxy_set_header Accept-Encoding "";
+        sub_filter_types text/html;
+        sub_filter_once off;
+        sub_filter '<meta http-equiv="Content-Security-Policy"' '<meta http-equiv="x-removed-CSP">';
+        sub_filter '</head>' '<style id="xpra-embed">
+          #toolbar,#menubar,#footer,#taskbar,#sidepanel,#notifications{display:none!important}
+          html,body,#workspace{margin:0;padding:0;width:100%;height:100%;background:transparent}
+          .window{box-shadow:none!important;border:none!important}
+        </style></head>';
+        sub_filter '</body>' '<script>
+          (function(){
+            try{ if(!/scaling=/.test(location.search)) history.replaceState(null,"",location.pathname+"?scaling=off"); }catch(e){}
+            function findTarget(){ return document.querySelector(".window") || document.querySelector("#screen canvas"); }
+            function pulse(){
+              const el = findTarget(); if(!el) return;
+              const r = el.getBoundingClientRect();
+              const msg = { xpraWindowSize: { w: Math.round(r.width), h: Math.round(r.height) } };
+              try { parent.postMessage(msg, location.origin); } catch(e) {}
+            }
+            new MutationObserver(pulse).observe(document.documentElement,{subtree:true,childList:true,attributes:true});
+            addEventListener("resize",pulse);
+            setInterval(pulse,500);
+            setTimeout(pulse,200);
+          })();
+        </script></body>';
+
+        rewrite ^/xpra-login/(.*)$ /\$1 break;
+        proxy_redirect ~^(/.*)$ /xpra-login\$1;
+        proxy_pass http://127.0.0.1:14501;
     }
 	
-    # Xpra absolute-path assets (no auth gate)
+    # Xpra MAIN absolute-path assets (no auth gate)
     location = /favicon.ico {
         auth_request off;
         proxy_http_version 1.1;
