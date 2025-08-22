@@ -304,7 +304,7 @@ if [[ $NO_TLS -eq 1 ]]; then
   cat > /etc/nginx/sites-available/tradingbot <<NGINX
 server {
     listen 80;
-    server_name $DOMAIN;
+    server_name $DOMAIN _;
 	
     # Serve a simple iframe test page from same-origin:
     location = /xpra_iframe_test.html {
@@ -358,6 +358,35 @@ server {
         proxy_hide_header Content-Security-Policy;
         add_header X-Frame-Options "SAMEORIGIN" always;
         add_header Content-Security-Policy "frame-ancestors 'self' http://\$host https://\$host" always;
+
+        # allow HTML rewrite + strip meta CSP
+        proxy_set_header Accept-Encoding "";
+        sub_filter_types text/html;
+        sub_filter_once off;
+        sub_filter '<meta http-equiv="Content-Security-Policy"' '<meta http-equiv="x-removed-CSP"';
+
+        # hide Xpra chrome, transparent background
+        sub_filter '</head>' '<style id="xpra-embed">
+          #toolbar,#menubar,#footer,#taskbar,#sidepanel,#notifications{display:none!important}
+          html,body,#workspace{margin:0;padding:0;width:100%;height:100%;background:transparent}
+          .window{box-shadow:none!important;border:none!important}
+        </style></head>';
+
+        # emit size of first app window to parent, ensure native pixels (no scaling)
+        sub_filter '</body>' '<script>
+          (function(){
+            try{ if(!/scaling=/.test(location.search)) history.replaceState(null,"",location.pathname+"?scaling=off"); }catch(e){}
+            function pulse(){
+              const w=document.querySelector("#workspace .window"); if(!w) return;
+              const r=w.getBoundingClientRect();
+              const msg={xpraWindowSize:{w:Math.round(r.width),h:Math.round(r.height)}};
+              try{ parent.postMessage(msg, location.origin); }catch(e){}
+            }
+            new MutationObserver(pulse).observe(document.documentElement,{subtree:true,childList:true});
+            addEventListener("resize",pulse);
+            setInterval(pulse,500);
+          })();
+        </script></body>';
 
         # strip the /xpra/ prefix so Xpra’s absolute paths (/connect, /favicon.ico, etc) resolve
         rewrite ^/xpra/(.*)$ /\$1 break;
@@ -441,7 +470,7 @@ server {
 
 server {
     listen 443 ssl http2;
-    server_name $DOMAIN;
+    server_name $DOMAIN _;
 	
     # /xpra without trailing slash -> /xpra/
     location = /xpra { return 301 /xpra/; }
@@ -491,6 +520,36 @@ server {
         proxy_hide_header Content-Security-Policy;
         add_header X-Frame-Options "SAMEORIGIN" always;
         add_header Content-Security-Policy "frame-ancestors 'self' http://\$host https://\$host" always;
+
+        # allow HTML rewrite + strip meta CSP
+        proxy_set_header Accept-Encoding "";
+        sub_filter_types text/html;
+        sub_filter_once off;
+        sub_filter '<meta http-equiv="Content-Security-Policy"' '<meta http-equiv="x-removed-CSP"';
+
+        # hide Xpra chrome, transparent background
+        sub_filter '</head>' '<style id="xpra-embed">
+          #toolbar,#menubar,#footer,#taskbar,#sidepanel,#notifications{display:none!important}
+          html,body,#workspace{margin:0;padding:0;width:100%;height:100%;background:transparent}
+          .window{box-shadow:none!important;border:none!important}
+        </style></head>';
+
+        # emit size of first app window to parent, ensure native pixels (no scaling)
+        sub_filter '</body>' '<script>
+          (function(){
+            try{ if(!/scaling=/.test(location.search)) history.replaceState(null,"",location.pathname+"?scaling=off"); }catch(e){}
+            function pulse(){
+              const w=document.querySelector("#workspace .window"); if(!w) return;
+              const r=w.getBoundingClientRect();
+              const msg={xpraWindowSize:{w:Math.round(r.width),h:Math.round(r.height)}};
+              try{ parent.postMessage(msg, location.origin); }catch(e){}
+            }
+            new MutationObserver(pulse).observe(document.documentElement,{subtree:true,childList:true});
+            addEventListener("resize",pulse);
+            setInterval(pulse,500);
+          })();
+        </script></body>';
+
         # strip the /xpra/ prefix so Xpra’s absolute paths (/connect, /favicon.ico, etc) resolve
         rewrite ^/xpra/(.*)$ /\$1 break;
         # and rewrite any absolute redirect back under /xpra/ for the browser
