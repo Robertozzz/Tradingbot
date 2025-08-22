@@ -75,7 +75,14 @@ class _AuthGateState extends State<AuthGate> {
       body: jsonEncode({'username': user, 'new_password': pw}),
     );
     if (r.statusCode == 200) {
-      setState(() => stage = AuthStage.enroll);
+      /*
+       setState(() => stage = AuthStage.enroll);
+       */
+      // DEBUG ONLY: skip TOTP enrollment, go straight to ready
+
+      setState(() => stage = AuthStage.ready);
+
+      //
     } else {
       setState(() => msg = 'Init failed (${r.statusCode})');
     }
@@ -144,9 +151,17 @@ class _AuthGateState extends State<AuthGate> {
         'remember': remember
       }),
     );
+    /*
     setState(
         () => stage = r.statusCode == 200 ? AuthStage.ready : AuthStage.login);
     if (r.statusCode != 200) msg = 'Login failed (${r.statusCode})';
+    */
+    // DEBUG ONLY: ignore TOTP code, just accept password
+    setState(
+        () => stage = r.statusCode == 200 ? AuthStage.ready : AuthStage.login);
+    if (r.statusCode != 200) msg = 'Login failed (${r.statusCode})';
+
+    //
   }
 
   @override
@@ -284,12 +299,23 @@ class _InitPasswordState extends State<_InitPassword> {
         ],
       );
 
+  // DEBUG ONLY: allow username len>=1 and password len>=1
+/*
   bool _canContinue() {
     final user = u.text.trim();
     final pw1 = p1.text;
     final pw2 = p2.text;
     return user.length >= 3 && pw1.length >= 8 && pw1 == pw2;
   }
+  */
+
+  bool _canContinue() {
+    final user = u.text.trim();
+    final pw1 = p1.text;
+    final pw2 = p2.text;
+    return user.isNotEmpty && pw1.isNotEmpty && pw1 == pw2;
+  }
+  //
 
   Future<void> _submit() async {
     setState(() => busy = true);
@@ -380,6 +406,9 @@ class _LoginState extends State<_Login> {
             textInputAction: TextInputAction.next,
             onSubmitted: (_) => _fCode.requestFocus(),
           ),
+
+          // DEBUG ONLY: TOTP skipped
+          /*
           TextField(
               controller: c,
               focusNode: _fCode,
@@ -393,6 +422,8 @@ class _LoginState extends State<_Login> {
               decoration:
                   const InputDecoration(labelText: '6-digit TOTP code')),
           const SizedBox(height: 12),
+
+          */
           CheckboxListTile(
             value: remember,
             onChanged: (v) => setState(() => remember = v ?? false),

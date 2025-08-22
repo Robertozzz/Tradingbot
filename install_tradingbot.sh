@@ -166,17 +166,15 @@ fi
 # ---- Remove legacy standalone xpra runner if present (prevents port clashes) ----
 rm -f /opt/ibkr/run-ibgateway-xpra.sh 2>/dev/null || true
 
-# ---- Helper: place IBKR windows: first at (0,0), second to the right of the first ----
+# ---- Helper: place IBKR windows: keep arranging forever ----
 cat > /usr/local/bin/arrange-ibgw.sh <<'PINSH'
 #!/usr/bin/env bash
 set -euo pipefail
-# We iterate for ~30s: keep enforcing placement as windows appear.
-end=$((SECONDS+30))
-primary=""
-primary_w=0
-while (( SECONDS < end )); do
-  # Find all top-level IBKR windows (titles often contain 'IB Gateway', 'Login', 'Authentication', etc.)
-  mapfile -t wins < <(xdotool search --onlyvisible --name 'IB.*Gateway|Login|Authenticat' 2>/dev/null || true)
+GAP=12
+primary=""; primary_w=0
+while :; do
+  # Match common titles: “IB Gateway”, “IBKR Gateway”, “Login”, “Authentication”, etc.
+  mapfile -t wins < <(xdotool search --onlyvisible --name 'IB(KR)?\s*Gateway|IBKR|Login|Authenticat' 2>/dev/null || true)
   if (( ${#wins[@]} > 0 )); then
     # Choose the oldest (first) as primary if not set
     [[ -z "${primary:-}" ]] && primary="${wins[0]}"
@@ -193,13 +191,12 @@ while (( SECONDS < end )); do
     for w in "${wins[@]}"; do
       [[ "$w" = "$primary" ]] && continue
       xdotool windowunmaximize "$w" 2>/dev/null || true
-      xdotool windowmove --sync "$w" "$primary_w" 0 2>/dev/null || true
+      xdotool windowmove --sync "$w" "$((primary_w+GAP))" 0 2>/dev/null || true
       wmctrl -i -r "$w" -b add,above,sticky 2>/dev/null || true
     done
   fi
   sleep 0.5
-+done
-+exit 0
+done
 PINSH
 
 chmod 0755 /usr/local/bin/arrange-ibgw.sh

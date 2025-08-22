@@ -5,33 +5,26 @@
   <title>IB Gateway (tight)</title>
   <meta name="viewport" content="width=device-width, initial-scale=1">
 	<style>
-	  html,body { margin:0; padding:0; background:#000; overflow:hidden }
-	  #wrap { display:flex; flex-direction:row; align-items:flex-start; height:100vh }
-	  /* Fallback; JS will right-size to 2× app width */
-	  iframe { border:0; display:block; flex:0 0 1280px; height:720px }
+    html,body { margin:0; padding:0; background:#000; overflow:hidden }
+    #wrap { height:100vh }
+    /* Fallback; JS will right-size to 2× the IBGW window */
+    iframe { border:0; display:block; width:2560px; height:720px }
 	</style>
 </head>
 <body>
   <div id="wrap">
-    <iframe id="xpra-main"  src="/xpra-main/index.html?scaling=off"  title="IBKR Gateway"></iframe>
+    <iframe id="xpra-main" src="/xpra-main/index.html?scaling=off" title="IBKR Gateway"></iframe>
   </div>
 	<script>
-	  const IF = document.getElementById('xpra-main');
-	  let appW = 1280, appH = 720; // until we hear from Xpra
-
-	  function applySizes(){
-	    const wide = appW * 2;
-	    for (const ifr of [L,R]) {
-		// make the iframe double-width so a second IBKR window fits to the right
-		const dw = s.w * 2;
-		ifr.style.flex ="0 0 "+dw+"px";
-		ifr.style.width = dw + "px";
-	    ifr.style.height = appH + 'px';
-	    }
-	    // left shows x=0; right shows x=appW (second pane)
-	    try { L.contentWindow.scrollTo(0, 0); } catch(_) {}
-	    try { R.contentWindow.scrollTo(appW, 0); } catch(_) {}
-	  }
+    const IF = document.getElementById('xpra-main');
+    let appW = 1280, appH = 720; // until xpra reports real size
+    function applySizes() {
+      const wide = appW * 2;           // show a “double-wide” canvas
+      IF.style.width  = wide + 'px';
+      IF.style.height = appH  + 'px';
+      // nudge the inner xpra page to 0,0 so the first IB window is fully visible
+      try { IF.contentWindow && IF.contentWindow.scrollTo(0, 0); } catch(_){}
+    }
 
 	  // Listen for the xpraWindowSize message from either iframe
 	  addEventListener('message', (e) => {
@@ -44,10 +37,9 @@
 	    }
 	  });
 
-	  // Keep view aligned even if client reflows
-	  L.addEventListener('load', applySizes);
-	  R.addEventListener('load', applySizes);
-	  setInterval(applySizes, 700);
+    // Keep aligned if the client reflows
+    IF.addEventListener('load', applySizes);
+    setInterval(applySizes, 700);
 	</script>
 </body>
 </html>
