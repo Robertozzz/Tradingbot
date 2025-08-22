@@ -215,10 +215,10 @@ while (( SECONDS < end )); do
     # Try by WM_CLASS (varies across IBKR/Java builds)
     [[ -z "$MAIN_ID" ]] && MAIN_ID="$(xdotool search --class 'IBGateway' 2>/dev/null | head -n1 || true)"
     [[ -z "$MAIN_ID" ]] && MAIN_ID="$(xdotool search --class 'java|sun-awt|swing' 2>/dev/null | head -n1 || true)"
+    if [[ -n "$MAIN_ID" ]]; then
       # Fullscreen (with fallbacks) + keep on top + sticky
       fullscreen_or_max "$MAIN_ID"
       wmctrl -i -r "$MAIN_ID" -b add,above,sticky 2>/dev/null || true
-      wmctrl -i -r "$MAIN_ID" -b add,maximized_vert,maximized_horz,above,sticky || true
       xdotool windowactivate --sync "$MAIN_ID" 2>/dev/null || true
     fi
   fi
