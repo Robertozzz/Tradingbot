@@ -12,33 +12,24 @@ class IbkrGatewayPanel extends StatefulWidget {
 
 class _IbkrGatewayPanelState extends State<IbkrGatewayPanel> {
   static bool _registered = false;
+  late final web.HTMLIFrameElement _iframe;
 
   @override
   void initState() {
     super.initState();
 
-    // Build a very clean, full-bleed iframe using the noVNC "lite" client
-    Uri(queryParameters: {
-      'autoconnect': 'true',
-      'reconnect': 'true',
-      'reconnect_delay': '2000',
-      'resize': 'scale', // scale canvas to iframe
-      'view_only': 'false',
-      'path': 'websockify', // our nginx -> 127.0.0.1:6080
-      // Optional knobs you can experiment with:
-      // 'show_dot': 'true',         // small cursor dot
-      // 'quality': '9',             // jpeg quality (0-9)
-      // 'compression': '0',         // 0-9
-    }).toString();
-    final iframe = web.HTMLIFrameElement()
-      ..src = '/novnc/vnc_lite.html'
-          '?autoconnect=1'
-          '&reconnect=1'
-          '&reconnect_delay=1000'
-          '&resize=scale'
-          '&path=websockify'
-      // NOTE: omit view_only entirely (default = interactive),
-      // or explicitly: '&view_only=false'
+    // Xpra HTML5 client (proxied by nginx at /xpra/).
+    // Same-origin, interactive, and supports seamless window forwarding.
+    _iframe = web.HTMLIFrameElement()
+      ..src = '/xpra/' // xpra serves its own HTML5 client
+      ..style.border = '0'
+      ..style.pointerEvents = 'auto'
+      ..tabIndex = -1 // allow focusing for keyboard input
+      ..allowFullscreen = true
+      // Allow clipboard + fullscreen for a nicer experience.
+      ..allow = 'clipboard-read; clipboard-write; fullscreen'
+      ..style.width = '100%'
+      ..style.height = '100%'
       ..style.border = '0'
       ..style.pointerEvents = 'auto'
       ..allowFullscreen = true
@@ -48,8 +39,8 @@ class _IbkrGatewayPanelState extends State<IbkrGatewayPanel> {
 
     if (!_registered) {
       ui_web.platformViewRegistry.registerViewFactory(
-        'ibkr-novnc-lite',
-        (int _) => iframe,
+        'ibkr-xpra',
+        (int _) => _iframe,
       );
       _registered = true;
     }
@@ -58,6 +49,6 @@ class _IbkrGatewayPanelState extends State<IbkrGatewayPanel> {
   @override
   Widget build(BuildContext context) {
     // Fill remaining space; use Scaffold surrounding page to define padding
-    return const HtmlElementView(viewType: 'ibkr-novnc-lite');
+    return const HtmlElementView(viewType: 'ibkr-xpra');
   }
 }
