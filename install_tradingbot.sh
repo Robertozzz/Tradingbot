@@ -578,3 +578,6 @@ if [[ $NO_TLS -eq 1 ]]; then
 else
   echo "Install complete (PROD, HTTPS). Open: https://$DOMAIN"
 fi
+
+sudo rsync -a /usr/share/xpra/www/ /opt/tradingbot/static/xpra/
+sudo chown -R www-data:www-data /opt/tradingbot/static/xpra

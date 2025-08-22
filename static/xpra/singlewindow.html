@@ -1,0 +1,38 @@
+<!doctype html>
+<html>
+  <head>
+    <meta charset="utf-8" />
+    <title>IB Gateway</title>
+    <link rel="stylesheet" href="css/xpra.css">
+    <style>
+      /* Hide all chrome the stock client adds */
+      #toolbar, #menubar, #footer, #taskbar, #sidepanel, #notifications { display:none !important; }
+      html, body, #workspace { margin:0; padding:0; width:100%; height:100%; background:transparent; }
+      /* Stretch first window to fill */
+      .window { box-shadow:none !important; border:none !important; }
+      .window:first-of-type { position:fixed !important; inset:0 !important; }
+    </style>
+  </head>
+  <body>
+    <!-- Load the stock client bootstrap -->
+    <script src="js/all.js"></script>
+    <script>
+      // Basic boot: let xpra client auto-discover ws URL from same origin.
+      // These options are widely supported and harmless if ignored:
+      const opts = {
+        reconnect: true,
+        keyboard: true,
+        clipboard: true,
+        scaling: "fit",
+        encodings: ["rgb"],
+        autoconnect: true
+      };
+      // xpra’s html5 client exposes global `XpraHTML5Client` in recent builds
+      // Fallback: try legacy `xpra_main` if needed.
+      (async () => {
+        const start = window.XpraHTML5Client?.start || window.xpra_main;
+        if (start) start(opts);
+      })();
+    </script>
+  </body>
+</html>
