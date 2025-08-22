@@ -51,6 +51,26 @@ fi
 # ---- Basics ----
 export DEBIAN_FRONTEND=noninteractive
 apt-get update
+
+# Install tools required to add external repos/keys first
+apt-get install -y gnupg ca-certificates curl
+
+# ---- Xpra APT repo (needed on Debian 13 / trixie; falls back to bookworm) ----
+install -d -m 0755 /etc/apt/keyrings
+# Import Xpra signing key
+curl -fsSL https://xpra.org/gpg.asc | sudo gpg --dearmor -o /etc/apt/keyrings/xpra.gpg
+# Detect codename, fall back if xpra.org doesn't serve it yet
+. /etc/os-release
+XPRA_CODENAME="${VERSION_CODENAME:-bookworm}"
+if ! curl -fsSI "https://xpra.org/dists/$XPRA_CODENAME/" >/dev/null; then
+  XPRA_CODENAME=bookworm
+fi
+echo "deb [arch=amd64 signed-by=/etc/apt/keyrings/xpra.gpg] https://xpra.org/ $XPRA_CODENAME main" \
+ | sudo tee /etc/apt/sources.list.d/xpra.list
+
+# Refresh indices now that xpra.org is added
+apt-get update
+
 apt-get install -y \
   python3 python3-venv python3-pip python3-uvicorn python3-fastapi \
   python3-passlib python3-pyotp python3-qrcode \
