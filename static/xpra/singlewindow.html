@@ -11,7 +11,7 @@
   </style>
 </head>
 <body>
-  <div id="wrap"><iframe id="xpra" src="/xpra/" title="IBKR Gateway"></iframe></div>
+  <div id="wrap"><iframe id="xpra" src="/xpra/?scaling=off" title="IBKR Gateway"></iframe></div>
   <script>
     const wrap = document.getElementById('wrap');
     const ifr  = document.getElementById('xpra');
@@ -28,11 +28,12 @@
     }
 
     // Listen for size messages from /xpra/ (injected script sends {xpraWindowSize:{w,h}})
-    addEventListener('message', (e) => {
-      if (e.origin !== location.origin) return;
-      const s = e.data && e.data.xpraWindowSize;
-      if (s && s.w && s.h) setSize(s.w, s.h);
-    });
+	addEventListener('message', (e) => {
+	  console.log("msg from", e.origin, "data:", e.data);
+	  // temporarily skip origin check
+	  const s = e.data && e.data.xpraWindowSize;
+	  if (s && s.w && s.h) setSize(s.w, s.h);
+	});
 
     // Keep centered on browser resizes (the xpra page also re-posts periodically)
     addEventListener('resize', () => postMessage({ping:true}, location.origin));

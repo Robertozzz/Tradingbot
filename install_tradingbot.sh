@@ -372,21 +372,27 @@ server {
           .window{box-shadow:none!important;border:none!important}
         </style></head>';
 
-        # emit size of first app window to parent, ensure native pixels (no scaling)
-        sub_filter '</body>' '<script>
-          (function(){
-            try{ if(!/scaling=/.test(location.search)) history.replaceState(null,"",location.pathname+"?scaling=off"); }catch(e){}
-            function pulse(){
-              const w=document.querySelector("#workspace .window"); if(!w) return;
-              const r=w.getBoundingClientRect();
-              const msg={xpraWindowSize:{w:Math.round(r.width),h:Math.round(r.height)}};
-              try{ parent.postMessage(msg, location.origin); }catch(e){}
-            }
-            new MutationObserver(pulse).observe(document.documentElement,{subtree:true,childList:true});
-            addEventListener("resize",pulse);
-            setInterval(pulse,500);
-          })();
-        </script></body>';
+        # emit size of first app window (or canvas) to parent, ensure native pixels (no scaling)
+		sub_filter '</body>' '<script>
+		  (function(){
+			try{ if(!/scaling=/.test(location.search)) history.replaceState(null,"",location.pathname+"?scaling=off"); }catch(e){}
+			function findTarget(){
+			  // Xpra v17: windows are ".window"; before that, at least a #screen canvas exists
+			  return document.querySelector(".window") || document.querySelector("#screen canvas");
+			}
+			function pulse(){
+			  const el = findTarget(); if(!el) return;
+			  const r = el.getBoundingClientRect();
+			  const msg = { xpraWindowSize: { w: Math.round(r.width), h: Math.round(r.height) } };
+			  try { parent.postMessage(msg, location.origin); } catch(e) {}
+			}
+			new MutationObserver(pulse).observe(document.documentElement,{subtree:true,childList:true,attributes:true});
+			addEventListener("resize",pulse);
+			setInterval(pulse,500);
+			// First attempt shortly after load
+			setTimeout(pulse,200);
+		  })();
+		</script></body>';
 
         # strip the /xpra/ prefix so Xpra’s absolute paths (/connect, /favicon.ico, etc) resolve
         rewrite ^/xpra/(.*)$ /\$1 break;
@@ -534,21 +540,27 @@ server {
           .window{box-shadow:none!important;border:none!important}
         </style></head>';
 
-        # emit size of first app window to parent, ensure native pixels (no scaling)
-        sub_filter '</body>' '<script>
-          (function(){
-            try{ if(!/scaling=/.test(location.search)) history.replaceState(null,"",location.pathname+"?scaling=off"); }catch(e){}
-            function pulse(){
-              const w=document.querySelector("#workspace .window"); if(!w) return;
-              const r=w.getBoundingClientRect();
-              const msg={xpraWindowSize:{w:Math.round(r.width),h:Math.round(r.height)}};
-              try{ parent.postMessage(msg, location.origin); }catch(e){}
-            }
-            new MutationObserver(pulse).observe(document.documentElement,{subtree:true,childList:true});
-            addEventListener("resize",pulse);
-            setInterval(pulse,500);
-          })();
-        </script></body>';
+		# emit size of first app window (or canvas) to parent, ensure native pixels (no scaling)
+		sub_filter '</body>' '<script>
+		  (function(){
+			try{ if(!/scaling=/.test(location.search)) history.replaceState(null,"",location.pathname+"?scaling=off"); }catch(e){}
+			function findTarget(){
+			  // Xpra v17: windows are ".window"; before that, at least a #screen canvas exists
+			  return document.querySelector(".window") || document.querySelector("#screen canvas");
+			}
+			function pulse(){
+			  const el = findTarget(); if(!el) return;
+			  const r = el.getBoundingClientRect();
+			  const msg = { xpraWindowSize: { w: Math.round(r.width), h: Math.round(r.height) } };
+			  try { parent.postMessage(msg, location.origin); } catch(e) {}
+			}
+			new MutationObserver(pulse).observe(document.documentElement,{subtree:true,childList:true,attributes:true});
+			addEventListener("resize",pulse);
+			setInterval(pulse,500);
+			// First attempt shortly after load
+			setTimeout(pulse,200);
+		  })();
+		</script></body>';
 
         # strip the /xpra/ prefix so Xpra’s absolute paths (/connect, /favicon.ico, etc) resolve
         rewrite ^/xpra/(.*)$ /\$1 break;
