@@ -1,50 +1,41 @@
 <!doctype html>
 <html>
 <head>
-<head>
   <meta charset="utf-8">
   <title>IB Gateway (tight)</title>
   <meta name="viewport" content="width=device-width, initial-scale=1">
 	<style>
-    html,body { margin:0; padding:0; background:#000; overflow:hidden }
-    #wrap { height:100vh }
-    /* Fallback; JS will right-size to 2× the IBGW window */
-    iframe { border:0; display:block; width:2560px; height:720px }
+	  html,body { margin:0; padding:0; background:#000; overflow-x:auto; overflow-y:hidden }
+	  #wrap { display:flex; flex-direction:row; height:100vh; width:max-content }
+	  /* Show immediately at a sensible fallback size; JS will right-size it */
+	  iframe { border:0; display:block; flex:0 0 auto; min-width:640px; min-height:480px; width:640px; height:480px }
 	</style>
 </head>
 <body>
   <div id="wrap">
-    <iframe id="xpra-main" src="/xpra-main/index.html?scaling=off"
-            title="IBKR Gateway" tabindex="0"></iframe>
+    <iframe id="xpra-main"  src="/xpra-main/index.html?scaling=off"  title="IBKR Gateway Main"></iframe>
+    <iframe id="xpra-login" src="/xpra-login/index.html?scaling=off" title="IBKR Gateway Login"></iframe>
   </div>
 	<script>
-    const IF = document.getElementById('xpra-main');
-    let appW = 1280, appH = 720; // until xpra reports real size
-    function applySizes() {
-      const wide = appW * 2;           // show a “double-wide” canvas
-      IF.style.width  = wide + 'px';
-      IF.style.height = appH  + 'px';
-    }
-
-	  // Listen for the xpraWindowSize message from either iframe
-	  addEventListener('message', (e) => {
-	    if (e.origin !== location.origin) return;
-	    const s = e.data && e.data.xpraWindowSize;
-	    if (!(s && s.w && s.h)) return;
-	    if (s.w !== appW || s.h !== appH) {
-	      appW = s.w; appH = s.h;
-	      applySizes();
-	    }
+	  function handleMsg(id,e){
+		const s = e.data && e.data.xpraWindowSize;
+		if(!(s && s.w && s.h)) return;
+		const ifr=document.getElementById(id);
+		ifr.style.flex="0 0 "+s.w+"px";
+		ifr.style.width = s.w + "px";
+		ifr.style.height=s.h+"px";
+		// make sure the inner doc is scrolled to top-left
+		try { ifr.contentWindow && ifr.contentWindow.scrollTo(0,0); } catch(_){}
+	  }
+	  addEventListener("message", e=>{
+		if(e.origin!==location.origin) return;
+		if(e.source && e.source.frameElement){
+		  const id=e.source.frameElement.id;
+		  handleMsg(id,e);
+		}
 	  });
-
-    // Keep aligned if the client reflows
-    IF.addEventListener('load', () => {
-      applySizes();
-      try { IF.focus(); } catch(_){}
-    });
-    // If user clicks the iframe, force focus so keyboard works
-    IF.addEventListener('pointerdown', () => { try { IF.focus(); } catch(_){} });
-    addEventListener('resize', applySizes);
+	  // Safety: if no message arrives, keep iframes visible at fallback size
+	  setTimeout(()=>{ try{document.getElementById('xpra-main').contentWindow.scrollTo(0,0)}catch(_){}} , 800);
 	</script>
 </body>
 </html>
