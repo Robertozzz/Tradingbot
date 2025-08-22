@@ -363,7 +363,7 @@ server {
         proxy_set_header Accept-Encoding "";
         sub_filter_types text/html;
         sub_filter_once off;
-        sub_filter '<meta http-equiv="Content-Security-Policy"' '<meta http-equiv="x-removed-CSP"';
+        sub_filter '<meta http-equiv="Content-Security-Policy"' '<meta http-equiv="x-removed-CSP">';
 
         # hide Xpra chrome, transparent background
         sub_filter '</head>' '<style id="xpra-embed">
@@ -525,7 +525,7 @@ server {
         proxy_set_header Accept-Encoding "";
         sub_filter_types text/html;
         sub_filter_once off;
-        sub_filter '<meta http-equiv="Content-Security-Policy"' '<meta http-equiv="x-removed-CSP"';
+        sub_filter '<meta http-equiv="Content-Security-Policy"' '<meta http-equiv="x-removed-CSP">';
 
         # hide Xpra chrome, transparent background
         sub_filter '</head>' '<style id="xpra-embed">
@@ -638,5 +638,4 @@ else
   echo "Install complete (PROD, HTTPS). Open: https://$DOMAIN"
 fi
 
-sudo rsync -a /usr/share/xpra/www/ /opt/tradingbot/static/xpra/
 sudo chown -R www-data:www-data /opt/tradingbot/static/xpra
