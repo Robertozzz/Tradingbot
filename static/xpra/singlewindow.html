@@ -1,6 +1,7 @@
 <!doctype html>
 <html>
 <head>
+<head>
   <meta charset="utf-8">
   <title>IB Gateway (tight)</title>
   <meta name="viewport" content="width=device-width, initial-scale=1">
@@ -13,7 +14,8 @@
 </head>
 <body>
   <div id="wrap">
-    <iframe id="xpra-main" src="/xpra-main/index.html?scaling=off" title="IBKR Gateway"></iframe>
+    <iframe id="xpra-main" src="/xpra-main/index.html?scaling=off"
+            title="IBKR Gateway" tabindex="0"></iframe>
   </div>
 	<script>
     const IF = document.getElementById('xpra-main');
@@ -22,7 +24,7 @@
       const wide = appW * 2;           // show a “double-wide” canvas
       IF.style.width  = wide + 'px';
       IF.style.height = appH  + 'px';
-      // nudge the inner xpra page to 0,0 so the first IB window is fully visible
+      // nudge once when size changes; avoid stealing focus repeatedly
       try { IF.contentWindow && IF.contentWindow.scrollTo(0, 0); } catch(_){}
     }
 
@@ -38,8 +40,13 @@
 	  });
 
     // Keep aligned if the client reflows
-    IF.addEventListener('load', applySizes);
-    setInterval(applySizes, 700);
+    IF.addEventListener('load', () => {
+      applySizes();
+      try { IF.focus(); } catch(_){}
+    });
+    // If user clicks the iframe, force focus so keyboard works
+    IF.addEventListener('pointerdown', () => { try { IF.focus(); } catch(_){} });
+    addEventListener('resize', applySizes);
 	</script>
 </body>
 </html>

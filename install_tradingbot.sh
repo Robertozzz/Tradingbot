@@ -382,7 +382,8 @@ server {
 
         # hide Xpra chrome, transparent background
         sub_filter '</head>' '<style id="xpra-embed">
-          #toolbar,#menubar,#footer,#taskbar,#sidepanel,#notifications{display:none!important}
+          #toolbar,#menubar,#footer,#taskbar,#sidepanel,#notifications,
+          #dragcover,#keyboard,#menubar-cover{display:none!important}
           html,body,#workspace{margin:0;padding:0;width:100%;height:100%;background:transparent}
           .window{box-shadow:none!important;border:none!important}
         </style></head>';
@@ -551,7 +552,8 @@ server {
 
         # hide Xpra chrome, transparent background
         sub_filter '</head>' '<style id="xpra-embed">
-          #toolbar,#menubar,#footer,#taskbar,#sidepanel,#notifications{display:none!important}
+          #toolbar,#menubar,#footer,#taskbar,#sidepanel,#notifications,
+          #dragcover,#keyboard,#menubar-cover{display:none!important}
           html,body,#workspace{margin:0;padding:0;width:100%;height:100%;background:transparent}
           .window{box-shadow:none!important;border:none!important}
         </style></head>';
