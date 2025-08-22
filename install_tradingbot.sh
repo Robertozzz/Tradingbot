@@ -313,27 +313,8 @@ server {
         default_type text/html;
     }
 
-    # /xpra (no trailing slash) : proxy directly (avoid 301 in iframes)
-    location = /xpra {
-        # no auth gate for xpra bits
-        auth_request off;
-        proxy_http_version 1.1;
-        proxy_set_header Upgrade \$http_upgrade;
-        proxy_set_header Connection "upgrade";
-        proxy_set_header Host \$host;
-        proxy_read_timeout 86400;
-        proxy_buffering off;
-        # allow embedding: drop upstream blocking headers and set permissive ones
-        proxy_hide_header X-Frame-Options;
-        proxy_hide_header Content-Security-Policy;
-        add_header X-Frame-Options "SAMEORIGIN" always;
-        add_header Content-Security-Policy "frame-ancestors 'self' http://\$host https://\$host" always;
-        # map /xpra -> / at the upstream
-        rewrite ^/xpra$ / break;
-        # and rewrite any absolute redirect back under /xpra/ for the browser
-        proxy_redirect ~^(/.*)$ /xpra\$1;
-        proxy_pass http://127.0.0.1:14500;
-    }
+    # /xpra without trailing slash -> /xpra/
+    location = /xpra { return 301 /xpra/; }
 
     # Auth gate
     location = /auth/validate {
@@ -344,7 +325,7 @@ server {
     }
 
     location / {
-        auth_request off;
+        auth_request /auth/validate;
         error_page 401 = @unauth;
         # Allow our app pages to embed same-origin iframes (like /xpra/)
         proxy_hide_header Content-Security-Policy;
@@ -464,26 +445,6 @@ server {
 	
     # /xpra without trailing slash -> /xpra/
     location = /xpra { return 301 /xpra/; }
-	
-    # /xpra (no trailing slash) : proxy directly (avoid 301 in iframes)
-    location = /xpra {
-        auth_request off;
-        proxy_http_version 1.1;
-        proxy_set_header Upgrade \$http_upgrade;
-        proxy_set_header Connection "upgrade";
-        proxy_set_header Host \$host;
-        proxy_read_timeout 86400;
-        proxy_buffering off;
-        # allow embedding
-        proxy_hide_header X-Frame-Options;
-        proxy_hide_header Content-Security-Policy;
-        add_header X-Frame-Options "SAMEORIGIN" always;
-        add_header Content-Security-Policy "frame-ancestors 'self' http://\$host https://\$host" always;
-        # map /xpra -> / upstream
-        rewrite ^/xpra$ / break;
-        proxy_redirect ~^(/.*)$ /xpra\$1;
-        proxy_pass http://127.0.0.1:14500;
-    }
 
     # Filled by Certbot later
     ssl_certificate     /etc/letsencrypt/live/$DOMAIN/fullchain.pem;
@@ -497,7 +458,7 @@ server {
     }
 
     location / {
-        auth_request off;
+        auth_request /auth/validate;
         error_page 401 = @unauth;
         # Match the relaxed CSP on unauth redirect target too
         proxy_hide_header Content-Security-Policy;
