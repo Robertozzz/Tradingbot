@@ -13,21 +13,20 @@
 </head>
 <body>
   <div id="wrap">
-    <!-- View the SAME Xpra session twice; left and right panes -->
-    <iframe id="left"  src="/xpra-main/index.html?scaling=off"  title="IBKR Gateway Main (left)"></iframe>
-    <iframe id="right" src="/xpra-main/index.html?scaling=off"  title="IBKR Gateway Main (right)"></iframe>
+    <iframe id="xpra-main"  src="/xpra-main/index.html?scaling=off"  title="IBKR Gateway"></iframe>
   </div>
 	<script>
-	  const L = document.getElementById('left');
-	  const R = document.getElementById('right');
+	  const IF = document.getElementById('xpra-main');
 	  let appW = 1280, appH = 720; // until we hear from Xpra
 
 	  function applySizes(){
 	    const wide = appW * 2;
 	    for (const ifr of [L,R]) {
-	      ifr.style.flexBasis = wide + 'px';
-	      ifr.style.width     = wide + 'px';
-	      ifr.style.height    = appH + 'px';
+		// make the iframe double-width so a second IBKR window fits to the right
+		const dw = s.w * 2;
+		ifr.style.flex ="0 0 "+dw+"px";
+		ifr.style.width = dw + "px";
+	    ifr.style.height = appH + 'px';
 	    }
 	    // left shows x=0; right shows x=appW (second pane)
 	    try { L.contentWindow.scrollTo(0, 0); } catch(_) {}
