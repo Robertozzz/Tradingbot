@@ -3,35 +3,84 @@
   <head>
     <meta charset="utf-8" />
     <title>IB Gateway</title>
-    <link rel="stylesheet" href="css/xpra.css">
     <style>
-      /* Hide all chrome the stock client adds */
       #toolbar, #menubar, #footer, #taskbar, #sidepanel, #notifications { display:none !important; }
       html, body, #workspace { margin:0; padding:0; width:100%; height:100%; background:transparent; }
-      /* Stretch first window to fill */
       .window { box-shadow:none !important; border:none !important; }
       .window:first-of-type { position:fixed !important; inset:0 !important; }
     </style>
   </head>
-  <body>
-    <!-- Load the stock client bootstrap -->
-    <script src="js/all.js"></script>
+  <body style="margin:0;height:100vh;">
+    <div id="workspace" style="width:100%;height:100%;"></div>
+
     <script>
-      // Basic boot: let xpra client auto-discover ws URL from same origin.
-      // These options are widely supported and harmless if ignored:
-      const opts = {
-        reconnect: true,
-        keyboard: true,
-        clipboard: true,
-        scaling: "fit",
-        encodings: ["rgb"],
-        autoconnect: true
-      };
-      // xpra’s html5 client exposes global `XpraHTML5Client` in recent builds
-      // Fallback: try legacy `xpra_main` if needed.
       (async () => {
-        const start = window.XpraHTML5Client?.start || window.xpra_main;
-        if (start) start(opts);
+        const base = "/xpra";                   // nginx proxies this to 127.0.0.1:14500/
+        const jsCandidates  = [
+          `${base}/js/all.js`,
+          `${base}/all.js`,
+          `${base}/html5/js/all.js`,
+          `${base}/www/js/all.js`,
+        ];
+        const cssCandidates = [
+          `${base}/css/xpra.css`,
+          `${base}/xpra.css`,
+          `${base}/html5/css/xpra.css`,
+          `${base}/www/css/xpra.css`,
+        ];
+
+        async function pick(urls) {
+          for (const u of urls) {
+            try {
+              const r = await fetch(u, { method: "HEAD", cache: "no-store" });
+              console.log("probe", u, r.status);
+              if (r.ok) return u;
+            } catch (e) { console.warn("probe failed", u, e); }
+          }
+          return null;
+        }
+
+        const js  = await pick(jsCandidates);
+        const css = await pick(cssCandidates);
+        if (css) {
+          const link = document.createElement("link");
+          link.rel = "stylesheet";
+          link.href = css;
+          document.head.appendChild(link);
+        } else {
+          console.warn("No Xpra CSS found; continuing without it.");
+        }
+
+        if (!js) {
+          console.error("Xpra HTML5 bootstrap not found under /xpra/* — check nginx proxy to 127.0.0.1:14500/");
+          // Fallback: embed full Xpra client so you can still log in and verify
+          const iframe = document.createElement("iframe");
+          iframe.src = "/xpra/";
+          iframe.style.cssText = "border:0;width:100%;height:100%";
+          document.body.appendChild(iframe);
+          return;
+        }
+
+        // Load the Xpra client bundle then start it
+        const s = document.createElement("script");
+        s.src = js;
+        s.onload = () => {
+          const opts = {
+            server: window.location.origin + "/xpra/",
+            autoconnect: true,
+            reconnect: true,
+            sharing: true,          // allow iframe + separate /xpra/ tab simultaneously
+            keyboard: true,
+            clipboard: true,
+            scaling: "fit",
+            encodings: ["rgb"],
+          };
+          const start = window.XpraHTML5Client?.start || window.xpra_main;
+          if (start) start(opts);
+          else console.error("Xpra HTML5 bootstrap not found even after loading", js);
+        };
+        s.onerror = () => console.error("Failed to load", js);
+        document.body.appendChild(s);
       })();
     </script>
   </body>
