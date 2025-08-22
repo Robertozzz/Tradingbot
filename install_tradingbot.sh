@@ -170,17 +170,23 @@ rm -f /opt/ibkr/run-ibgateway-xpra.sh 2>/dev/null || true
 install -D -m 0755 /dev/stdin /usr/local/bin/pin-ibgw.sh <<'PINSH'
 #!/usr/bin/env bash
 set -euo pipefail
-# Wait up to ~20s for the window to appear
-for i in {1..40}; do
-  # Try exact title first, then a loose match (case-sensitive)
-  WID="$(xdotool search --name '^IB Gateway$' 2>/dev/null | head -n1 || true)"
-  [[ -z "${WID:-}" ]] && WID="$(xdotool search --name 'IB.*Gateway' 2>/dev/null | head -n1 || true)"
-  if [[ -n "${WID:-}" ]]; then
-    # De-maximize if maximized, then move to 0,0 and keep on top & sticky
-    xdotool windowunmaximize "$WID" 2>/dev/null || true
-    xdotool windowmove --sync "$WID" 0 0 || true
-    wmctrl -i -r "$WID" -b add,above,sticky || true
-    exit 0
+# For ~20s, keep looking for any IBKR Gateway windows and (re)apply states.
+# This catches the main frame *and* auth popups that appear later.
+end=$((SECONDS+20))
+while (( SECONDS < end )); do
+  # Match exact title first, then broader match (case-insensitive not needed here)
+  mapfile -t IDS < <(xdotool search --name '^IB Gateway$' 2>/dev/null || true)
+  if (( ${#IDS[@]} == 0 )); then
+    mapfile -t IDS < <(xdotool search --name 'IB.*Gateway' 2>/dev/null || true)
+  fi
+  if (( ${#IDS[@]} > 0 )); then
+    for WID in "${IDS[@]}"; do
+      # Maximize and pin; IBKR positions itself at 0,0 when maximized
+      wmctrl -i -r "$WID" -b add,maximized_vert,maximized_horz,above,sticky || true
+      # Ensure it’s the active/focused window (helps with some dialogs)
+      xdotool windowactivate --sync "$WID" 2>/dev/null || true
+    done
+    # keep looping a bit longer to catch any new auth/dialog windows
   fi
   sleep 0.5
 done
@@ -281,29 +287,10 @@ ExecStart=/usr/bin/xpra start :100 \
   --daemon=no --html=on \
   --bind-tcp=127.0.0.1:14500 \
   --exit-with-children=yes \
+  --log-file=/home/ibkr/xpra-main.log \
   --start-child=/usr/bin/openbox \
   --start-child=/home/ibkr/Jts/ibgateway/1037/ibgateway \
-  --start-child=/bin/bash -lc "/usr/local/bin/pin-ibgw.sh"
-Restart=always
-RestartSec=5
-
-[Install]
-WantedBy=multi-user.target
-UNIT
-
-# /etc/systemd/system/xpra-ibgateway-login.service
-cat > /etc/systemd/system/xpra-ibgateway-login.service <<'UNIT'
-[Unit]
-Description=Xpra session for IB Gateway login
-After=network-online.target
-
-[Service]
-User=ibkr
-RuntimeDirectory=xpra-login
-Environment=XDG_RUNTIME_DIR=/run/xpra-login
-ExecStart=/usr/bin/xpra start :101 \
-  --daemon=no --html=on \
-  --bind-tcp=127.0.0.1:14501 \
+  --start-child=/usr/local/bin/pin-ibgw.sh
 Restart=always
 RestartSec=5
 
@@ -313,9 +300,7 @@ UNIT
 
 systemctl daemon-reload
 systemctl enable --now xpra-ibgateway-main.service
-systemctl enable --now xpra-ibgateway-login.service
 systemctl restart xpra-ibgateway-main.service || true
-systemctl restart xpra-ibgateway-login.service || true
 sleep 1
 systemctl enable --now uvicorn.service
 
@@ -328,7 +313,6 @@ server {
 
     # convenience redirects without trailing slash
     location = /xpra-main { return 301 /xpra-main/; }
-    location = /xpra-login { return 301 /xpra-login/; }
 
     # Auth gate
     location = /auth/validate {
@@ -417,54 +401,6 @@ server {
         proxy_pass http://127.0.0.1:14500;
     }
 	
-    # XPRA HTML5 LOGIN (no auth gate; iframe+WS)
-    location /xpra-login/ {
-        auth_request off;
-        proxy_http_version 1.1;
-        proxy_set_header Upgrade \$http_upgrade;
-        proxy_set_header Connection "upgrade";
-        proxy_set_header Host \$host;
-        proxy_read_timeout 86400;
-        proxy_buffering off;
-        proxy_hide_header X-Frame-Options;
-        proxy_hide_header Content-Security-Policy;
-        add_header X-Frame-Options "SAMEORIGIN" always;
-        add_header Content-Security-Policy "frame-ancestors 'self' http://\$host https://\$host" always;
-
-        proxy_set_header Accept-Encoding "";
-        sub_filter_types text/html;
-        sub_filter_once off;
-        sub_filter '<meta http-equiv="Content-Security-Policy"' '<meta http-equiv="x-removed-CSP">';
-        # nudge view to top-left on load just in case
-        sub_filter '<body>' '<body><script>try{scrollTo(0,0)}catch(e){}</script>';
-
-        sub_filter '</head>' '<style id="xpra-embed">
-          #toolbar,#menubar,#footer,#taskbar,#sidepanel,#notifications{display:none!important}
-          html,body,#workspace{margin:0;padding:0;width:100%;height:100%;background:transparent}
-          .window{box-shadow:none!important;border:none!important}
-        </style></head>';
-        sub_filter '</body>' '<script>
-          (function(){
-            try{ if(!/scaling=/.test(location.search)) history.replaceState(null,"",location.pathname+"?scaling=off"); }catch(e){}
-            function findTarget(){ return document.querySelector(".window") || document.querySelector("#screen canvas"); }
-            function pulse(){
-              const el = findTarget(); if(!el) return;
-              const r = el.getBoundingClientRect();
-              const msg = { xpraWindowSize: { w: Math.round(r.width), h: Math.round(r.height) } };
-              try { parent.postMessage(msg, location.origin); } catch(e) {}
-            }
-            new MutationObserver(pulse).observe(document.documentElement,{subtree:true,childList:true,attributes:true});
-            addEventListener("resize",pulse);
-            setInterval(pulse,500);
-            setTimeout(pulse,200);
-          })();
-        </script></body>';
-
-        rewrite ^/xpra-login/(.*)$ /\$1 break;
-        proxy_redirect ~^(/.*)$ /xpra-login\$1;
-        proxy_pass http://127.0.0.1:14501;
-    }
-	
     # Xpra MAIN absolute-path assets (no auth gate)
     location = /favicon.ico {
         auth_request off;
@@ -478,7 +414,6 @@ server {
     }
 	
     # TEMP: Xpra WebSocket for MAIN (absolute /connect used by the HTML5 client)
-    # This ensures the main iframe can draw immediately. We'll split login later.
     location = /connect {
         auth_request off;
         proxy_http_version 1.1;
@@ -545,7 +480,6 @@ server {
 
     # convenience redirects without trailing slash
     location = /xpra-main { return 301 /xpra-main/; }
-    location = /xpra-login { return 301 /xpra-login/; }
 
     # Filled by Certbot later
     ssl_certificate     /etc/letsencrypt/live/$DOMAIN/fullchain.pem;
@@ -635,51 +569,6 @@ server {
         proxy_pass http://127.0.0.1:14500;
     }
 
-    # XPRA HTML5 LOGIN (no auth gate; iframe+WS)
-    location /xpra-login/ {
-        auth_request off;
-        proxy_http_version 1.1;
-        proxy_set_header Upgrade \$http_upgrade;
-        proxy_set_header Connection "upgrade";
-        proxy_set_header Host \$host;
-        proxy_read_timeout 86400;
-        proxy_buffering off;
-        proxy_hide_header X-Frame-Options;
-        proxy_hide_header Content-Security-Policy;
-        add_header X-Frame-Options "SAMEORIGIN" always;
-        add_header Content-Security-Policy "frame-ancestors 'self' http://\$host https://\$host" always;
-
-        proxy_set_header Accept-Encoding "";
-        sub_filter_types text/html;
-        sub_filter_once off;
-        sub_filter '<meta http-equiv="Content-Security-Policy"' '<meta http-equiv="x-removed-CSP">';
-        sub_filter '</head>' '<style id="xpra-embed">
-          #toolbar,#menubar,#footer,#taskbar,#sidepanel,#notifications{display:none!important}
-          html,body,#workspace{margin:0;padding:0;width:100%;height:100%;background:transparent}
-          .window{box-shadow:none!important;border:none!important}
-        </style></head>';
-        sub_filter '</body>' '<script>
-          (function(){
-            try{ if(!/scaling=/.test(location.search)) history.replaceState(null,"",location.pathname+"?scaling=off"); }catch(e){}
-            function findTarget(){ return document.querySelector(".window") || document.querySelector("#screen canvas"); }
-            function pulse(){
-              const el = findTarget(); if(!el) return;
-              const r = el.getBoundingClientRect();
-              const msg = { xpraWindowSize: { w: Math.round(r.width), h: Math.round(r.height) } };
-              try { parent.postMessage(msg, location.origin); } catch(e) {}
-            }
-            new MutationObserver(pulse).observe(document.documentElement,{subtree:true,childList:true,attributes:true});
-            addEventListener("resize",pulse);
-            setInterval(pulse,500);
-            setTimeout(pulse,200);
-          })();
-        </script></body>';
-
-        rewrite ^/xpra-login/(.*)$ /\$1 break;
-        proxy_redirect ~^(/.*)$ /xpra-login\$1;
-        proxy_pass http://127.0.0.1:14501;
-    }
-	
     # Xpra MAIN absolute-path assets (no auth gate)
     location = /favicon.ico {
         auth_request off;
