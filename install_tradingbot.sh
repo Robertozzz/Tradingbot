@@ -331,7 +331,7 @@ server {
         # map /xpra -> / at the upstream
         rewrite ^/xpra$ / break;
         # and rewrite any absolute redirect back under /xpra/ for the browser
-        proxy_redirect ~^(/.*)$ /xpra$1;
+        proxy_redirect ~^(/.*)$ /xpra\$1;
         proxy_pass http://127.0.0.1:14500;
     }
 
@@ -481,7 +481,7 @@ server {
         add_header Content-Security-Policy "frame-ancestors 'self' http://$host https://$host" always;
         # map /xpra -> / upstream
         rewrite ^/xpra$ / break;
-        proxy_redirect ~^(/.*)$ /xpra$1;
+        proxy_redirect ~^(/.*)$ /xpra\$1;
         proxy_pass http://127.0.0.1:14500;
     }
 
