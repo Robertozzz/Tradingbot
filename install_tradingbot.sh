@@ -306,6 +306,9 @@ server {
     listen 80;
     server_name $DOMAIN;
 
+    # /xpra without trailing slash -> /xpra/
+    location = /xpra { return 301 /xpra/; }
+
     # Auth gate
     location = /auth/validate {
         proxy_pass http://127.0.0.1:8000/auth/validate;
@@ -341,6 +344,8 @@ server {
         proxy_buffering off;
         # strip the /xpra/ prefix so Xpra’s absolute paths (/connect, /favicon.ico, etc) resolve
         rewrite ^/xpra/(.*)$ /\$1 break;
+        # and rewrite any absolute redirect back under /xpra/ for the browser
+        proxy_redirect ~^(/.*)$ /xpra\$1;
         proxy_pass http://127.0.0.1:14500;
     }
 
@@ -410,6 +415,9 @@ server {
 server {
     listen 443 ssl http2;
     server_name $DOMAIN;
+	
+    # /xpra without trailing slash -> /xpra/
+    location = /xpra { return 301 /xpra/; }
 
     # Filled by Certbot later
     ssl_certificate     /etc/letsencrypt/live/$DOMAIN/fullchain.pem;
@@ -449,6 +457,8 @@ server {
         proxy_buffering off;
         # strip the /xpra/ prefix so Xpra’s absolute paths (/connect, /favicon.ico, etc) resolve
         rewrite ^/xpra/(.*)$ /\$1 break;
+        # and rewrite any absolute redirect back under /xpra/ for the browser
+        proxy_redirect ~^(/.*)$ /xpra\$1;
         proxy_pass http://127.0.0.1:14500;
     }
 

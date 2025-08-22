@@ -98436,7 +98436,7 @@ A.X3.prototype={
 ap(){var s,r=this
 r.aK()
 s=v.G.document.createElement("iframe")
-s.src="/xpra/client/index.html"
+s.src="/xpra/"
 s.style.border="0"
 s.style.pointerEvents="auto"
 s.tabIndex=-1
