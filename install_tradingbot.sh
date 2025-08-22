@@ -204,6 +204,15 @@ PINSH
 
 chown root:root /usr/local/bin/arrange-ibgw.sh
 
+# ---- Wrapper (avoids passing -l directly in --start-child) ----
+sudo -u ibkr install -D -m 0755 /dev/stdin /home/ibkr/bin/run-arranger.sh <<'WRAP'
+#!/usr/bin/env bash
+exec /bin/bash -lc "/usr/local/bin/arrange-ibgw.sh"
+WRAP
+
+sudo -u ibkr mkdir -p /home/ibkr/bin
+sudo chown -R ibkr:ibkr /home/ibkr/bin
+
 # Install Gateway under ibkr (idempotent)
 # We use the same path as the runner script: $HOME/Jts/ibgateway/1037
 sudo -u ibkr bash -lc '
@@ -298,7 +307,7 @@ ExecStart=/usr/bin/xpra start :100 \
   --exit-with-children=yes \
   --start-child=/usr/bin/openbox \
   --start-child=/home/ibkr/Jts/ibgateway/1037/ibgateway \
-  --start-child=/bin/bash -lc "/usr/local/bin/arrange-ibgw.sh"
+  --start-child=/home/ibkr/bin/run-arranger.sh
 Restart=always
 RestartSec=5
 
