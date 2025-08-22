@@ -176,6 +176,20 @@ set -euo pipefail
 #  - Any *other* IBKR windows that appear get moved to the top-right corner
 #
 
+# Helper: robustly set a window fullscreen, with fallbacks
+fullscreen_or_max() {
+  local wid="$1"
+  # 1) EWMH fullscreen (best)
+  wmctrl -i -r "$wid" -b add,fullscreen 2>/dev/null || true
+  sleep 0.1
+  # 2) Also add “maximized” flags (some WMs only honor these)
+  wmctrl -i -r "$wid" -b add,maximized_vert,maximized_horz,above,sticky 2>/dev/null || true
+  sleep 0.05
+  # 3) As a belt-and-suspenders fallback, force the geometry to 100% at (0,0)
+  xdotool windowsize --usehints "$wid" 100% 100% 2>/dev/null || true
+  xdotool windowmove  "$wid" 0 0 2>/dev/null || true
+}
+
 # Figure out the root screen size (WxH)
 SCREEN_W=0
 SCREEN_H=0
@@ -190,22 +204,27 @@ fi
 [[ "$SCREEN_W" =~ ^[0-9]+$ ]] || SCREEN_W=1920
 [[ "$SCREEN_H" =~ ^[0-9]+$ ]] || SCREEN_H=1080
 
-end=$((SECONDS+20))
+end=$((SECONDS+60))
 MAIN_ID=""
 while (( SECONDS < end )); do
   # Find the main window first
   if [[ -z "$MAIN_ID" ]]; then
-    MAIN_ID="$(xdotool search --onlyvisible --name '^IB Gateway$' 2>/dev/null | head -n1 || true)"
-    [[ -z "$MAIN_ID" ]] && MAIN_ID="$(xdotool search --onlyvisible --name 'IB.*Gateway' 2>/dev/null | head -n1 || true)"
-    if [[ -n "$MAIN_ID" ]]; then
-      # Maximize + keep on top + sticky; IBKR will sit at (0,0) in fullscreen
+    # Try by name (exact, then loose) WITHOUT requiring --onlyvisible (Java shows hidden first)
+    MAIN_ID="$(xdotool search --name '^IB Gateway$' 2>/dev/null | head -n1 || true)"
+    [[ -z "$MAIN_ID" ]] && MAIN_ID="$(xdotool search --name 'IB.*Gateway' 2>/dev/null | head -n1 || true)"
+    # Try by WM_CLASS (varies across IBKR/Java builds)
+    [[ -z "$MAIN_ID" ]] && MAIN_ID="$(xdotool search --class 'IBGateway' 2>/dev/null | head -n1 || true)"
+    [[ -z "$MAIN_ID" ]] && MAIN_ID="$(xdotool search --class 'java|sun-awt|swing' 2>/dev/null | head -n1 || true)"
+      # Fullscreen (with fallbacks) + keep on top + sticky
+      fullscreen_or_max "$MAIN_ID"
+      wmctrl -i -r "$MAIN_ID" -b add,above,sticky 2>/dev/null || true
       wmctrl -i -r "$MAIN_ID" -b add,maximized_vert,maximized_horz,above,sticky || true
       xdotool windowactivate --sync "$MAIN_ID" 2>/dev/null || true
     fi
   fi
 
   # Any other IB* windows (prompts / 2FA / dialogs) => top-right corner
-  mapfile -t ALL < <(xdotool search --onlyvisible --name 'IB' 2>/dev/null || true)
+  mapfile -t ALL < <(xdotool search --name 'IB' 2>/dev/null || true)
   if (( ${#ALL[@]} > 0 )); then
     for WID in "${ALL[@]}"; do
       [[ -n "$MAIN_ID" && "$WID" == "$MAIN_ID" ]] && continue
