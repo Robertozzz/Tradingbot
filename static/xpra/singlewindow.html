@@ -7,8 +7,8 @@
 	<style>
 	  html,body { margin:0; padding:0; background:#000; overflow-x:auto; overflow-y:hidden }
 	  #wrap { display:flex; flex-direction:row; align-items:flex-start; height:100vh; width:max-content }
-	  /* Show immediately at a sensible fallback size; JS will right-size it */
-	  iframe { border:0; display:block; flex:0 0 auto; min-width:640px; min-height:480px; width:640px; height:480px }
+	  /* Fallback shows a wider canvas; JS will right-size it to 2× app width */
+	  iframe { border:0; display:block; flex:0 0 auto; min-width:640px; min-height:480px; width:1280px; height:480px }
 	</style>
 </head>
 <body>
@@ -20,9 +20,12 @@
 		const s = e.data && e.data.xpraWindowSize;
 		if(!(s && s.w && s.h)) return;
 		const ifr=document.getElementById(id);
-		ifr.style.flex="0 0 "+s.w+"px";
-		ifr.style.width = s.w + "px";
-		ifr.style.height=s.h+"px";
+		// Make the main screen twice as wide as the IBKR window, same height
+		const W = Math.round(s.w * 2);
+		const H = Math.round(s.h);
+		ifr.style.flex  = "0 0 " + W + "px";
+		ifr.style.width = W + "px";
+		ifr.style.height= H + "px";
 		// make sure the inner doc is scrolled to top-left
 		try { ifr.contentWindow && ifr.contentWindow.scrollTo(0,0); } catch(_){}
 	  }
