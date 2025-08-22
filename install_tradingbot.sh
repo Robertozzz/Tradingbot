@@ -462,7 +462,8 @@ server {
     listen 443 ssl http2;
     server_name $DOMAIN;
 	
-    # (no redirect stanza; we proxy /xpra directly below)
+    # /xpra without trailing slash -> /xpra/
+    location = /xpra { return 301 /xpra/; }
 	
     # /xpra (no trailing slash) : proxy directly (avoid 301 in iframes)
     location = /xpra {
