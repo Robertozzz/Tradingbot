@@ -21,9 +21,7 @@ class _IbkrGatewayPanelState extends State<IbkrGatewayPanel> {
     // Xpra HTML5 client (proxied by nginx at /xpra/).
     // Same-origin, interactive, and supports seamless window forwarding.
     _iframe = web.HTMLIFrameElement()
-      ..src =
-          '/xpra/?embedded=1&toolbar=0&tray=0&menus=0&notifications=0&background=0'
-              '&scaling=fit&keyboard=1&reconnect=1'
+      ..src = '/xpra-lite/singlewindow.html'
       ..style.border = '0'
       ..style.pointerEvents = 'auto'
       ..tabIndex = -1 // allow focusing for keyboard input

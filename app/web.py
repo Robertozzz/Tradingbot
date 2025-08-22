@@ -232,3 +232,6 @@ if FLUTTER_BUILD and FLUTTER_BUILD.exists():
             return JSONResponse({"error": "index.html not found"}, status_code=404)
         return FileResponse(index)
 
+xpra_static = Path("/opt/tradingbot/static/xpra")
+if xpra_static.exists():
+    app.mount("/xpra-lite", StaticFiles(directory=str(xpra_static), html=True), name="xpra-lite")
