@@ -170,27 +170,63 @@ rm -f /opt/ibkr/run-ibgateway-xpra.sh 2>/dev/null || true
 install -D -m 0755 /dev/stdin /usr/local/bin/pin-ibgw.sh <<'PINSH'
 #!/usr/bin/env bash
 set -euo pipefail
-# For ~20s, keep looking for any IBKR Gateway windows and (re)apply states.
-# This catches the main frame *and* auth popups that appear later.
+#
+# Goal:
+#  - Maximize the main "IB Gateway" window (fullscreen in the virtual desktop)
+#  - Any *other* IBKR windows that appear get moved to the top-right corner
+#
+
+# Figure out the root screen size (WxH)
+SCREEN_W=0
+SCREEN_H=0
+if command -v xdpyinfo >/dev/null 2>&1; then
+  dims="$(xdpyinfo 2>/dev/null | awk '/dimensions:/ {print $2; exit}')"
+  if [[ -n "${dims:-}" ]]; then
+    SCREEN_W="${dims%x*}"
+    SCREEN_H="${dims#*x}"
+  fi
+fi
+# Fallback if xdpyinfo didn’t give us values
+[[ "$SCREEN_W" =~ ^[0-9]+$ ]] || SCREEN_W=1920
+[[ "$SCREEN_H" =~ ^[0-9]+$ ]] || SCREEN_H=1080
+
 end=$((SECONDS+20))
+MAIN_ID=""
 while (( SECONDS < end )); do
-  # Match exact title first, then broader match (case-insensitive not needed here)
-  mapfile -t IDS < <(xdotool search --name '^IB Gateway$' 2>/dev/null || true)
-  if (( ${#IDS[@]} == 0 )); then
-    mapfile -t IDS < <(xdotool search --name 'IB.*Gateway' 2>/dev/null || true)
+  # Find the main window first
+  if [[ -z "$MAIN_ID" ]]; then
+    MAIN_ID="$(xdotool search --onlyvisible --name '^IB Gateway$' 2>/dev/null | head -n1 || true)"
+    [[ -z "$MAIN_ID" ]] && MAIN_ID="$(xdotool search --onlyvisible --name 'IB.*Gateway' 2>/dev/null | head -n1 || true)"
+    if [[ -n "$MAIN_ID" ]]; then
+      # Maximize + keep on top + sticky; IBKR will sit at (0,0) in fullscreen
+      wmctrl -i -r "$MAIN_ID" -b add,maximized_vert,maximized_horz,above,sticky || true
+      xdotool windowactivate --sync "$MAIN_ID" 2>/dev/null || true
+    fi
   fi
-  if (( ${#IDS[@]} > 0 )); then
-    for WID in "${IDS[@]}"; do
-      # Maximize and pin; IBKR positions itself at 0,0 when maximized
-      wmctrl -i -r "$WID" -b add,maximized_vert,maximized_horz,above,sticky || true
-      # Ensure it’s the active/focused window (helps with some dialogs)
-      xdotool windowactivate --sync "$WID" 2>/dev/null || true
+
+  # Any other IB* windows (prompts / 2FA / dialogs) => top-right corner
+  mapfile -t ALL < <(xdotool search --onlyvisible --name 'IB' 2>/dev/null || true)
+  if (( ${#ALL[@]} > 0 )); then
+    for WID in "${ALL[@]}"; do
+      [[ -n "$MAIN_ID" && "$WID" == "$MAIN_ID" ]] && continue
+      # Try to get this window's size to avoid moving it off-screen
+      WW=0; HH=0
+      if geom="$(xdotool getwindowgeometry --shell "$WID" 2>/dev/null)"; then
+        # shellcheck disable=SC1090
+        eval "$geom" 2>/dev/null || true
+        WW="${WIDTH:-0}"; HH="${HEIGHT:-0}"
+      fi
+      [[ "$WW" =~ ^[0-9]+$ ]] || WW=800
+      [[ "$HH" =~ ^[0-9]+$ ]] || HH=600
+      X=$(( SCREEN_W - WW ))
+      (( X < 0 )) && X=0
+      wmctrl -i -r "$WID" -e "0,$X,0,-1,-1" || true
+      wmctrl -i -r "$WID" -b add,above || true
     done
-    # keep looping a bit longer to catch any new auth/dialog windows
   fi
-  sleep 0.5
-done
-exit 0
+  sleep 0.4
++done
++exit 0
 PINSH
 
 chown root:root /usr/local/bin/pin-ibgw.sh
@@ -286,6 +322,7 @@ Environment=XDG_RUNTIME_DIR=/run/xpra-main
 ExecStart=/usr/bin/xpra start :100 \
   --daemon=no --html=on \
   --bind-tcp=127.0.0.1:14500 \
+  --dpi=96 \
   --exit-with-children=yes \
   --log-file=/home/ibkr/xpra-main.log \
   --start-child=/usr/bin/openbox \
