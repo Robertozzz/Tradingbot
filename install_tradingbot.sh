@@ -57,8 +57,9 @@ apt-get install -y gnupg ca-certificates curl
 
 # ---- Xpra APT repo (needed on Debian 13 / trixie; falls back to bookworm) ----
 install -d -m 0755 /etc/apt/keyrings
-# Import Xpra signing key
-curl -fsSL https://xpra.org/gpg.asc | sudo gpg --dearmor -o /etc/apt/keyrings/xpra.gpg
+rm -f /etc/apt/keyrings/xpra.gpg
+curl -fsSL https://xpra.org/gpg.asc | gpg --dearmor --batch --yes -o /etc/apt/keyrings/xpra.gpg
+chmod 0644 /etc/apt/keyrings/xpra.gpg
 # Detect codename, fall back if xpra.org doesn't serve it yet
 . /etc/os-release
 XPRA_CODENAME="${VERSION_CODENAME:-bookworm}"
@@ -82,6 +83,15 @@ apt-get install -y \
   libnss3 libasound2 libatk1.0-0 libatk-bridge2.0-0 libcups2 \
   libx11-xcb1 libxcb1 libxcb-render0 libxcb-shm0 libdrm2 libgbm1 \
   libfontconfig1 fonts-dejavu-core jq
+  
+# Prevent Debian's Xpra socket-activation from grabbing 14500:
+systemctl stop    xpra-server.socket xpra.socket 2>/dev/null || true
+systemctl disable xpra-server.socket xpra.socket 2>/dev/null || true
+systemctl mask    xpra-server.socket xpra.socket 2>/dev/null || true
+systemctl stop    xpra-server.service xpra-proxy.service 2>/dev/null || true
+systemctl disable xpra-server.service xpra-proxy.service 2>/dev/null || true
+systemctl mask    xpra-proxy.service 2>/dev/null || true
+pkill -f 'xpra (proxy|start)' 2>/dev/null || true
 
 # ---- Users / dirs ----
 id -u ibkr >/dev/null 2>&1 || useradd -m -s /bin/bash ibkr
@@ -253,26 +263,32 @@ fi
 ## stop/disable if it exists
 systemctl disable --now ibgateway.service 2>/dev/null || true
 
+# /etc/systemd/system/xpra-ibgateway.service
 cat > /etc/systemd/system/xpra-ibgateway.service <<'UNIT'
 [Unit]
 Description=Xpra session for IB Gateway (window-only streaming)
+Wants=network-online.target
 After=network-online.target
 
 [Service]
-User=ibkr
 Type=simple
-# Xpra listens on 127.0.0.1:14500 and serves the HTML5 client too.
-# It also starts IB Gateway as the child app inside this display.
+User=ibkr
+# Give xpra a writable runtime dir:
+RuntimeDirectory=xpra-ibgateway
+Environment=XDG_RUNTIME_DIR=/run/xpra-ibgateway
+Environment=DISPLAY=:100
+# Foreground server with HTML5 bound to loopback:14500
 ExecStart=/usr/bin/xpra start :100 \
-  --start-child="$HOME/Jts/ibgateway/1037/ibgateway" \
-  --bind-tcp=127.0.0.1:14500 \
+  --daemon=no \
   --html=on \
+  --bind-tcp=127.0.0.1:14500 \
   --exit-with-children=yes \
-  --mdns=no \
-  --bell=no \
-  --notifications=no
+  --start-child=/home/ibkr/Jts/ibgateway/1037/ibgateway \
+  --speaker=off --microphone=off --pulseaudio=no \
+  --printing=no --clipboard=yes --mdns=no
+ExecStop=/usr/bin/xpra stop :100 --wait=yes
 Restart=always
-RestartSec=3
+RestartSec=5
 
 [Install]
 WantedBy=multi-user.target
@@ -285,7 +301,7 @@ systemctl enable --now uvicorn.service
 
 # ---- Nginx site (HTTP dev vs HTTPS prod) ----
 if [[ $NO_TLS -eq 1 ]]; then
-  cat > /etc/nginx/sites-available/tradingbot <<'NGINX'
+  cat > /etc/nginx/sites-available/tradingbot <<NGINX
 server {
     listen 80;
     server_name $DOMAIN;
@@ -293,8 +309,8 @@ server {
     # Auth gate
     location = /auth/validate {
         proxy_pass http://127.0.0.1:8000/auth/validate;
-        proxy_set_header Host $host;
-        proxy_set_header X-Real-IP $remote_addr;
+        proxy_set_header Host \$host;
+        proxy_set_header X-Real-IP \$remote_addr;
         proxy_set_header X-Forwarded-Proto http;
     }
 
@@ -302,15 +318,15 @@ server {
         auth_request /auth/validate;
         error_page 401 = @unauth;
         proxy_pass http://127.0.0.1:8000;
-        proxy_set_header Host $host;
-        proxy_set_header X-Real-IP $remote_addr;
+        proxy_set_header Host \$host;
+        proxy_set_header X-Real-IP \$remote_addr;
         proxy_set_header X-Forwarded-Proto http;
     }
 
     location @unauth {
         proxy_pass http://127.0.0.1:8000;
-        proxy_set_header Host $host;
-        proxy_set_header X-Real-IP $remote_addr;
+        proxy_set_header Host \$host;
+        proxy_set_header X-Real-IP \$remote_addr;
         proxy_set_header X-Forwarded-Proto http;
     }
 	
@@ -318,11 +334,52 @@ server {
     location /xpra/ {
         auth_request /auth/validate;
         proxy_http_version 1.1;
-        proxy_set_header Upgrade $http_upgrade;
+        proxy_set_header Upgrade \$http_upgrade;
         proxy_set_header Connection "upgrade";
-        proxy_set_header Host $host;
+        proxy_set_header Host \$host;
         proxy_read_timeout 86400;
-        proxy_pass http://127.0.0.1:14500/;
+        proxy_buffering off;
+        # strip the /xpra/ prefix so Xpra’s absolute paths (/connect, /favicon.ico, etc) resolve
+        rewrite ^/xpra/(.*)$ /$1 break;
+        proxy_pass http://127.0.0.1:14500;
+    }
+
+    # Xpra websocket uses absolute /connect
+    location /connect {
+        auth_request /auth/validate;
+        proxy_http_version 1.1;
+        proxy_set_header Upgrade \$http_upgrade;
+        proxy_set_header Connection "upgrade";
+        proxy_set_header Host \$host;
+        proxy_read_timeout 86400;
+        proxy_buffering off;
+        proxy_pass http://127.0.0.1:14500;
+    }
+	
+    # Xpra absolute-path assets
+    location = /favicon.ico {
+        auth_request /auth/validate;
+        proxy_http_version 1.1;
+        proxy_set_header Host \$host;
+        proxy_read_timeout 86400;
+        proxy_buffering off;
+        proxy_pass http://127.0.0.1:14500;
+    }
+    location ^~ /client/ {
+        auth_request /auth/validate;
+        proxy_http_version 1.1;
+        proxy_set_header Host \$host;
+        proxy_read_timeout 86400;
+        proxy_buffering off;
+        proxy_pass http://127.0.0.1:14500;
+    }
+    location ^~ /resources/ {
+        auth_request /auth/validate;
+        proxy_http_version 1.1;
+        proxy_set_header Host \$host;
+        proxy_read_timeout 86400;
+        proxy_buffering off;
+        proxy_pass http://127.0.0.1:14500;
     }
 
     # noVNC static
@@ -337,7 +394,7 @@ server {
     # ACME (not used in --no-tls, but harmless)
     location ^~ /.well-known/acme-challenge/ {
         root /var/www/html;
-        try_files $uri =404;
+        try_files \$uri =404;
         allow all;
     }
 }
@@ -385,11 +442,52 @@ server {
     location /xpra/ {
         auth_request /auth/validate;
         proxy_http_version 1.1;
-        proxy_set_header Upgrade $http_upgrade;
+        proxy_set_header Upgrade \$http_upgrade;
         proxy_set_header Connection "upgrade";
-        proxy_set_header Host $host;
+        proxy_set_header Host \$host;
         proxy_read_timeout 86400;
-        proxy_pass http://127.0.0.1:14500/;
+        proxy_buffering off;
+        # strip the /xpra/ prefix so Xpra’s absolute paths (/connect, /favicon.ico, etc) resolve
+        rewrite ^/xpra/(.*)$ /$1 break;
+        proxy_pass http://127.0.0.1:14500;
+    }
+
+    # Xpra websocket uses absolute /connect
+    location /connect {
+        auth_request /auth/validate;
+        proxy_http_version 1.1;
+        proxy_set_header Upgrade \$http_upgrade;
+        proxy_set_header Connection "upgrade";
+        proxy_set_header Host \$host;
+        proxy_read_timeout 86400;
+        proxy_buffering off;
+        proxy_pass http://127.0.0.1:14500;
+    }
+	
+    # Xpra absolute-path assets
+    location = /favicon.ico {
+        auth_request /auth/validate;
+        proxy_http_version 1.1;
+        proxy_set_header Host \$host;
+        proxy_read_timeout 86400;
+        proxy_buffering off;
+        proxy_pass http://127.0.0.1:14500;
+    }
+    location ^~ /client/ {
+        auth_request /auth/validate;
+        proxy_http_version 1.1;
+        proxy_set_header Host \$host;
+        proxy_read_timeout 86400;
+        proxy_buffering off;
+        proxy_pass http://127.0.0.1:14500;
+    }
+    location ^~ /resources/ {
+        auth_request /auth/validate;
+        proxy_http_version 1.1;
+        proxy_set_header Host \$host;
+        proxy_read_timeout 86400;
+        proxy_buffering off;
+        proxy_pass http://127.0.0.1:14500;
     }
 
     # (legacy noVNC websocket removed; xpra handles HTML+WS itself)
