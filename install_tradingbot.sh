@@ -257,6 +257,9 @@ ExecStart=/usr/bin/xpra start :100 \
   --bind-tcp=127.0.0.1:14500 \
   --exit-with-children=yes \
   --start-child=/usr/bin/openbox \
+  --start-child='bash -lc "sleep 2; \
+    wmctrl -F -r \"IB Gateway\" -e 0,0,0,-1,-1 || true; \
+    wmctrl -F -r \"IB Gateway\" -b add,above,sticky || true"' \
   --start-child=/home/ibkr/Jts/ibgateway/1037/ibgateway
 Restart=always
 RestartSec=5

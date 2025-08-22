@@ -15,23 +15,24 @@
     <iframe id="xpra-main"  src="/xpra-main/?scaling=off"  title="IBKR Gateway Main"></iframe>
     <iframe id="xpra-login" src="/xpra-login/?scaling=off" title="IBKR Gateway Login"></iframe>
   </div>
-
-  <script>
-    function handleMsg(id,e){
-      const s = e.data && e.data.xpraWindowSize;
-      if(!(s && s.w && s.h)) return;
-      const ifr=document.getElementById(id);
-      ifr.style.display="block";
-      ifr.style.flex="0 0 "+s.w+"px";
-      ifr.style.height=s.h+"px";
-    }
-    addEventListener("message", e=>{
-      if(e.origin!==location.origin) return;
-      if(e.source && e.source.frameElement){
-        const id=e.source.frameElement.id;
-        handleMsg(id,e);
-      }
-    });
-  </script>
+	<script>
+	  function handleMsg(id,e){
+		const s = e.data && e.data.xpraWindowSize;
+		if(!(s && s.w && s.h)) return;
+		const ifr=document.getElementById(id);
+		ifr.style.display="block";
+		ifr.style.flex="0 0 "+s.w+"px";
+		ifr.style.height=s.h+"px";
+		// make sure the inner doc is scrolled to top-left
+		try { ifr.contentWindow && ifr.contentWindow.scrollTo(0,0); } catch(_){}
+	  }
+	  addEventListener("message", e=>{
+		if(e.origin!==location.origin) return;
+		if(e.source && e.source.frameElement){
+		  const id=e.source.frameElement.id;
+		  handleMsg(id,e);
+		}
+	  });
+	</script>
 </body>
 </html>
