@@ -318,16 +318,16 @@ server {
         # no auth gate for xpra bits
         auth_request off;
         proxy_http_version 1.1;
-        proxy_set_header Upgrade $http_upgrade;
+        proxy_set_header Upgrade \$http_upgrade;
         proxy_set_header Connection "upgrade";
-        proxy_set_header Host $host;
+        proxy_set_header Host \$host;
         proxy_read_timeout 86400;
         proxy_buffering off;
         # allow embedding: drop upstream blocking headers and set permissive ones
         proxy_hide_header X-Frame-Options;
         proxy_hide_header Content-Security-Policy;
         add_header X-Frame-Options "SAMEORIGIN" always;
-        add_header Content-Security-Policy "frame-ancestors 'self' http://$host https://$host" always;
+        add_header Content-Security-Policy "frame-ancestors 'self' http://\$host https://\$host" always;
         # map /xpra -> / at the upstream
         rewrite ^/xpra$ / break;
         # and rewrite any absolute redirect back under /xpra/ for the browser
@@ -462,23 +462,22 @@ server {
     listen 443 ssl http2;
     server_name $DOMAIN;
 	
-    # /xpra without trailing slash -> /xpra/
-    location = /xpra { return 301 /xpra/; }
+    # (no redirect stanza; we proxy /xpra directly below)
 	
     # /xpra (no trailing slash) : proxy directly (avoid 301 in iframes)
     location = /xpra {
         auth_request off;
         proxy_http_version 1.1;
-        proxy_set_header Upgrade $http_upgrade;
+        proxy_set_header Upgrade \$http_upgrade;
         proxy_set_header Connection "upgrade";
-        proxy_set_header Host $host;
+        proxy_set_header Host \$host;
         proxy_read_timeout 86400;
         proxy_buffering off;
         # allow embedding
         proxy_hide_header X-Frame-Options;
         proxy_hide_header Content-Security-Policy;
         add_header X-Frame-Options "SAMEORIGIN" always;
-        add_header Content-Security-Policy "frame-ancestors 'self' http://$host https://$host" always;
+        add_header Content-Security-Policy "frame-ancestors 'self' http://\$host https://\$host" always;
         # map /xpra -> / upstream
         rewrite ^/xpra$ / break;
         proxy_redirect ~^(/.*)$ /xpra\$1;
