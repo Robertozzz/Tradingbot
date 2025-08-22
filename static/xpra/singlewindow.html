@@ -5,37 +5,50 @@
   <title>IB Gateway (tight)</title>
   <meta name="viewport" content="width=device-width, initial-scale=1">
 	<style>
-	  html,body { margin:0; padding:0; background:#000; overflow-x:auto; overflow-y:hidden }
-	  #wrap { display:flex; flex-direction:row; align-items:flex-start; height:100vh; width:max-content }
-	  /* Show immediately at a sensible fallback size; JS will right-size it */
-	  iframe { border:0; display:block; flex:0 0 auto; min-width:640px; min-height:480px; width:640px; height:480px }
+	  html,body { margin:0; padding:0; background:#000; overflow:hidden }
+	  #wrap { display:flex; flex-direction:row; align-items:flex-start; height:100vh }
+	  /* Fallback; JS will right-size to 2× app width */
+	  iframe { border:0; display:block; flex:0 0 1280px; height:720px }
 	</style>
 </head>
 <body>
   <div id="wrap">
-    <iframe id="xpra-main"  src="/xpra-main/index.html?scaling=off"  title="IBKR Gateway Main"></iframe>
-    <iframe id="xpra-login" src="/xpra-login/index.html?scaling=off" title="IBKR Gateway Login"></iframe>
+    <!-- View the SAME Xpra session twice; left and right panes -->
+    <iframe id="left"  src="/xpra-main/index.html?scaling=off"  title="IBKR Gateway Main (left)"></iframe>
+    <iframe id="right" src="/xpra-main/index.html?scaling=off"  title="IBKR Gateway Main (right)"></iframe>
   </div>
 	<script>
-	  function handleMsg(id,e){
-		const s = e.data && e.data.xpraWindowSize;
-		if(!(s && s.w && s.h)) return;
-		const ifr=document.getElementById(id);
-		ifr.style.flex="0 0 "+s.w+"px";
-		ifr.style.width = s.w + "px";
-		ifr.style.height=s.h+"px";
-		// make sure the inner doc is scrolled to top-left
-		try { ifr.contentWindow && ifr.contentWindow.scrollTo(0,0); } catch(_){}
+	  const L = document.getElementById('left');
+	  const R = document.getElementById('right');
+	  let appW = 1280, appH = 720; // until we hear from Xpra
+
+	  function applySizes(){
+	    const wide = appW * 2;
+	    for (const ifr of [L,R]) {
+	      ifr.style.flexBasis = wide + 'px';
+	      ifr.style.width     = wide + 'px';
+	      ifr.style.height    = appH + 'px';
+	    }
+	    // left shows x=0; right shows x=appW (second pane)
+	    try { L.contentWindow.scrollTo(0, 0); } catch(_) {}
+	    try { R.contentWindow.scrollTo(appW, 0); } catch(_) {}
 	  }
-	  addEventListener("message", e=>{
-		if(e.origin!==location.origin) return;
-		if(e.source && e.source.frameElement){
-		  const id=e.source.frameElement.id;
-		  handleMsg(id,e);
-		}
+
+	  // Listen for the xpraWindowSize message from either iframe
+	  addEventListener('message', (e) => {
+	    if (e.origin !== location.origin) return;
+	    const s = e.data && e.data.xpraWindowSize;
+	    if (!(s && s.w && s.h)) return;
+	    if (s.w !== appW || s.h !== appH) {
+	      appW = s.w; appH = s.h;
+	      applySizes();
+	    }
 	  });
-	  // Safety: if no message arrives, keep iframes visible at fallback size
-	  setTimeout(()=>{ try{document.getElementById('xpra-main').contentWindow.scrollTo(0,0)}catch(_){}} , 800);
+
+	  // Keep view aligned even if client reflows
+	  L.addEventListener('load', applySizes);
+	  R.addEventListener('load', applySizes);
+	  setInterval(applySizes, 700);
 	</script>
 </body>
 </html>

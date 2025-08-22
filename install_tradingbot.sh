@@ -166,28 +166,43 @@ fi
 # ---- Remove legacy standalone xpra runner if present (prevents port clashes) ----
 rm -f /opt/ibkr/run-ibgateway-xpra.sh 2>/dev/null || true
 
-# ---- Helper: pin IBKR window to top-left without resizing ----
-install -D -m 0755 /dev/stdin /usr/local/bin/pin-ibgw.sh <<'PINSH'
+# ---- Helper: place IBKR windows: first at (0,0), second to the right of the first ----
+install -D -m 0755 /dev/stdin /usr/local/bin/arrange-ibgw.sh <<'PINSH'
 #!/usr/bin/env bash
 set -euo pipefail
-# Wait up to ~20s for the window to appear
-for i in {1..40}; do
-  # Try exact title first, then a loose match (case-sensitive)
-  WID="$(xdotool search --name '^IB Gateway$' 2>/dev/null | head -n1 || true)"
-  [[ -z "${WID:-}" ]] && WID="$(xdotool search --name 'IB.*Gateway' 2>/dev/null | head -n1 || true)"
-  if [[ -n "${WID:-}" ]]; then
-    # De-maximize if maximized, then move to 0,0 and keep on top & sticky
-    xdotool windowunmaximize "$WID" 2>/dev/null || true
-    xdotool windowmove --sync "$WID" 0 0 || true
-    wmctrl -i -r "$WID" -b add,above,sticky || true
-    exit 0
+# We iterate for ~30s: keep enforcing placement as windows appear.
+end=$((SECONDS+30))
+primary=""
+primary_w=0
+while (( SECONDS < end )); do
+  # Find all top-level IBKR windows (titles often contain 'IB Gateway', 'Login', 'Authentication', etc.)
+  mapfile -t wins < <(xdotool search --onlyvisible --name 'IB.*Gateway|Login|Authenticat' 2>/dev/null || true)
+  if (( ${#wins[@]} > 0 )); then
+    # Choose the oldest (first) as primary if not set
+    [[ -z "${primary:-}" ]] && primary="${wins[0]}"
+    # Unmaximize and place primary at 0,0
+    xdotool windowunmaximize "$primary" 2>/dev/null || true
+    xdotool windowmove --sync "$primary" 0 0 2>/dev/null || true
+    wmctrl -i -r "$primary" -b add,above,sticky 2>/dev/null || true
+    # Measure primary width once (fallback 1024)
+    if (( primary_w == 0 )); then
+      eval "$(xdotool getwindowgeometry --shell "$primary" 2>/dev/null || echo 'WIDTH=1024;HEIGHT=768')"
+      primary_w=${WIDTH:-1024}
+    fi
+    # Place any *other* IBKR windows to the right of primary
+    for w in "${wins[@]}"; do
+      [[ "$w" = "$primary" ]] && continue
+      xdotool windowunmaximize "$w" 2>/dev/null || true
+      xdotool windowmove --sync "$w" "$primary_w" 0 2>/dev/null || true
+      wmctrl -i -r "$w" -b add,above,sticky 2>/dev/null || true
+    done
   fi
   sleep 0.5
-done
-exit 0
++done
++exit 0
 PINSH
 
-chown root:root /usr/local/bin/pin-ibgw.sh
+chown root:root /usr/local/bin/arrange-ibgw.sh
 
 # Install Gateway under ibkr (idempotent)
 # We use the same path as the runner script: $HOME/Jts/ibgateway/1037
@@ -283,27 +298,7 @@ ExecStart=/usr/bin/xpra start :100 \
   --exit-with-children=yes \
   --start-child=/usr/bin/openbox \
   --start-child=/home/ibkr/Jts/ibgateway/1037/ibgateway \
-  --start-child=/bin/bash -lc "/usr/local/bin/pin-ibgw.sh"
-Restart=always
-RestartSec=5
-
-[Install]
-WantedBy=multi-user.target
-UNIT
-
-# /etc/systemd/system/xpra-ibgateway-login.service
-cat > /etc/systemd/system/xpra-ibgateway-login.service <<'UNIT'
-[Unit]
-Description=Xpra session for IB Gateway login
-After=network-online.target
-
-[Service]
-User=ibkr
-RuntimeDirectory=xpra-login
-Environment=XDG_RUNTIME_DIR=/run/xpra-login
-ExecStart=/usr/bin/xpra start :101 \
-  --daemon=no --html=on \
-  --bind-tcp=127.0.0.1:14501 \
+  --start-child=/bin/bash -lc "/usr/local/bin/arrange-ibgw.sh"
 Restart=always
 RestartSec=5
 
@@ -313,9 +308,7 @@ UNIT
 
 systemctl daemon-reload
 systemctl enable --now xpra-ibgateway-main.service
-systemctl enable --now xpra-ibgateway-login.service
 systemctl restart xpra-ibgateway-main.service || true
-systemctl restart xpra-ibgateway-login.service || true
 sleep 1
 systemctl enable --now uvicorn.service
 
@@ -328,7 +321,6 @@ server {
 
     # convenience redirects without trailing slash
     location = /xpra-main { return 301 /xpra-main/; }
-    location = /xpra-login { return 301 /xpra-login/; }
 
     # Auth gate
     location = /auth/validate {
@@ -417,54 +409,6 @@ server {
         proxy_pass http://127.0.0.1:14500;
     }
 	
-    # XPRA HTML5 LOGIN (no auth gate; iframe+WS)
-    location /xpra-login/ {
-        auth_request off;
-        proxy_http_version 1.1;
-        proxy_set_header Upgrade \$http_upgrade;
-        proxy_set_header Connection "upgrade";
-        proxy_set_header Host \$host;
-        proxy_read_timeout 86400;
-        proxy_buffering off;
-        proxy_hide_header X-Frame-Options;
-        proxy_hide_header Content-Security-Policy;
-        add_header X-Frame-Options "SAMEORIGIN" always;
-        add_header Content-Security-Policy "frame-ancestors 'self' http://\$host https://\$host" always;
-
-        proxy_set_header Accept-Encoding "";
-        sub_filter_types text/html;
-        sub_filter_once off;
-        sub_filter '<meta http-equiv="Content-Security-Policy"' '<meta http-equiv="x-removed-CSP">';
-        # nudge view to top-left on load just in case
-        sub_filter '<body>' '<body><script>try{scrollTo(0,0)}catch(e){}</script>';
-
-        sub_filter '</head>' '<style id="xpra-embed">
-          #toolbar,#menubar,#footer,#taskbar,#sidepanel,#notifications{display:none!important}
-          html,body,#workspace{margin:0;padding:0;width:100%;height:100%;background:transparent}
-          .window{box-shadow:none!important;border:none!important}
-        </style></head>';
-        sub_filter '</body>' '<script>
-          (function(){
-            try{ if(!/scaling=/.test(location.search)) history.replaceState(null,"",location.pathname+"?scaling=off"); }catch(e){}
-            function findTarget(){ return document.querySelector(".window") || document.querySelector("#screen canvas"); }
-            function pulse(){
-              const el = findTarget(); if(!el) return;
-              const r = el.getBoundingClientRect();
-              const msg = { xpraWindowSize: { w: Math.round(r.width), h: Math.round(r.height) } };
-              try { parent.postMessage(msg, location.origin); } catch(e) {}
-            }
-            new MutationObserver(pulse).observe(document.documentElement,{subtree:true,childList:true,attributes:true});
-            addEventListener("resize",pulse);
-            setInterval(pulse,500);
-            setTimeout(pulse,200);
-          })();
-        </script></body>';
-
-        rewrite ^/xpra-login/(.*)$ /\$1 break;
-        proxy_redirect ~^(/.*)$ /xpra-login\$1;
-        proxy_pass http://127.0.0.1:14501;
-    }
-	
     # Xpra MAIN absolute-path assets (no auth gate)
     location = /favicon.ico {
         auth_request off;
@@ -545,7 +489,6 @@ server {
 
     # convenience redirects without trailing slash
     location = /xpra-main { return 301 /xpra-main/; }
-    location = /xpra-login { return 301 /xpra-login/; }
 
     # Filled by Certbot later
     ssl_certificate     /etc/letsencrypt/live/$DOMAIN/fullchain.pem;
@@ -635,51 +578,6 @@ server {
         proxy_pass http://127.0.0.1:14500;
     }
 
-    # XPRA HTML5 LOGIN (no auth gate; iframe+WS)
-    location /xpra-login/ {
-        auth_request off;
-        proxy_http_version 1.1;
-        proxy_set_header Upgrade \$http_upgrade;
-        proxy_set_header Connection "upgrade";
-        proxy_set_header Host \$host;
-        proxy_read_timeout 86400;
-        proxy_buffering off;
-        proxy_hide_header X-Frame-Options;
-        proxy_hide_header Content-Security-Policy;
-        add_header X-Frame-Options "SAMEORIGIN" always;
-        add_header Content-Security-Policy "frame-ancestors 'self' http://\$host https://\$host" always;
-
-        proxy_set_header Accept-Encoding "";
-        sub_filter_types text/html;
-        sub_filter_once off;
-        sub_filter '<meta http-equiv="Content-Security-Policy"' '<meta http-equiv="x-removed-CSP">';
-        sub_filter '</head>' '<style id="xpra-embed">
-          #toolbar,#menubar,#footer,#taskbar,#sidepanel,#notifications{display:none!important}
-          html,body,#workspace{margin:0;padding:0;width:100%;height:100%;background:transparent}
-          .window{box-shadow:none!important;border:none!important}
-        </style></head>';
-        sub_filter '</body>' '<script>
-          (function(){
-            try{ if(!/scaling=/.test(location.search)) history.replaceState(null,"",location.pathname+"?scaling=off"); }catch(e){}
-            function findTarget(){ return document.querySelector(".window") || document.querySelector("#screen canvas"); }
-            function pulse(){
-              const el = findTarget(); if(!el) return;
-              const r = el.getBoundingClientRect();
-              const msg = { xpraWindowSize: { w: Math.round(r.width), h: Math.round(r.height) } };
-              try { parent.postMessage(msg, location.origin); } catch(e) {}
-            }
-            new MutationObserver(pulse).observe(document.documentElement,{subtree:true,childList:true,attributes:true});
-            addEventListener("resize",pulse);
-            setInterval(pulse,500);
-            setTimeout(pulse,200);
-          })();
-        </script></body>';
-
-        rewrite ^/xpra-login/(.*)$ /\$1 break;
-        proxy_redirect ~^(/.*)$ /xpra-login\$1;
-        proxy_pass http://127.0.0.1:14501;
-    }
-	
     # Xpra MAIN absolute-path assets (no auth gate)
     location = /favicon.ico {
         auth_request off;
