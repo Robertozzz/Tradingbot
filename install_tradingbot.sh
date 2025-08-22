@@ -167,7 +167,7 @@ fi
 rm -f /opt/ibkr/run-ibgateway-xpra.sh 2>/dev/null || true
 
 # ---- Helper: place IBKR windows: first at (0,0), second to the right of the first ----
-install -D -m 0755 /dev/stdin /usr/local/bin/arrange-ibgw.sh <<'PINSH'
+cat > /usr/local/bin/arrange-ibgw.sh <<'PINSH'
 #!/usr/bin/env bash
 set -euo pipefail
 # We iterate for ~30s: keep enforcing placement as windows appear.
@@ -202,16 +202,17 @@ while (( SECONDS < end )); do
 +exit 0
 PINSH
 
+chmod 0755 /usr/local/bin/arrange-ibgw.sh
 chown root:root /usr/local/bin/arrange-ibgw.sh
 
 # ---- Wrapper (avoids passing -l directly in --start-child) ----
-sudo -u ibkr install -D -m 0755 /dev/stdin /home/ibkr/bin/run-arranger.sh <<'WRAP'
+sudo -u ibkr mkdir -p /home/ibkr/bin
+cat > /home/ibkr/bin/run-arranger.sh <<'WRAP'
 #!/usr/bin/env bash
 exec /bin/bash -lc "/usr/local/bin/arrange-ibgw.sh"
 WRAP
-
-sudo -u ibkr mkdir -p /home/ibkr/bin
-sudo chown -R ibkr:ibkr /home/ibkr/bin
+chmod 0755 /home/ibkr/bin/run-arranger.sh
+chown ibkr:ibkr /home/ibkr/bin/run-arranger.sh
 
 # Install Gateway under ibkr (idempotent)
 # We use the same path as the runner script: $HOME/Jts/ibgateway/1037
