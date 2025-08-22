@@ -342,10 +342,16 @@ server {
         proxy_set_header Host \$host;
         proxy_read_timeout 86400;
         proxy_buffering off;
+        # allow embedding: drop upstream blocking headers and set permissive ones
+        proxy_hide_header X-Frame-Options;
+        proxy_hide_header Content-Security-Policy;
+        add_header X-Frame-Options "SAMEORIGIN" always;
+        add_header Content-Security-Policy "frame-ancestors 'self' http://\$host https://\$host" always;
+
         # strip the /xpra/ prefix so Xpra’s absolute paths (/connect, /favicon.ico, etc) resolve
         rewrite ^/xpra/(.*)$ /\$1 break;
         # and rewrite any absolute redirect back under /xpra/ for the browser
-        proxy_redirect ~^(/.*)$ /xpra\$1;
+		proxy_redirect ~^(/.*)$ /xpra\$1;
         proxy_pass http://127.0.0.1:14500;
     }
 
@@ -358,6 +364,8 @@ server {
         proxy_set_header Host \$host;
         proxy_read_timeout 86400;
         proxy_buffering off;
+        proxy_hide_header X-Frame-Options;
+        proxy_hide_header Content-Security-Policy;
         proxy_pass http://127.0.0.1:14500;
     }
 	
@@ -368,6 +376,8 @@ server {
         proxy_set_header Host \$host;
         proxy_read_timeout 86400;
         proxy_buffering off;
+        proxy_hide_header X-Frame-Options;
+        proxy_hide_header Content-Security-Policy;
         proxy_pass http://127.0.0.1:14500;
     }
     location ^~ /client/ {
@@ -376,6 +386,8 @@ server {
         proxy_set_header Host \$host;
         proxy_read_timeout 86400;
         proxy_buffering off;
+        proxy_hide_header X-Frame-Options;
+        proxy_hide_header Content-Security-Policy;
         proxy_pass http://127.0.0.1:14500;
     }
     location ^~ /resources/ {
@@ -384,6 +396,8 @@ server {
         proxy_set_header Host \$host;
         proxy_read_timeout 86400;
         proxy_buffering off;
+        proxy_hide_header X-Frame-Options;
+        proxy_hide_header Content-Security-Policy;
         proxy_pass http://127.0.0.1:14500;
     }
 
@@ -455,10 +469,15 @@ server {
         proxy_set_header Host \$host;
         proxy_read_timeout 86400;
         proxy_buffering off;
+        # allow embedding: drop upstream blocking headers and set permissive ones
+        proxy_hide_header X-Frame-Options;
+        proxy_hide_header Content-Security-Policy;
+        add_header X-Frame-Options "SAMEORIGIN" always;
+        add_header Content-Security-Policy "frame-ancestors 'self' http://\$host https://\$host" always;
         # strip the /xpra/ prefix so Xpra’s absolute paths (/connect, /favicon.ico, etc) resolve
         rewrite ^/xpra/(.*)$ /\$1 break;
         # and rewrite any absolute redirect back under /xpra/ for the browser
-        proxy_redirect ~^(/.*)$ /xpra\$1;
+		proxy_redirect ~^(/.*)$ /xpra\$1;
         proxy_pass http://127.0.0.1:14500;
     }
 
@@ -471,6 +490,8 @@ server {
         proxy_set_header Host \$host;
         proxy_read_timeout 86400;
         proxy_buffering off;
+        proxy_hide_header X-Frame-Options;
+        proxy_hide_header Content-Security-Policy;
         proxy_pass http://127.0.0.1:14500;
     }
 	
@@ -481,6 +502,8 @@ server {
         proxy_set_header Host \$host;
         proxy_read_timeout 86400;
         proxy_buffering off;
+        proxy_hide_header X-Frame-Options;
+        proxy_hide_header Content-Security-Policy;
         proxy_pass http://127.0.0.1:14500;
     }
     location ^~ /client/ {
@@ -489,6 +512,8 @@ server {
         proxy_set_header Host \$host;
         proxy_read_timeout 86400;
         proxy_buffering off;
+        proxy_hide_header X-Frame-Options;
+        proxy_hide_header Content-Security-Policy;
         proxy_pass http://127.0.0.1:14500;
     }
     location ^~ /resources/ {
@@ -497,6 +522,8 @@ server {
         proxy_set_header Host \$host;
         proxy_read_timeout 86400;
         proxy_buffering off;
+        proxy_hide_header X-Frame-Options;
+        proxy_hide_header Content-Security-Policy;
         proxy_pass http://127.0.0.1:14500;
     }
 
