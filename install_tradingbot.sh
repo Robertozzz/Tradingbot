@@ -297,7 +297,6 @@ Environment=XDG_RUNTIME_DIR=/run/xpra-login
 ExecStart=/usr/bin/xpra start :101 \
   --daemon=no --html=on \
   --bind-tcp=127.0.0.1:14501 \
-  --exit-with-children=yes
 Restart=always
 RestartSec=5
 
