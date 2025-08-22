@@ -75,7 +75,7 @@ apt-get update
 apt-get install -y \
   python3 python3-venv python3-pip python3-uvicorn python3-fastapi \
   python3-passlib python3-pyotp python3-qrcode \
-  unzip curl ca-certificates git rsync \
+  unzip curl ca-certificates git rsync openbox \
   xpra xvfb wmctrl xdotool \
   nginx certbot python3-certbot-nginx \
   libgtk-3-0 libglib2.0-0 libpango-1.0-0 libcairo2 libgdk-pixbuf-2.0-0 \
@@ -256,6 +256,7 @@ ExecStart=/usr/bin/xpra start :100 \
   --daemon=no --html=on \
   --bind-tcp=127.0.0.1:14500 \
   --exit-with-children=yes \
+  --start-child=/usr/bin/openbox \
   --start-child=/home/ibkr/Jts/ibgateway/1037/ibgateway
 Restart=always
 RestartSec=5
@@ -387,6 +388,21 @@ server {
         proxy_redirect ~^(/.*)$ /xpra-main\$1;
         proxy_pass http://127.0.0.1:14500;
     }
+	
+    # TEMP: Xpra WebSocket for MAIN (absolute /connect used by the HTML5 client)
+    # This ensures the main iframe can draw immediately. We'll split login later.
+    location = /connect {
+        auth_request off;
+        proxy_http_version 1.1;
+        proxy_set_header Upgrade $http_upgrade;
+        proxy_set_header Connection "upgrade";
+        proxy_set_header Host $host;
+        proxy_read_timeout 86400;
+        proxy_buffering off;
+        proxy_hide_header X-Frame-Options;
+        proxy_hide_header Content-Security-Policy;
+        proxy_pass http://127.0.0.1:14500;
+    }
 
     # XPRA HTML5 LOGIN (no auth gate; iframe+WS)
     location /xpra-login/ {
@@ -438,6 +454,21 @@ server {
         auth_request off;
         proxy_http_version 1.1;
         proxy_set_header Host \$host;
+        proxy_read_timeout 86400;
+        proxy_buffering off;
+        proxy_hide_header X-Frame-Options;
+        proxy_hide_header Content-Security-Policy;
+        proxy_pass http://127.0.0.1:14500;
+    }
+	
+    # TEMP: Xpra WebSocket for MAIN (absolute /connect used by the HTML5 client)
+    # This ensures the main iframe can draw immediately. We'll split login later.
+    location = /connect {
+        auth_request off;
+        proxy_http_version 1.1;
+        proxy_set_header Upgrade $http_upgrade;
+        proxy_set_header Connection "upgrade";
+        proxy_set_header Host $host;
         proxy_read_timeout 86400;
         proxy_buffering off;
         proxy_hide_header X-Frame-Options;
