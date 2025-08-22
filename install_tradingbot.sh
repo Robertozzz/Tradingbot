@@ -304,7 +304,8 @@ if [[ $NO_TLS -eq 1 ]]; then
   cat > /etc/nginx/sites-available/tradingbot <<NGINX
 server {
     listen 80;
-    server_name $DOMAIN;
+    # Catch both the configured hostname and direct IP access
+    server_name $DOMAIN _;
 	
     # Serve a simple iframe test page from same-origin:
     location = /xpra_iframe_test.html {
@@ -359,6 +360,17 @@ server {
         add_header X-Frame-Options "SAMEORIGIN" always;
         add_header Content-Security-Policy "frame-ancestors 'self' http://\$host https://\$host" always;
 
+        # --- make HTML rewrite-able and strip *meta* CSP from Xpra HTML ---
+        # ensure upstream sends plain (not gzip) so sub_filter can edit it
+        proxy_set_header Accept-Encoding "";
+        # only edit HTML
+        sub_filter_types text/html;
+        # allow multiple replacements on a page
+        sub_filter_once off;
+        # neutralize any meta CSP that would block iframing
+        sub_filter '<meta http-equiv="Content-Security-Policy"' '<meta http-equiv="x-removed-CSP"';
+
+
         # strip the /xpra/ prefix so Xpra’s absolute paths (/connect, /favicon.ico, etc) resolve
         rewrite ^/xpra/(.*)$ /\$1 break;
         # and rewrite any absolute redirect back under /xpra/ for the browser
@@ -377,6 +389,12 @@ server {
         proxy_buffering off;
         proxy_hide_header X-Frame-Options;
         proxy_hide_header Content-Security-Policy;
+        # in case Xpra serves an HTML loader under /client/, strip meta CSP too
+        proxy_set_header Accept-Encoding "";
+        sub_filter_types text/html;
+        sub_filter_once off;
+        sub_filter '<meta http-equiv="Content-Security-Policy"' '<meta http-equiv="x-removed-CSP"';
+
         proxy_pass http://127.0.0.1:14500;
     }
 	
@@ -435,7 +453,8 @@ else
   cat > /etc/nginx/sites-available/tradingbot <<NGINX
 server {
     listen 80;
-    server_name $DOMAIN;
+    # Also be default vhost for direct-IP hits
+    server_name $DOMAIN _;
     return 301 https://\$host\$request_uri;
 }
 
@@ -491,6 +510,13 @@ server {
         proxy_hide_header Content-Security-Policy;
         add_header X-Frame-Options "SAMEORIGIN" always;
         add_header Content-Security-Policy "frame-ancestors 'self' http://\$host https://\$host" always;
+
+        # --- make HTML rewrite-able and strip *meta* CSP from Xpra HTML ---
+        proxy_set_header Accept-Encoding "";
+        sub_filter_types text/html;
+        sub_filter_once off;
+        sub_filter '<meta http-equiv="Content-Security-Policy"' '<meta http-equiv="x-removed-CSP"';
+
         # strip the /xpra/ prefix so Xpra’s absolute paths (/connect, /favicon.ico, etc) resolve
         rewrite ^/xpra/(.*)$ /\$1 break;
         # and rewrite any absolute redirect back under /xpra/ for the browser
@@ -509,6 +535,11 @@ server {
         proxy_buffering off;
         proxy_hide_header X-Frame-Options;
         proxy_hide_header Content-Security-Policy;
+        # strip meta CSP if Xpra serves HTML here
+        proxy_set_header Accept-Encoding "";
+        sub_filter_types text/html;
+        sub_filter_once off;
+        sub_filter '<meta http-equiv="Content-Security-Policy"' '<meta http-equiv="x-removed-CSP"';
         proxy_pass http://127.0.0.1:14500;
     }
 	
@@ -578,3 +609,25 @@ if [[ $NO_TLS -eq 1 ]]; then
 else
   echo "Install complete (PROD, HTTPS). Open: https://$DOMAIN"
 fi
+
+sudo tee /var/www/html/xpra_iframe_test.html >/dev/null <<'HTML'
+<!doctype html>
+<html>
+<head>
+  <meta charset="utf-8">
+  <title>Xpra iframe test</title>
+  <style>html,body,#wrap{height:100%;margin:0}</style>
+</head>
+<body>
+  <div id="wrap">
+    <iframe
+      id="xpra"
+      src="/xpra/"
+      style="width:100%;height:100%;border:0"
+      allow="clipboard-read; clipboard-write; fullscreen *"
+      allowfullscreen>
+    </iframe>
+  </div>
+</body>
+</html>
+HTML
