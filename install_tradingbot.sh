@@ -255,17 +255,24 @@ systemctl disable --now ibgateway.service 2>/dev/null || true
 
 cat > /etc/systemd/system/xpra-ibgateway.service <<'UNIT'
 [Unit]
-Description=IBKR Gateway via XPRA (HTML5 seamless windows)
+Description=Xpra session for IB Gateway (window-only streaming)
 After=network-online.target
 
 [Service]
-Type=simple
 User=ibkr
-Environment=XPRA_PORT=14500
-Environment=DISPLAY_ID=100
-ExecStart=/opt/ibkr/run-ibgateway-xpra.sh
+Type=simple
+# Xpra listens on 127.0.0.1:14500 and serves the HTML5 client too.
+# It also starts IB Gateway as the child app inside this display.
+ExecStart=/usr/bin/xpra start :100 \
+  --start-child="$HOME/Jts/ibgateway/1037/ibgateway" \
+  --bind-tcp=127.0.0.1:14500 \
+  --html=on \
+  --exit-with-children=yes \
+  --mdns=no \
+  --bell=no \
+  --notifications=no
 Restart=always
-RestartSec=5
+RestartSec=3
 
 [Install]
 WantedBy=multi-user.target
