@@ -47,9 +47,11 @@ class MainApp extends StatelessWidget {
       debugShowCheckedModeBanner: false,
       title: 'Tradingbot xpra',
       theme: theme,
-      home: AuthGate(
-        child: const Shell(), // your existing scaffold/nav/pages
-      ),
+      home:
+          //   AuthGate(
+          //    child:
+          const Shell(), // your existing scaffold/nav/pages
+      //   ),
     );
   }
 }

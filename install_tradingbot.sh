@@ -380,12 +380,21 @@ server {
         # nudge view to top-left on load just in case
         sub_filter '<body>' '<body><script>try{scrollTo(0,0)}catch(e){}</script>';
 
-        # hide Xpra chrome, transparent background
+        # harden: remove UI chrome and ensure only the canvas gets pointer events
         sub_filter '</head>' '<style id="xpra-embed">
+          /* wipe visible chrome */
           #toolbar,#menubar,#footer,#taskbar,#sidepanel,#notifications,
-          #dragcover,#keyboard,#menubar-cover{display:none!important}
+          #dragcover,#keyboard,#menubar-cover,#menubarcover,#overlay,
+          [id*="toolbar"],[class*="toolbar"],[role="toolbar"]{display:none!important}
+          /* full bleed background */
           html,body,#workspace{margin:0;padding:0;width:100%;height:100%;background:transparent}
           .window{box-shadow:none!important;border:none!important}
+          /* default: block pointer events… */
+          body *{pointer-events:none!important}
+          /* …except the desktop/workspace windows and their canvases */
+          #workspace,#desktop,.window,.window *,#screen, #screen canvas{pointer-events:auto!important}
+          /* make sure the drawing surface sits on top */
+          #screen, #screen canvas, .window{position:relative; z-index:1}
         </style></head>';
 
         # emit size of first app window (or canvas) to parent, ensure native pixels (no scaling)
@@ -550,12 +559,16 @@ server {
         sub_filter_once off;
         sub_filter '<meta http-equiv="Content-Security-Policy"' '<meta http-equiv="x-removed-CSP">';
 
-        # hide Xpra chrome, transparent background
+        # harden: remove UI chrome and ensure only the canvas gets pointer events
         sub_filter '</head>' '<style id="xpra-embed">
           #toolbar,#menubar,#footer,#taskbar,#sidepanel,#notifications,
-          #dragcover,#keyboard,#menubar-cover{display:none!important}
+          #dragcover,#keyboard,#menubar-cover,#menubarcover,#overlay,
+          [id*="toolbar"],[class*="toolbar"],[role="toolbar"]{display:none!important}
           html,body,#workspace{margin:0;padding:0;width:100%;height:100%;background:transparent}
           .window{box-shadow:none!important;border:none!important}
+          body *{pointer-events:none!important}
+          #workspace,#desktop,.window,.window *,#screen, #screen canvas{pointer-events:auto!important}
+          #screen, #screen canvas, .window{position:relative; z-index:1}
         </style></head>';
 
         # emit size of first app window (or canvas) to parent, ensure native pixels (no scaling)

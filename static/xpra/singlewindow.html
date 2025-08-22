@@ -24,8 +24,6 @@
       const wide = appW * 2;           // show a “double-wide” canvas
       IF.style.width  = wide + 'px';
       IF.style.height = appH  + 'px';
-      // nudge once when size changes; avoid stealing focus repeatedly
-      try { IF.contentWindow && IF.contentWindow.scrollTo(0, 0); } catch(_){}
     }
 
 	  // Listen for the xpraWindowSize message from either iframe
