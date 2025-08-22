@@ -327,10 +327,6 @@ server {
     location / {
         auth_request /auth/validate;
         error_page 401 = @unauth;
-        # Allow our app pages to embed same-origin iframes (like /xpra/)
-        proxy_hide_header Content-Security-Policy;
-        add_header Content-Security-Policy "frame-ancestors 'self' http://\$host https://\$host; frame-src 'self' http://\$host https://\$host; child-src 'self' http://\$host https://\$host" always;
-        add_header X-Frame-Options "SAMEORIGIN" always;
         proxy_pass http://127.0.0.1:8000;
         proxy_set_header Host \$host;
         proxy_set_header X-Real-IP \$remote_addr;
@@ -344,9 +340,9 @@ server {
         proxy_set_header X-Forwarded-Proto http;
     }
 	
-    # XPRA HTML5 (IB Gateway windows) - no auth gate (iframe+WS)
+    # XPRA HTML5 (IB Gateway windows)
     location /xpra/ {
-        auth_request off;
+        auth_request /auth/validate;
         proxy_http_version 1.1;
         proxy_set_header Upgrade \$http_upgrade;
         proxy_set_header Connection "upgrade";
@@ -362,13 +358,13 @@ server {
         # strip the /xpra/ prefix so Xpra’s absolute paths (/connect, /favicon.ico, etc) resolve
         rewrite ^/xpra/(.*)$ /\$1 break;
         # and rewrite any absolute redirect back under /xpra/ for the browser
-        proxy_redirect ~^(/.*)$ /xpra\$1;
+		proxy_redirect ~^(/.*)$ /xpra\$1;
         proxy_pass http://127.0.0.1:14500;
     }
 
-    # Xpra websocket uses absolute /connect - no auth gate
+    # Xpra websocket uses absolute /connect
     location /connect {
-        auth_request off;
+        auth_request /auth/validate;
         proxy_http_version 1.1;
         proxy_set_header Upgrade \$http_upgrade;
         proxy_set_header Connection "upgrade";
@@ -380,9 +376,9 @@ server {
         proxy_pass http://127.0.0.1:14500;
     }
 	
-    # Xpra absolute-path assets (no auth gate)
+    # Xpra absolute-path assets
     location = /favicon.ico {
-        auth_request off;
+        auth_request /auth/validate;
         proxy_http_version 1.1;
         proxy_set_header Host \$host;
         proxy_read_timeout 86400;
@@ -391,9 +387,8 @@ server {
         proxy_hide_header Content-Security-Policy;
         proxy_pass http://127.0.0.1:14500;
     }
-	
     location ^~ /client/ {
-        auth_request off;
+        auth_request /auth/validate;
         proxy_http_version 1.1;
         proxy_set_header Host \$host;
         proxy_read_timeout 86400;
@@ -402,9 +397,8 @@ server {
         proxy_hide_header Content-Security-Policy;
         proxy_pass http://127.0.0.1:14500;
     }
-	
     location ^~ /resources/ {
-        auth_request off;
+        auth_request /auth/validate;
         proxy_http_version 1.1;
         proxy_set_header Host \$host;
         proxy_read_timeout 86400;
@@ -460,10 +454,6 @@ server {
     location / {
         auth_request /auth/validate;
         error_page 401 = @unauth;
-        # Match the relaxed CSP on unauth redirect target too
-        proxy_hide_header Content-Security-Policy;
-        add_header Content-Security-Policy "frame-ancestors 'self' http://\$host https://\$host; frame-src 'self' http://\$host https://\$host; child-src 'self' http://\$host https://\$host" always;
-        add_header X-Frame-Options "SAMEORIGIN" always;
         proxy_pass http://127.0.0.1:8000;
         proxy_set_header Host \$host;
         proxy_set_header X-Real-IP \$remote_addr;
@@ -477,9 +467,9 @@ server {
         proxy_set_header X-Forwarded-Proto https;
     }
 
-    # XPRA HTML5 (IB Gateway windows) - no auth gate (iframe+WS)
+    # XPRA HTML5 (IB Gateway windows)
     location /xpra/ {
-        auth_request off;
+        auth_request /auth/validate;
         proxy_http_version 1.1;
         proxy_set_header Upgrade \$http_upgrade;
         proxy_set_header Connection "upgrade";
@@ -494,13 +484,13 @@ server {
         # strip the /xpra/ prefix so Xpra’s absolute paths (/connect, /favicon.ico, etc) resolve
         rewrite ^/xpra/(.*)$ /\$1 break;
         # and rewrite any absolute redirect back under /xpra/ for the browser
-        proxy_redirect ~^(/.*)$ /xpra\$1;
+		proxy_redirect ~^(/.*)$ /xpra\$1;
         proxy_pass http://127.0.0.1:14500;
     }
 
-    # Xpra websocket uses absolute /connect - no auth gate
+    # Xpra websocket uses absolute /connect
     location /connect {
-        auth_request off;
+        auth_request /auth/validate;
         proxy_http_version 1.1;
         proxy_set_header Upgrade \$http_upgrade;
         proxy_set_header Connection "upgrade";
@@ -512,9 +502,9 @@ server {
         proxy_pass http://127.0.0.1:14500;
     }
 	
-    # Xpra absolute-path assets (no auth gate)
+    # Xpra absolute-path assets
     location = /favicon.ico {
-        auth_request off;
+        auth_request /auth/validate;
         proxy_http_version 1.1;
         proxy_set_header Host \$host;
         proxy_read_timeout 86400;
@@ -524,7 +514,7 @@ server {
         proxy_pass http://127.0.0.1:14500;
     }
     location ^~ /client/ {
-        auth_request off;
+        auth_request /auth/validate;
         proxy_http_version 1.1;
         proxy_set_header Host \$host;
         proxy_read_timeout 86400;
@@ -534,7 +524,7 @@ server {
         proxy_pass http://127.0.0.1:14500;
     }
     location ^~ /resources/ {
-        auth_request off;
+        auth_request /auth/validate;
         proxy_http_version 1.1;
         proxy_set_header Host \$host;
         proxy_read_timeout 86400;
