@@ -161,28 +161,8 @@ if [[ -f /opt/tradingbot/requirements.txt ]]; then
   USE_VENV=1
 fi
 
-# ---- IB Gateway runner with XPRA (HTML5, seamless windows) ----
-install -D -m 0755 /dev/stdin /opt/ibkr/run-ibgateway-xpra.sh <<'BASH'
-#!/usr/bin/env bash
-set -euo pipefail
-
-XPRA_PORT=${XPRA_PORT:-14500}
-DISPLAY_ID=${DISPLAY_ID:-100}
-
-IB_HOME="${IB_HOME:-$HOME/Jts/ibgateway/1037}"
-IB_BIN="${IB_BIN:-$IB_HOME/ibgateway}"
-
-# xpra serves the HTML5 client itself; we proxy /xpra/ to 127.0.0.1:$XPRA_PORT
-exec xpra start ":${DISPLAY_ID}" \
-  --daemon=no \
-  --html=on \
-  --bind-tcp=127.0.0.1:${XPRA_PORT} \
-  --exit-with-children=yes \
-  --start-child="${IB_BIN}" \
-  --speaker=off --microphone=off --pulseaudio=no \
-  --printing=no --clipboard=yes --mdns=no
-BASH
-chown -R ibkr:ibkr /opt/ibkr
+# ---- Remove legacy standalone xpra runner if present (prevents port clashes) ----
+rm -f /opt/ibkr/run-ibgateway-xpra.sh 2>/dev/null || true
 
 # Install Gateway under ibkr (idempotent)
 # We use the same path as the runner script: $HOME/Jts/ibgateway/1037
@@ -309,6 +289,7 @@ systemctl enable --now xpra-ibgateway-main.service
 systemctl enable --now xpra-ibgateway-login.service
 systemctl restart xpra-ibgateway-main.service || true
 systemctl restart xpra-ibgateway-login.service || true
+sleep 1
 systemctl enable --now uvicorn.service
 
 # ---- Nginx site (HTTP dev vs HTTPS prod) ----
