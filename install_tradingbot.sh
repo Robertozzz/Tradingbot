@@ -170,82 +170,9 @@ rm -f /opt/ibkr/run-ibgateway-xpra.sh 2>/dev/null || true
 install -D -m 0755 /dev/stdin /usr/local/bin/pin-ibgw.sh <<'PINSH'
 #!/usr/bin/env bash
 set -euo pipefail
-#
-# Goal:
-#  - Maximize the main "IB Gateway" window (fullscreen in the virtual desktop)
-#  - Any *other* IBKR windows that appear get moved to the top-right corner
-#
 
-# Helper: robustly set a window fullscreen, with fallbacks
-fullscreen_or_max() {
-  local wid="$1"
-  # 1) EWMH fullscreen (best)
-  wmctrl -i -r "$wid" -b add,fullscreen 2>/dev/null || true
-  sleep 0.1
-  # 2) Also add “maximized” flags (some WMs only honor these)
-  wmctrl -i -r "$wid" -b add,maximized_vert,maximized_horz,above,sticky 2>/dev/null || true
-  sleep 0.05
-  # 3) As a belt-and-suspenders fallback, force the geometry to 100% at (0,0)
-  xdotool windowsize --usehints "$wid" 100% 100% 2>/dev/null || true
-  xdotool windowmove  "$wid" 0 0 2>/dev/null || true
-}
-
-# Figure out the root screen size (WxH)
-SCREEN_W=0
-SCREEN_H=0
-if command -v xdpyinfo >/dev/null 2>&1; then
-  dims="$(xdpyinfo 2>/dev/null | awk '/dimensions:/ {print $2; exit}')"
-  if [[ -n "${dims:-}" ]]; then
-    SCREEN_W="${dims%x*}"
-    SCREEN_H="${dims#*x}"
-  fi
-fi
-# Fallback if xdpyinfo didn’t give us values
-[[ "$SCREEN_W" =~ ^[0-9]+$ ]] || SCREEN_W=1920
-[[ "$SCREEN_H" =~ ^[0-9]+$ ]] || SCREEN_H=1080
-
-end=$((SECONDS+60))
-MAIN_ID=""
-while (( SECONDS < end )); do
-  # Find the main window first
-  if [[ -z "$MAIN_ID" ]]; then
-    # Try by name (exact, then loose) WITHOUT requiring --onlyvisible (Java shows hidden first)
-    MAIN_ID="$(xdotool search --name '^IB Gateway$' 2>/dev/null | head -n1 || true)"
-    [[ -z "$MAIN_ID" ]] && MAIN_ID="$(xdotool search --name 'IB.*Gateway' 2>/dev/null | head -n1 || true)"
-    # Try by WM_CLASS (varies across IBKR/Java builds)
-    [[ -z "$MAIN_ID" ]] && MAIN_ID="$(xdotool search --class 'IBGateway' 2>/dev/null | head -n1 || true)"
-    [[ -z "$MAIN_ID" ]] && MAIN_ID="$(xdotool search --class 'java|sun-awt|swing' 2>/dev/null | head -n1 || true)"
-    if [[ -n "$MAIN_ID" ]]; then
-      # Fullscreen (with fallbacks) + keep on top + sticky
-      fullscreen_or_max "$MAIN_ID"
-      wmctrl -i -r "$MAIN_ID" -b add,above,sticky 2>/dev/null || true
-      xdotool windowactivate --sync "$MAIN_ID" 2>/dev/null || true
-    fi
-  fi
-
-  # Any other IB* windows (prompts / 2FA / dialogs) => top-right corner
-  mapfile -t ALL < <(xdotool search --name 'IB' 2>/dev/null || true)
-  if (( ${#ALL[@]} > 0 )); then
-    for WID in "${ALL[@]}"; do
-      [[ -n "$MAIN_ID" && "$WID" == "$MAIN_ID" ]] && continue
-      # Try to get this window's size to avoid moving it off-screen
-      WW=0; HH=0
-      if geom="$(xdotool getwindowgeometry --shell "$WID" 2>/dev/null)"; then
-        # shellcheck disable=SC1090
-        eval "$geom" 2>/dev/null || true
-        WW="${WIDTH:-0}"; HH="${HEIGHT:-0}"
-      fi
-      [[ "$WW" =~ ^[0-9]+$ ]] || WW=800
-      [[ "$HH" =~ ^[0-9]+$ ]] || HH=600
-      X=$(( SCREEN_W - WW ))
-      (( X < 0 )) && X=0
-      wmctrl -i -r "$WID" -e "0,$X,0,-1,-1" || true
-      wmctrl -i -r "$WID" -b add,above || true
-    done
-  fi
-  sleep 0.4
-+done
-+exit 0
+done
+exit 0
 PINSH
 
 chown root:root /usr/local/bin/pin-ibgw.sh

@@ -3,6 +3,7 @@ import 'lib/auth_gate.dart';
 import 'lib/dashboard.dart';
 import 'lib/accounts.dart';
 import 'lib/assets.dart';
+import 'lib/news_stream_panel.dart';
 import 'lib/trades.dart';
 import 'lib/settings.dart';
 import 'lib/trading_clock.dart';
@@ -45,7 +46,7 @@ class MainApp extends StatelessWidget {
 
     return MaterialApp(
       debugShowCheckedModeBanner: false,
-      title: 'Tradingbot xpra',
+      title: 'Tradingbot',
       theme: theme,
       home: AuthGate(
         child: const Shell(), // your existing scaffold/nav/pages
@@ -67,7 +68,7 @@ class _ShellState extends State<Shell> {
 
   bool showMarketClock = true;
   // "UTC" or "Local"
-  String displayTzName = 'UTC';
+  String displayTzName = 'Local';
 
   // Simulated prefs for which markets to show
   Map<String, bool> enabledMarkets = {
@@ -110,10 +111,11 @@ class _ShellState extends State<Shell> {
         displayTzName: displayTzName,
         onDisplayTzChanged: (tz) => setState(() => displayTzName = tz),
       ),
+      const NewsStreamPanel(),
     ];
 
     return Scaffold(
-      appBar: AppBar(title: const Text('Tradingbot xpra')),
+      appBar: AppBar(title: const Text('Tradingbot')),
       body: Column(
         children: [
           Expanded(
@@ -168,6 +170,8 @@ class _ShellState extends State<Shell> {
                     icon: Icon(Icons.desktop_windows), label: 'IBKR'),
                 NavigationDestination(
                     icon: Icon(Icons.settings), label: 'Settings'),
+                NavigationDestination(
+                    icon: Icon(Icons.newspaper), label: 'News'),
               ],
             ),
     );
@@ -198,6 +202,7 @@ class _SidePanel extends StatelessWidget {
     // NEW: IBKR console as its own page
     (Icons.desktop_windows, 'IBKR'),
     (Icons.settings, 'Settings'),
+    (Icons.newspaper, 'News'),
   ];
 
   @override
@@ -333,7 +338,11 @@ class _SidePanel extends StatelessWidget {
                     ),
                     Padding(
                       padding: const EdgeInsets.symmetric(vertical: 4),
-                      child: buildTile(5, _itemsSystem[1]),
+                      child: buildTile(5, _itemsSystem[1]), // Settings
+                    ),
+                    Padding(
+                      padding: const EdgeInsets.symmetric(vertical: 4),
+                      child: buildTile(6, _itemsSystem[2]), // News
                     ),
                   ],
                 ),

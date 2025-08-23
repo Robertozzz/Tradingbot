@@ -3,8 +3,13 @@ from __future__ import annotations
 import os, math, logging, json, time
 from pathlib import Path
 from fastapi import APIRouter, HTTPException, Body, Query
-from ib_insync import IB, util, Stock, Forex, Future, Contract, Order, MarketOrder, LimitOrder, BarData
-
+from fastapi.responses import StreamingResponse
+from ib_insync import (
+    IB, util, Stock, Forex, Future, Contract, Order, MarketOrder, LimitOrder, BarData
+)
+import asyncio
+from collections import defaultdict, deque
+from datetime import datetime, timezone
 
 router = APIRouter(prefix="/ibkr", tags=["ibkr"])
 log = logging.getLogger("ibkr")
@@ -17,6 +22,18 @@ ib = IB()
 RUNTIME = Path(os.getenv("TB_RUNTIME_DIR", Path(__file__).resolve().parent.parent / "runtime"))
 RUNTIME.mkdir(parents=True, exist_ok=True)
 ORDERS_LOG = RUNTIME / "orders.log"
+
+# ---------- news streaming state ----------
+# in-memory state; simple and sturdy for single-process FastAPI
+NEWS_SEEN: dict[int, set[str]] = defaultdict(set)    # tickerId -> set(articleId)
+NEWS_RECENT: deque[dict] = deque(maxlen=400)         # rolling buffer for SSE replay
+NEWS_QUEUE: "asyncio.Queue[dict]" = asyncio.Queue(maxsize=1000)
+NEWS_WATCH_SYMBOL: dict[str, any] = {}               # symbol -> Ticker (per-symbol news)
+NEWS_WATCH_PROVIDER: dict[str, any] = {}             # providerCode -> Ticker (provider-wide news)
+# Optional provider allowlist via env, e.g. "BZ,FLY,DJNL,BRFG"
+_env_providers = (os.getenv("IB_NEWS_PROVIDERS","").strip() or "")
+NEWS_PROVIDER_ALLOW = {p.strip() for p in _env_providers.split(",") if p.strip()}
+
 
 async def _ensure_connected():
     if ib.isConnected():
@@ -56,6 +73,194 @@ async def accounts():
         acct = r.account
         out.setdefault(acct, {})[r.tag] = r.value
     return out
+    
+# ---------- NEWS: providers, subscribe, SSE ---------------------------------
+@router.get("/news/providers")
+async def news_providers():
+    await _ensure_connected()
+    provs = await ib.reqNewsProvidersAsync()
+    return [{"code": p.code, "name": p.name} for p in provs]
+
+def _mk_stock(symbol: str) -> Contract:
+    return Stock(symbol, 'SMART', 'USD')
+
+def _mk_news_provider_contract(code: str) -> Contract:
+    """
+    Broad tape for a provider. Example (Briefing.com):
+      symbol='BRFG:BRFG_ALL', secType='NEWS', exchange='BRFG'
+    Works similarly for BZ, DJNL, FLY, MT, etc.
+    """
+    c = Contract()
+    c.secType = 'NEWS'
+    c.exchange = code
+    c.symbol = f"{code}:{code}_ALL"
+    return c
+
+def _news_tick_to_dict(scope: str, n, symbol: str | None = None, provider: str | None = None) -> dict:
+    # n: ib_insync.types.NewsTick
+    ts = n.time if isinstance(n.time, datetime) else util.parseIBDatetime(n.time)
+    return {
+        "ts": int(ts.replace(tzinfo=timezone.utc).timestamp()),
+        "time": ts.astimezone(timezone.utc).isoformat().replace("+00:00","Z"),
+        "provider": provider or n.providerCode,
+        "articleId": n.articleId,
+        "headline": n.text,
+        "symbol": symbol,          # null for provider-wide
+        "scope": scope,            # "provider" | "symbol"
+    }
+
+def _ticker_callback_factory_symbol(symbol: str, tickerId: int):
+    async def _emit(item: dict):
+        NEWS_RECENT.append(item)
+        try:
+            NEWS_QUEUE.put_nowait(item)
+        except asyncio.QueueFull:
+            # drop oldest if overwhelmed
+            _ = NEWS_RECENT.popleft() if NEWS_RECENT else None
+    def _on_update(_):
+        # Called on any ticker update; process new headlines only
+        tkr = NEWS_WATCH_SYMBOL.get(symbol)
+        if not tkr or not tkr.news:
+            return
+        for n in tkr.news[-3:]:  # scan last few to avoid O(N)
+            aid = getattr(n, "articleId", "") or ""
+            prov = getattr(n, "providerCode", "") or ""
+            if aid in NEWS_SEEN[tickerId]:
+                continue
+            if NEWS_PROVIDER_ALLOW and prov not in NEWS_PROVIDER_ALLOW:
+                NEWS_SEEN[tickerId].add(aid)
+                continue
+            NEWS_SEEN[tickerId].add(aid)
+            item = _news_tick_to_dict("symbol", n, symbol=symbol, provider=prov)
+            # schedule enqueue on current loop
+            asyncio.get_event_loop().create_task(_emit(item))
+    return _on_update
+
+def _ticker_callback_factory_provider(providerCode: str, tickerId: int):
+    async def _emit(item: dict):
+        NEWS_RECENT.append(item)
+        try:
+            NEWS_QUEUE.put_nowait(item)
+        except asyncio.QueueFull:
+            _ = NEWS_RECENT.popleft() if NEWS_RECENT else None
+    def _on_update(_):
+        tkr = NEWS_WATCH_PROVIDER.get(providerCode)
+        if not tkr or not tkr.news:
+            return
+        for n in tkr.news[-6:]:  # scan a few; provider feeds can be chatty
+            aid = getattr(n, "articleId", "") or ""
+            prov = getattr(n, "providerCode", "") or providerCode
+            if NEWS_PROVIDER_ALLOW and prov not in NEWS_PROVIDER_ALLOW:
+                # still mark as seen to prevent reprocessing
+                NEWS_SEEN[tickerId].add(aid)
+                continue
+            if aid in NEWS_SEEN[tickerId]:
+                continue
+            NEWS_SEEN[tickerId].add(aid)
+            item = _news_tick_to_dict("provider", n, symbol=None, provider=prov)
+            asyncio.get_event_loop().create_task(_emit(item))
+    return _on_update
+
+@router.post("/news/subscribe")
+async def news_subscribe(payload: dict = Body(...)):
+    """
+    Subscribe to **provider-wide** or **per-symbol** headlines.
+    Body (choose one mode):
+      - Provider-wide: { "providers": ["BZ","DJNL","BRFG","FLY"] }
+      - Per-symbol:    { "symbols": ["AAPL","NVDA"] }  (kept for backward-compat)
+    If the env var IB_NEWS_PROVIDERS is set, it acts as an allowlist.
+    """
+    await _ensure_connected()
+    syms = list({s.strip().upper() for s in (payload.get("symbols") or []) if isinstance(s, str) and s.strip()})
+    provs = list({p.strip().upper() for p in (payload.get("providers") or []) if isinstance(p, str) and p.strip()})
+
+    if not syms and not provs:
+        raise HTTPException(400, "provide either 'providers' or 'symbols'")
+
+    created_providers, created_symbols = [], []
+
+    # Provider-wide mode
+    if provs:
+        for code in provs:
+            if NEWS_PROVIDER_ALLOW and code not in NEWS_PROVIDER_ALLOW:
+                continue
+            if code in NEWS_WATCH_PROVIDER:
+                created_providers.append(code)
+                continue
+            nc = _mk_news_provider_contract(code)  # NEWS contract per provider
+            # 'mdoff,292' avoids regular market data for this pseudo-contract; 292 is the news tick. 
+            tkr = ib.reqMktData(nc, genericTickList="mdoff,292", snapshot=False)
+            tid = id(tkr)
+            cb = _ticker_callback_factory_provider(code, tid)
+            tkr.updateEvent += cb
+            NEWS_WATCH_PROVIDER[code] = tkr
+            created_providers.append(code)
+
+    # Per-symbol mode (legacy / optional)
+    if syms:
+        for sym in syms:
+            if sym in NEWS_WATCH_SYMBOL:
+                created_symbols.append(sym)
+                continue
+            c = _mk_stock(sym)
+            tkr = ib.reqMktData(c, genericTickList="292", snapshot=False)
+            tid = id(tkr)
+            cb = _ticker_callback_factory_symbol(sym, tid)
+            tkr.updateEvent += cb
+            NEWS_WATCH_SYMBOL[sym] = tkr
+            created_symbols.append(sym)
+
+    return {
+        "ok": True,
+        "providers": created_providers,
+        "symbols": created_symbols,
+        "allowlist": sorted(NEWS_PROVIDER_ALLOW) or None
+    }
+@router.post("/news/unsubscribe")
+async def news_unsubscribe(payload: dict = Body(...)):
+    """
+    Body: { "providers": ["BZ","DJNL"], "symbols": ["AAPL"] } — both optional; at least one required.
+    """
+    await _ensure_connected()
+    symbols = list({s.strip().upper() for s in (payload.get("symbols") or []) if isinstance(s, str) and s.strip()})
+    providers = list({p.strip().upper() for p in (payload.get("providers") or []) if isinstance(p, str) and p.strip()})
+    if not symbols and not providers:
+        raise HTTPException(400, "providers or symbols required")
+    removed_syms, removed_provs = [], []
+    for sym in symbols:
+        tkr = NEWS_WATCH_SYMBOL.pop(sym, None)
+        if tkr:
+            try:
+                ib.cancelMktData(tkr.contract)
+            except Exception:
+                pass
+            removed_syms.append(sym)
+    for code in providers:
+        tkr = NEWS_WATCH_PROVIDER.pop(code, None)
+        if tkr:
+            try:
+                ib.cancelMktData(tkr.contract)
+            except Exception:
+                pass
+            removed_provs.append(code)
+    return {"ok": True, "removed": {"providers": removed_provs, "symbols": removed_syms}}
+
+@router.get("/news/stream")
+async def news_stream():
+    """
+    Server-Sent Events stream of headlines.
+    Sends a small recent replay, then live items.
+    """
+    await _ensure_connected()
+    async def _gen():
+        # replay last 50
+        for it in list(NEWS_RECENT)[-50:]:
+            yield f"event: news\ndata: {json.dumps(it, separators=(',',':'))}\n\n"
+        # live
+        while True:
+            item = await NEWS_QUEUE.get()
+            yield f"event: news\ndata: {json.dumps(item, separators=(',',':'))}\n\n"
+    return StreamingResponse(_gen(), media_type="text/event-stream")
 
 @router.get("/positions")
 async def positions():
@@ -153,7 +358,6 @@ def _log_order(event: str, payload: dict):
 @router.get("/orders/open")
 async def orders_open():
     await _ensure_connected()
-    trades = list(ib.openTrades())
     openTrades = ib.openTrades()
     out = []
     for t in openTrades:
@@ -249,7 +453,6 @@ async def quote(
     await _ensure_connected()
     c = _mk_contract(symbol, conId, exchange, secType, currency)
     [t] = await ib.reqTickersAsync(c)
-    md = t.marketPrice()
     return {
         "conId": getattr(t.contract, "conId", None),
         "symbol": getattr(t.contract, "localSymbol", None) or t.contract.symbol,
@@ -415,6 +618,73 @@ async def orders_place(payload: dict = Body(...)):
         "orderId": getattr(trade.order, "orderId", None), "permId": getattr(trade.order, "permId", None)
     })
     return {"orderId": trade.order.orderId, "permId": trade.order.permId}
+    
+@router.post("/orders/bracket")
+async def orders_bracket(payload: dict = Body(...)):
+    """
+    Place a parent order with attached TP and SL (OCO).
+    Body:
+      symbol|conId, side(BUY/SELL), qty,
+      entryType (MKT|LMT), limitPrice (if LMT),
+      takeProfit (abs price), stopLoss (abs price), tif (DAY/GTC)
+    """
+    await _ensure_connected()
+    conId    = payload.get("conId")
+    symbol   = payload.get("symbol")
+    side     = (payload.get("side") or "BUY").upper()
+    qty      = float(payload.get("qty", 0))
+    entryType= (payload.get("entryType") or "LMT").upper()
+    lmt      = payload.get("limitPrice")
+    tp_px    = float(payload.get("takeProfit", 0) or 0)
+    sl_px    = float(payload.get("stopLoss", 0) or 0)
+    tif      = (payload.get("tif") or "DAY").upper()
+    if (not conId and not symbol) or qty <= 0:
+        raise HTTPException(400, "symbol/conId and qty required")
+    if entryType == "LMT" and lmt is None:
+        raise HTTPException(400, "limitPrice required for LMT")
+    if tp_px <= 0 or sl_px <= 0:
+        raise HTTPException(400, "takeProfit and stopLoss absolute prices required")
+    c = Contract(conId=int(conId)) if conId else await _resolve_contract(symbol)
+    parent = LimitOrder(side, qty, float(lmt)) if entryType == "LMT" else MarketOrder(side, qty)
+    parent.tif = tif
+    parent.transmit = False
+    # children
+    tp = Order()
+    tp.action = "SELL" if side == "BUY" else "BUY"
+    tp.orderType = "LMT"
+    tp.lmtPrice = float(tp_px)
+    tp.totalQuantity = qty
+    tp.tif = tif
+    tp.transmit = False
+    sl = Order()
+    sl.action = "SELL" if side == "BUY" else "BUY"
+    sl.orderType = "STP"
+    sl.auxPrice = float(sl_px)
+    sl.totalQuantity = qty
+    sl.tif = tif
+    sl.transmit = True  # last leg transmits the whole OCO
+    # OCA group to ensure mutual cancel
+    oca = f"OCA-{int(time.time())}-{getattr(c,'conId',0)}"
+    for o in (tp, sl):
+        o.ocaGroup = oca
+        o.ocaType = 1
+    # send
+    ptrade = ib.placeOrder(c, parent)
+    # bind children to parentId (orderId is assigned after placement)
+    await ib.sleep(0.2)
+    pid = getattr(ptrade.order, "orderId", None)
+    if pid is None:
+        raise HTTPException(502, "Parent orderId missing")
+    tp.parentId = pid
+    sl.parentId = pid
+    ib.placeOrder(c, tp)
+    ib.placeOrder(c, sl)
+    _log_order("bracket", {
+        "symbol": symbol, "conId": getattr(c, "conId", None), "side": side,
+        "qty": qty, "entryType": entryType, "limitPrice": lmt,
+        "tp": tp_px, "sl": sl_px, "parentId": pid
+    })
+    return {"parentId": pid, "ocaGroup": oca}
 
 @router.post("/orders/cancel")
 async def orders_cancel(payload: dict = Body(...)):
