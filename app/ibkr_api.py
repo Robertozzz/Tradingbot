@@ -4,9 +4,8 @@ import os, math, logging, json, time
 from pathlib import Path
 from fastapi import APIRouter, HTTPException, Body, Query
 from fastapi.responses import StreamingResponse
-from ib_insync import (
-    IB, util, Stock, Forex, Future, Contract, Order, MarketOrder, LimitOrder, BarData
-)
+from ib_insync import IB, util, Stock, Forex, Future, Contract, Order, MarketOrder, LimitOrder, BarData
+from typing import Any, Callable
 import asyncio
 from collections import defaultdict, deque
 from datetime import datetime, timezone
@@ -28,8 +27,14 @@ ORDERS_LOG = RUNTIME / "orders.log"
 NEWS_SEEN: dict[int, set[str]] = defaultdict(set)    # tickerId -> set(articleId)
 NEWS_RECENT: deque[dict] = deque(maxlen=400)         # rolling buffer for SSE replay
 NEWS_QUEUE: "asyncio.Queue[dict]" = asyncio.Queue(maxsize=1000)
-NEWS_WATCH_SYMBOL: dict[str, any] = {}               # symbol -> Ticker (per-symbol news)
-NEWS_WATCH_PROVIDER: dict[str, any] = {}             # providerCode -> Ticker (provider-wide news)
+NEWS_WATCH_SYMBOL: dict[str, Any] = {}               # symbol -> Ticker (per-symbol news)
+NEWS_WATCH_PROVIDER: dict[str, Any] = {}             # providerCode -> Ticker (provider-wide news)
+# keep callbacks so we can detach them on unsubscribe
+NEWS_CB_SYMBOL: dict[str, Callable] = {}
+NEWS_CB_PROVIDER: dict[str, Callable] = {}
+# map a synthetic ticker id to clear NEWS_SEEN
+NEWS_TID_BY_SYMBOL: dict[str, int] = {}
+NEWS_TID_BY_PROVIDER: dict[str, int] = {}
 # Optional provider allowlist via env, e.g. "BZ,FLY,DJNL,BRFG"
 _env_providers = (os.getenv("IB_NEWS_PROVIDERS","").strip() or "")
 NEWS_PROVIDER_ALLOW = {p.strip() for p in _env_providers.split(",") if p.strip()}
@@ -99,9 +104,13 @@ def _mk_news_provider_contract(code: str) -> Contract:
 def _news_tick_to_dict(scope: str, n, symbol: str | None = None, provider: str | None = None) -> dict:
     # n: ib_insync.types.NewsTick
     ts = n.time if isinstance(n.time, datetime) else util.parseIBDatetime(n.time)
+    # normalize to aware UTC
+    if ts.tzinfo is None:
+        ts = ts.replace(tzinfo=timezone.utc)
+    ts_utc = ts.astimezone(timezone.utc)
     return {
-        "ts": int(ts.replace(tzinfo=timezone.utc).timestamp()),
-        "time": ts.astimezone(timezone.utc).isoformat().replace("+00:00","Z"),
+        "ts": int(ts_utc.timestamp()),
+        "time": ts_utc.isoformat().replace("+00:00", "Z"),
         "provider": provider or n.providerCode,
         "articleId": n.articleId,
         "headline": n.text,
@@ -133,7 +142,7 @@ def _ticker_callback_factory_symbol(symbol: str, tickerId: int):
             NEWS_SEEN[tickerId].add(aid)
             item = _news_tick_to_dict("symbol", n, symbol=symbol, provider=prov)
             # schedule enqueue on current loop
-            asyncio.get_event_loop().create_task(_emit(item))
+            asyncio.get_running_loop().create_task(_emit(item))
     return _on_update
 
 def _ticker_callback_factory_provider(providerCode: str, tickerId: int):
@@ -158,7 +167,7 @@ def _ticker_callback_factory_provider(providerCode: str, tickerId: int):
                 continue
             NEWS_SEEN[tickerId].add(aid)
             item = _news_tick_to_dict("provider", n, symbol=None, provider=prov)
-            asyncio.get_event_loop().create_task(_emit(item))
+            asyncio.get_running_loop().create_task(_emit(item))
     return _on_update
 
 @router.post("/news/subscribe")
@@ -194,6 +203,8 @@ async def news_subscribe(payload: dict = Body(...)):
             cb = _ticker_callback_factory_provider(code, tid)
             tkr.updateEvent += cb
             NEWS_WATCH_PROVIDER[code] = tkr
+            NEWS_CB_PROVIDER[code] = cb
+            NEWS_TID_BY_PROVIDER[code] = tid
             created_providers.append(code)
 
     # Per-symbol mode (legacy / optional)
@@ -208,6 +219,8 @@ async def news_subscribe(payload: dict = Body(...)):
             cb = _ticker_callback_factory_symbol(sym, tid)
             tkr.updateEvent += cb
             NEWS_WATCH_SYMBOL[sym] = tkr
+            NEWS_CB_SYMBOL[sym] = cb
+            NEWS_TID_BY_SYMBOL[sym] = tid
             created_symbols.append(sym)
 
     return {
@@ -231,6 +244,13 @@ async def news_unsubscribe(payload: dict = Body(...)):
         tkr = NEWS_WATCH_SYMBOL.pop(sym, None)
         if tkr:
             try:
+                # detach callback and clear seen set
+                cb = NEWS_CB_SYMBOL.pop(sym, None)
+                if cb is not None:
+                    tkr.updateEvent -= cb
+                tid = NEWS_TID_BY_SYMBOL.pop(sym, None)
+                if tid is not None:
+                    NEWS_SEEN.pop(tid, None)
                 ib.cancelMktData(tkr.contract)
             except Exception:
                 pass
@@ -239,11 +259,27 @@ async def news_unsubscribe(payload: dict = Body(...)):
         tkr = NEWS_WATCH_PROVIDER.pop(code, None)
         if tkr:
             try:
+                cb = NEWS_CB_PROVIDER.pop(code, None)
+                if cb is not None:
+                    tkr.updateEvent -= cb
+                tid = NEWS_TID_BY_PROVIDER.pop(code, None)
+                if tid is not None:
+                    NEWS_SEEN.pop(tid, None)
                 ib.cancelMktData(tkr.contract)
             except Exception:
                 pass
             removed_provs.append(code)
     return {"ok": True, "removed": {"providers": removed_provs, "symbols": removed_syms}}
+    
+@router.get("/news/status")
+async def news_status():
+    return {
+        "providers": sorted(list(NEWS_WATCH_PROVIDER.keys())),
+        "symbols": sorted(list(NEWS_WATCH_SYMBOL.keys())),
+        "buffer": len(NEWS_RECENT),
+        "queueSize": NEWS_QUEUE.qsize(),
+        "allowlist": sorted(NEWS_PROVIDER_ALLOW) or None,
+    }
 
 @router.get("/news/stream")
 async def news_stream():
@@ -253,13 +289,17 @@ async def news_stream():
     """
     await _ensure_connected()
     async def _gen():
-        # replay last 50
-        for it in list(NEWS_RECENT)[-50:]:
-            yield f"event: news\ndata: {json.dumps(it, separators=(',',':'))}\n\n"
-        # live
-        while True:
-            item = await NEWS_QUEUE.get()
-            yield f"event: news\ndata: {json.dumps(item, separators=(',',':'))}\n\n"
+        try:
+            # replay last 50
+            for it in list(NEWS_RECENT)[-50:]:
+                yield f"event: news\ndata: {json.dumps(it, separators=(',',':'))}\n\n"
+            # live
+            while True:
+                item = await NEWS_QUEUE.get()
+                yield f"event: news\ndata: {json.dumps(item, separators=(',',':'))}\n\n"
+        except asyncio.CancelledError:
+            # client disconnected
+            return
     return StreamingResponse(_gen(), media_type="text/event-stream")
 
 @router.get("/positions")

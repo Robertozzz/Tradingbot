@@ -1,7 +1,7 @@
 import 'dart:async';
 import 'dart:convert';
-import 'dart:html'
-    as html; // Flutter Web; for desktop/mobile use EventSource pkg
+import 'dart:js_interop';
+import 'package:web/web.dart' as web; // modern DOM interop
 import 'package:http/http.dart' as http;
 
 class IbNewsItem {
@@ -89,19 +89,33 @@ class IbNewsApi {
   }
 
   Stream<IbNewsItem> stream() {
-    final es = html.EventSource('$base/ibkr/news/stream');
+    final es = web.EventSource('$base/ibkr/news/stream');
     final ctrl = StreamController<IbNewsItem>();
-    es.addEventListener('news', (html.Event e) {
-      final de = e as html.MessageEvent;
-      final data = json.decode(de.data as String) as Map<String, dynamic>;
-      ctrl.add(IbNewsItem.fromJson(data));
-    });
-    es.onError.listen((_) {
-      // Optionally handle/retry. For now we just close.
-      // ctrl.addError('SSE error');
-    });
-    // When the stream is cancelled, close the EventSource
-    ctrl.onCancel = () => es.close();
+
+    // Keep a handle so we can remove the listener on cancel
+    final listener = ((web.Event e) {
+      final me = e as web.MessageEvent;
+      // me.data is JSAny? — convert to a Dart object first
+      final dataObj = (me.data)?.dartify();
+      if (dataObj is! String) {
+        // If your server ever sends Blob/ArrayBuffer, handle here.
+        // For our SSE (text/event-stream), we expect a String.
+        return;
+      }
+      final payload = json.decode(dataObj) as Map<String, dynamic>;
+      ctrl.add(IbNewsItem.fromJson(payload));
+    }).toJS;
+
+    es.addEventListener('news', listener);
+    es.onerror = ((web.Event _) {
+      // Optional: ctrl.addError('SSE error');
+    })
+        .toJS;
+
+    ctrl.onCancel = () {
+      es.removeEventListener('news', listener);
+      es.close();
+    };
     return ctrl.stream;
   }
 

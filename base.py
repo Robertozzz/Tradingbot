@@ -25,7 +25,7 @@ load_dotenv()
 
 PYTHON = sys.executable
 HOST = "127.0.0.1"
-WEB_PORT = 8000
+WEB_PORT = int(os.environ.get("WEB_PORT", "8000"))
 
 ENGINE_HEARTBEAT = Path("engine.heartbeat")
 WEB_HEARTBEAT = Path("web.heartbeat")
@@ -144,6 +144,15 @@ def web_healthy() -> bool:
             return True
     except Exception:
         pass
+    # Fallback to IBKR ping if generic /health isn’t implemented yet
+    try:
+        conn = http.client.HTTPConnection(HOST, WEB_PORT, timeout=2)
+        conn.request("GET", "/ibkr/ping")
+        r = conn.getresponse(); ok = (200 <= r.status < 300); conn.close()
+        if ok:
+            return True
+    except Exception:
+        pass
     try:
         if not WEB_HEARTBEAT.exists():
             return False
@@ -165,6 +174,8 @@ def telegram_healthy() -> bool:
     return True
 
 def build_specs() -> list[ProcSpec]:
+    # ensure runtime dir is visible to children (uvicorn, engine, etc.)
+    os.environ.setdefault("TB_RUNTIME_DIR", str(RUNTIME_DIR.resolve()))
     specs = [
         ProcSpec(
             name="web",
