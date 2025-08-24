@@ -216,11 +216,7 @@ for _p in [
     if _p.exists():
         app.mount("/exports", StaticFiles(directory=str(_p), html=False), name="exports")
         break
-
-xpra_static = Path("/opt/tradingbot/static/xpra")
-if xpra_static.exists():
-    app.mount("/xpra-lite", StaticFiles(directory=str(xpra_static), html=True), name="xpra-lite")
-    
+   
 # Serve Flutter build at /
 UI_CANDIDATES = [
     Path(__file__).resolve().parent.parent / "ui_build",

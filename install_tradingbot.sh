@@ -619,5 +619,3 @@ else
   echo "Install complete (PROD, HTTPS). Open: https://$DOMAIN"
 fi
 
-# ensure the dir exists and is owned, even if no files yet
-install -d -o www-data -g www-data -m 0755 /opt/tradingbot/static/xpra

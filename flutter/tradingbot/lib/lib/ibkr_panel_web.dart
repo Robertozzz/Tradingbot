@@ -1,8 +1,8 @@
 // lib/ibkr_panel_web.dart
 import 'package:flutter/material.dart';
-import 'package:web/web.dart' as web; // replaces dart:html
-import 'dart:ui_web' as ui_web; // for platformViewRegistry
-import 'dart:js_interop'; // for .toDart on JS Promises
+import 'package:web/web.dart' as web; // JS interop DOM (instead of dart:html)
+import 'dart:ui_web' as ui_web; // platformViewRegistry
+import 'dart:js_interop'; // .toDart for JS Promises
 
 class IbkrGatewayPanel extends StatefulWidget {
   const IbkrGatewayPanel({super.key});
@@ -21,67 +21,82 @@ class _IbkrGatewayPanelState extends State<IbkrGatewayPanel> {
   void initState() {
     super.initState();
 
-    // Xpra HTML5 client (proxied by nginx at /xpra/).
-    // Same-origin, interactive, and supports seamless window forwarding.
+    // Minimal, no fancy sizing. Let the iframe fill the widget.
+    final xpraUrl = _xpraUrl(); // includes DPI+audio flags
     _iframe = web.HTMLIFrameElement()
-      ..src = '/xpra-lite/singlewindow.html?mute=1&dpi=96&pixel_ratio=1'
+      ..src = xpraUrl
+      ..style.width = '100%'
+      ..style.height = '100%'
       ..style.border = '0'
-      ..style.pointerEvents = 'auto'
-      ..tabIndex = -1 // allow focusing for keyboard input
+      ..style.overflow = 'hidden'
       ..allowFullscreen = true
-      // Allow clipboard + fullscreen for a nicer experience.
       ..allow = 'clipboard-read; clipboard-write; fullscreen'
-      ..style.width = '100%'
-      ..style.height = '100%'
-      ..style.border = '0'
-      ..style.pointerEvents = 'auto'
-      ..allowFullscreen = true
-      ..tabIndex = -1 // allow focusing for keyboard input
-      ..style.width = '100%'
-      ..style.height = '100%'
       ..sandbox.add('allow-forms')
       ..sandbox.add('allow-pointer-lock')
       ..sandbox.add('allow-scripts')
-      ..sandbox.add('allow-same-origin'); // required to inspect DOM
+      ..sandbox.add('allow-same-origin') // same-origin so we can inspect body
+      ..tabIndex = -1;
 
-    // Detect gateway/iframe error states (same-origin).
+    // If the iframe loads an error page (e.g., gateway down), show overlay.
     _iframe.onLoad.listen((_) {
       try {
         final doc = _iframe.contentDocument;
         final bodyText = (doc?.body?.textContent ?? '').toLowerCase();
         final title = (doc?.title ?? '').toLowerCase();
-        final looksBad = bodyText.contains('bad gateway') ||
-            bodyText.contains('gateway') ||
-            title.contains('gateway');
+        final looksBad = bodyText.contains('gateway') ||
+            title.contains('gateway') ||
+            bodyText.contains('error') ||
+            title.contains('error');
         setState(() => _showOverlay = looksBad);
       } catch (_) {
-        // If we cannot read (shouldn’t happen with same-origin), do nothing.
+        // same-origin expected; ignore on error
+        if (mounted) setState(() => _showOverlay = false);
       }
     });
 
     if (!_registered) {
-      ui_web.platformViewRegistry.registerViewFactory(
-        'ibkr-xpra',
-        (int _) => _iframe,
-      );
+      ui_web.platformViewRegistry
+          .registerViewFactory('ibkr-xpra', (int _) => _iframe);
       _registered = true;
     }
+  }
+
+  // Build the xpra HTML5 client URL with just the essentials:
+  // - scaling=off, pixel_ratio=1, dpi=96 : prevent DPI conflict/flicker
+  // - speaker=false, microphone=false, audio=false : fully mute
+  String _xpraUrl() {
+    final base = '/xpra-main/index.html';
+    final u = web.URL(base, web.window.location.href);
+    u.searchParams.set('scaling', 'off');
+    u.searchParams.set('pixel_ratio', '1');
+    u.searchParams.set('dpi', '96');
+    u.searchParams.set('speaker', 'false');
+    u.searchParams.set('microphone', 'false');
+    u.searchParams.set('audio', 'false');
+    return u.toString();
   }
 
   Future<void> _restartGateway() async {
     if (_starting) return;
     setState(() => _starting = true);
     try {
-      // Build a proper URL and Request (package:web expects URL / RequestInfo).
-      final url = web.URL('/admin/ibkr/start', web.window.location.href);
-      final req = web.Request(url, web.RequestInit(method: 'POST'));
-      // fetch() returns a JS Promise → convert to Dart Future via .toDart
-      await web.window.fetch(req).toDart;
-      // (optional) you can check resp.status/ok here if you want:
-      // if (!resp.ok) { /* show an error */ }
-      // Nudge the iframe to reload after a short delay.
-      await Future.delayed(const Duration(milliseconds: 600));
-      _iframe.src = _iframe.src; // reload
+      final url = web.URL('/system/control', web.window.location.href);
+
+      // Create a concrete Headers object and set values on it.
+      final hdrs = web.Headers();
+      hdrs.set('Content-Type', 'application/json');
+
+      // Build init with the headers instance and a JS string body.
+      final init = web.RequestInit(
+        method: 'POST',
+        headers: hdrs,
+        body: r'{"module":"ibgateway","action":"restart"}'.toJS,
+      );
+
+      await web.window.fetch(url, init).toDart;
+      await Future.delayed(const Duration(seconds: 1));
+      _iframe.src = _xpraUrl();
+      setState(() => _showOverlay = false);
     } catch (_) {
       // keep overlay; user can try again
     } finally {
@@ -90,7 +105,7 @@ class _IbkrGatewayPanelState extends State<IbkrGatewayPanel> {
   }
 
   void _reload() {
-    _iframe.src = _iframe.src;
+    _iframe.src = _xpraUrl();
   }
 
   @override
@@ -98,7 +113,8 @@ class _IbkrGatewayPanelState extends State<IbkrGatewayPanel> {
     return Stack(
       children: [
         const HtmlElementView(viewType: 'ibkr-xpra'),
-        // Small persistent controls (top-right)
+
+        // top-right tiny controls
         Positioned(
           right: 8,
           top: 8,
@@ -119,6 +135,8 @@ class _IbkrGatewayPanelState extends State<IbkrGatewayPanel> {
             ],
           ),
         ),
+
+        // Gateway-down overlay with quick actions
         if (_showOverlay)
           Positioned.fill(
             child: Container(
