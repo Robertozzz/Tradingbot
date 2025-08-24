@@ -5,17 +5,33 @@
   <title>IB Gateway (tight)</title>
   <meta name="viewport" content="width=device-width, initial-scale=1">
 	<style>
-	  html,body { margin:0; padding:0; background:#000; overflow-x:auto; overflow-y:hidden }
-	  #wrap { display:flex; flex-direction:row; align-items:flex-start; height:100vh; width:max-content }
-	  /* Fallback shows a wider canvas; JS will right-size it to 2× app width */
-	  iframe { border:0; display:block; flex:0 0 auto; min-width:640px; min-height:480px; width:1280px; height:480px }
+	  html,body { margin:0; padding:0; background:#000; overflow:hidden }
+	  #wrap { display:flex; flex-direction:row; align-items:flex-start; height:100vh; width:100vw }
+	  /* Fallback size; JS will right-size it smoothly */
+	  iframe { border:0; display:block; flex:0 0 auto; min-width:640px; min-height:480px; width:1280px; height:480px; will-change: width,height; }
 	</style>
 </head>
 <body>
   <div id="wrap">
-    <iframe id="xpra-main" src="/xpra-main/index.html?scaling=off" title="IBKR Gateway"></iframe>
+    <!--
+      Controls:
+        scaling=off         : prevent double-scaling (avoids DPI conflict popups)
+        pixel_ratio=1       : lock device pixel ratio to 1 for the remote canvas
+        dpi=96              : match standard desktop DPI to stop warnings
+        speaker=false       : mute audio output
+        microphone=false    : mute audio input
+        audio=false         : fully disable audio pipeline
+    -->
+    <iframe
+      id="xpra-main"
+      src="/xpra-main/index.html?scaling=off&pixel_ratio=1&dpi=96&speaker=false&microphone=false&audio=false"
+      title="IBKR Gateway">
+    </iframe>
   </div>
 	<script>
+	  // Parse flags passed from the outer app (optional: ?mute=1)
+	  const url = new URL(location.href);
+	  const mute = url.searchParams.get('mute') === '1';
 	  function handleMsg(id,e){
 		const s = e.data && e.data.xpraWindowSize;
 		if(!(s && s.w && s.h)) return;
@@ -26,18 +42,44 @@
 		ifr.style.flex  = "0 0 " + W + "px";
 		ifr.style.width = W + "px";
 		ifr.style.height= H + "px";
-		// make sure the inner doc is scrolled to top-left
-		try { ifr.contentWindow && ifr.contentWindow.scrollTo(0,0); } catch(_){}
+	  }
+	  let _pending=null, _lastW=0, _lastH=0, _raf=false;
+	  function applySize(){
+	    if(!_pending){ _raf=false; return; }
+	    const {ifr, W, H} = _pending; _pending=null;
+	    if (Math.abs(W-_lastW)<2 && Math.abs(H-_lastH)<2){ _raf=false; return; } // ignore tiny jitter
+	    _lastW=W; _lastH=H;
+	    ifr.style.flex  = "0 0 " + W + "px";
+	    ifr.style.width = W + "px";
+	    ifr.style.height= H + "px";
+	    try { ifr.contentWindow && ifr.contentWindow.scrollTo(0,0); } catch(_){}
+	    _raf=false;
 	  }
 	  addEventListener("message", e=>{
 		if(e.origin!==location.origin) return;
 		if(e.source && e.source.frameElement){
 		  const id=e.source.frameElement.id;
 		  handleMsg(id,e);
+		  if(!_raf){ _raf=true; requestAnimationFrame(applySize); }
 		}
 	  });
 	  // Safety: if no message arrives, keep iframes visible at fallback size
 	  setTimeout(()=>{ try{document.getElementById('xpra-main').contentWindow.scrollTo(0,0)}catch(_){}} , 800);
+
+	  // If outer query had ?mute=1 and inner URL lacks the flags (direct hits), enforce once.
+	  if (mute) {
+	    const ifr = document.getElementById('xpra-main');
+	    try {
+	      const u = new URL(ifr.src, location.origin);
+	      if (!u.searchParams.has('speaker')) {
+	        u.searchParams.set('speaker','false');
+	        u.searchParams.set('microphone','false');
+	        u.searchParams.set('audio','false');
+	        ifr.src = u.toString();
+	      }
+	    } catch(_) {}
+	  }
+
 	</script>
 </body>
 </html>

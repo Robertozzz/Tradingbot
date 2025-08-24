@@ -578,487 +578,485 @@ class _AssetPanelState extends State<_AssetPanel> {
     final avg = (widget.pos['avgCost'] as num?)?.toDouble();
     final heldQty = (widget.pos['position'] as num?)?.toDouble() ?? 0;
     final last = (q?['last'] ?? q?['close']) as num?;
-    // Static content: we allow *internal* scrolling to avoid overflow on small screens.
-    return Padding(
-        padding: const EdgeInsets.all(16),
-        child: SingleChildScrollView(
-          // When Advanced is ON we disable parent scroll so TV gets wheel/drag.
-          // When OFF (lightweight chart), allow normal scrolling.
-          physics: advanced
-              ? const NeverScrollableScrollPhysics()
-              : const ClampingScrollPhysics(),
+    // Two-column responsive layout: on wide screens use Row with two Expanded
+    // columns; on narrow screens fall back to a single scrollable column.
+    final leftTop = Column(
+      crossAxisAlignment: CrossAxisAlignment.start,
+      children: [
+        Row(
+          children: [
+            Text(widget.symbol,
+                style:
+                    const TextStyle(fontWeight: FontWeight.bold, fontSize: 18)),
+            const Spacer(),
+            const Text('Advanced'),
+            const SizedBox(width: 8),
+            Switch(
+              value: advanced,
+              onChanged: (v) => widget.advancedVN.value = v,
+            ),
+            IconButton(
+              tooltip: 'Refresh data',
+              icon: const Icon(Icons.refresh),
+              onPressed: () async {
+                setState(() => _busy = true);
+                await Future.wait([_reloadQuoteHist(), _refreshLive()]);
+                if (mounted) setState(() => _busy = false);
+              },
+            ),
+            const SizedBox(width: 8),
+            TextButton(
+              onPressed: () => Navigator.of(context).maybePop(),
+              child: const Text('CLOSE'),
+            ),
+          ],
+        ),
+        const SizedBox(height: 8),
+        Wrap(spacing: 8, runSpacing: 8, children: [
+          _pill('Bid', _bid),
+          _pill('Mid', _mid),
+          _pill('Ask', _ask),
+          _pill('Last', _last),
+          const SizedBox(width: 12),
+          Builder(builder: (_) {
+            final px = _entryPx(side);
+            final qn = _sizedQty(side);
+            final notional = (px != null && qn > 0) ? px * qn : null;
+            return _pill('Est. Notional', notional,
+                money: true, tone: Colors.amber);
+          }),
+        ]),
+        if (last != null || heldQty != 0 || _pnl != null) ...[
+          const SizedBox(height: 8),
+          Row(children: [
+            Text(
+              last == null
+                  ? '—'
+                  : NumberFormat.currency(symbol: '\$').format(last),
+              style: const TextStyle(fontWeight: FontWeight.w700, fontSize: 18),
+            ),
+            const SizedBox(width: 12),
+            if (heldQty != 0 && avg != null)
+              Text(
+                'Pos: ${heldQty.toStringAsFixed(4)} @ ${NumberFormat.currency(symbol: '\$').format(avg)}',
+                style: const TextStyle(color: Colors.white70),
+              ),
+            const Spacer(),
+            if (_pnl != null)
+              Wrap(spacing: 6, children: [
+                Chip(
+                    label: Text(
+                        'Unrl ${NumberFormat.currency(symbol: '\$').format((_pnl!['unrealized'] ?? 0).toDouble())}')),
+                Chip(
+                    label: Text(
+                        'Rlzd ${NumberFormat.currency(symbol: '\$').format((_pnl!['realized'] ?? 0).toDouble())}')),
+                Chip(
+                    label: Text(
+                        'Daily ${NumberFormat.currency(symbol: '\$').format((_pnl!['daily'] ?? 0).toDouble())}')),
+              ]),
+          ]),
+        ],
+        const SizedBox(height: 8),
+        AnimatedContainer(
+          duration: const Duration(milliseconds: 220),
+          height: advanced ? _expandedChartHeight(context) : 260,
+          decoration: BoxDecoration(
+            color: const Color(0xFF111A2E),
+            border: Border.all(color: const Color(0xFF22314E)),
+            borderRadius: BorderRadius.circular(12),
+          ),
+          child: advanced
+              ? MouseRegion(
+                  onEnter: (_) {
+                    if (!_lockParentScroll)
+                      setState(() => _lockParentScroll = true);
+                  },
+                  onExit: (_) {
+                    if (_lockParentScroll)
+                      setState(() => _lockParentScroll = false);
+                  },
+                  child: Center(
+                    child: TradingViewWidget(
+                      symbol: _tvSymbol(widget.symbol, widget.pos),
+                    ),
+                  ),
+                )
+              : (spots.length < 2
+                  ? const Center(child: Text('No chart data'))
+                  : LineChart(
+                      LineChartData(
+                        gridData:
+                            FlGridData(show: true, drawVerticalLine: false),
+                        borderData: FlBorderData(show: false),
+                        titlesData: const FlTitlesData(show: false),
+                        lineBarsData: [
+                          LineChartBarData(
+                              spots: spots,
+                              isCurved: true,
+                              barWidth: 2,
+                              dotData: const FlDotData(show: false)),
+                        ],
+                      ),
+                    )),
+        ),
+      ],
+    );
+
+    final rightControls = Column(
+      crossAxisAlignment: CrossAxisAlignment.start,
+      children: [
+        Wrap(spacing: 12, runSpacing: 12, children: [
+          _chip('Sizing',
+              trailing: _seg(
+                  ['QTY', 'USD'], _sizing, (v) => setState(() => _sizing = v))),
+          if (_sizing == 'QTY')
+            _chip('Qty', trailing: _qtyField())
+          else
+            _chip('Notional',
+                trailing:
+                    _usdField(onChanged: (v) => setState(() => _usd = v))),
+          _chip('BP Mode',
+              trailing: Row(mainAxisSize: MainAxisSize.min, children: [
+                const Text('Cash only'),
+                const SizedBox(width: 6),
+                Switch(
+                  value: _cashOnlyBP,
+                  onChanged: (v) => setState(() => _cashOnlyBP = v),
+                ),
+              ])),
+          _chip('Type',
+              trailing:
+                  _seg(['MKT', 'LMT'], type, (v) => setState(() => type = v))),
+          if (type == 'LMT')
+            _chip('Limit',
+                trailing: Row(mainAxisSize: MainAxisSize.min, children: [
+                  _lmtField(),
+                  const SizedBox(width: 6),
+                  _tiny('Bid', () => setState(() => lmt = _bid)),
+                  const SizedBox(width: 4),
+                  _tiny('Mid', () => setState(() => lmt = _mid)),
+                  const SizedBox(width: 4),
+                  _tiny('Ask', () => setState(() => lmt = _ask)),
+                  const SizedBox(width: 4),
+                  _tiny('Last', () => setState(() => lmt = _last)),
+                ])),
+          _chip('TIF',
+              trailing: _seg(
+                  ['DAY', 'GTC', 'IOC'], tif, (v) => setState(() => tif = v))),
+          _chip('Presets',
+              trailing: Wrap(spacing: 6, children: [
+                _tiny('\$100', () {
+                  setState(() {
+                    _sizing = 'USD';
+                    _usd = 100;
+                  });
+                }),
+                _tiny('\$500', () {
+                  setState(() {
+                    _sizing = 'USD';
+                    _usd = 500;
+                  });
+                }),
+                _tiny('\$1k', () {
+                  setState(() {
+                    _sizing = 'USD';
+                    _usd = 1000;
+                  });
+                }),
+                _tiny('\$5k', () {
+                  setState(() {
+                    _sizing = 'USD';
+                    _usd = 5000;
+                  });
+                }),
+              ])),
+          if (_activeBp() != null && (_entryPx(side) ?? 0) > 0)
+            _chip('Max Size', trailing: Builder(builder: (_) {
+              final px = _entryPx(side)!;
+              final qMax = _maxQtyFor(px);
+              final usdMax = _maxUsd()!;
+              return Row(mainAxisSize: MainAxisSize.min, children: [
+                Chip(label: Text('~$qMax @ \$${px.toStringAsFixed(2)}')),
+                const SizedBox(width: 6),
+                Chip(
+                    label: Text('${_cashOnlyBP ? "Cash" : "Margin"} BP '
+                        '${NumberFormat.currency(symbol: '\$').format(usdMax)}')),
+                const SizedBox(width: 8),
+                _tiny('25%', () {
+                  setState(() {
+                    if (_sizing == 'USD') {
+                      _usd = usdMax * 0.25;
+                    } else {
+                      qty = (qMax * 0.25)
+                          .floorToDouble()
+                          .clamp(1, qMax.toDouble());
+                    }
+                  });
+                }),
+                const SizedBox(width: 4),
+                _tiny('50%', () {
+                  setState(() {
+                    if (_sizing == 'USD') {
+                      _usd = usdMax * 0.50;
+                    } else {
+                      qty = (qMax * 0.50)
+                          .floorToDouble()
+                          .clamp(1, qMax.toDouble());
+                    }
+                  });
+                }),
+                const SizedBox(width: 4),
+                _tiny('100%', () {
+                  setState(() {
+                    if (_sizing == 'USD') {
+                      _usd = usdMax;
+                    } else {
+                      qty = qMax.toDouble();
+                    }
+                  });
+                }),
+              ]);
+            })),
+        ]),
+        const SizedBox(height: 12),
+        if (_acctSummary != null)
+          Container(
+            padding: const EdgeInsets.all(10),
+            decoration: BoxDecoration(
+              color: const Color(0xFF0F1A31),
+              borderRadius: BorderRadius.circular(10),
+              border: Border.all(color: const Color(0xFF22314E)),
+            ),
+            child: Wrap(
+              spacing: 12,
+              runSpacing: 12,
+              children: [
+                _chip('Account',
+                    trailing: Text((_acctSummary!['accountId'] ??
+                            _acctSummary!['AccountId'] ??
+                            _acctSummary!['acctId'] ??
+                            '')
+                        .toString())),
+                _chip('Currency',
+                    trailing: Text((_acctSummary!['Currency'] ??
+                            _acctSummary!['currency'] ??
+                            'USD')
+                        .toString())),
+                _chip('NetLiq',
+                    trailing: Text(NumberFormat.currency(symbol: '\$').format(
+                        _numOrNull(_acctSummary!['NetLiquidation']) ?? 0))),
+                _chip('Excess Liquidity',
+                    trailing: Text(NumberFormat.currency(symbol: '\$').format(
+                        _numOrNull(_acctSummary!['ExcessLiquidity']) ?? 0))),
+                _chip('Gross Position',
+                    trailing: Text(NumberFormat.currency(symbol: '\$').format(
+                        _numOrNull(_acctSummary!['GrossPositionValue']) ?? 0))),
+                _chip('BP (Cash)',
+                    trailing: Text(NumberFormat.currency(symbol: '\$')
+                        .format(_bpCashUsd ?? 0))),
+                _chip('BP (Margin)',
+                    trailing: Text(NumberFormat.currency(symbol: '\$')
+                        .format(_bpMarginUsd ?? 0))),
+              ],
+            ),
+          ),
+        const SizedBox(height: 12),
+        // Bracket + Actions
+        Container(
+          padding: const EdgeInsets.all(10),
+          decoration: BoxDecoration(
+            color: const Color(0xFF0F1A31),
+            borderRadius: BorderRadius.circular(10),
+            border: Border.all(color: const Color(0xFF22314E)),
+          ),
           child: Column(
             crossAxisAlignment: CrossAxisAlignment.start,
             children: [
-              Row(
-                children: [
-                  Text(widget.symbol,
-                      style: const TextStyle(
-                          fontWeight: FontWeight.bold, fontSize: 18)),
-                  const Spacer(),
-                  Row(mainAxisSize: MainAxisSize.min, children: [
-                    const Text('Advanced'),
-                    const SizedBox(width: 8),
-                    Switch(
-                      value: advanced,
-                      onChanged: (v) {
-                        widget.advancedVN.value = v; // triggers dialog + panel
-                      },
-                    ),
-                  ]),
-                  IconButton(
-                    tooltip: 'Refresh data',
-                    icon: const Icon(Icons.refresh),
-                    onPressed: () async {
-                      setState(() => _busy = true);
-                      await Future.wait([_reloadQuoteHist(), _refreshLive()]);
-                      if (mounted) setState(() => _busy = false);
-                    },
-                  ),
-                  const SizedBox(width: 8),
-                  TextButton(
-                    onPressed: () => Navigator.of(context).maybePop(),
-                    child: const Text('CLOSE'),
-                  ),
-                ],
-              ),
-
-              const SizedBox(height: 8),
-              // Live L1 chips
-              Wrap(spacing: 8, runSpacing: 8, children: [
-                _pill('Bid', _bid),
-                _pill('Mid', _mid),
-                _pill('Ask', _ask),
-                _pill('Last', _last),
-                const SizedBox(width: 12),
-                Builder(builder: (_) {
-                  final px = _entryPx(side);
-                  final qn = _sizedQty(side);
-                  final notional = (px != null && qn > 0) ? px * qn : null;
-                  return _pill('Est. Notional', notional,
-                      money: true, tone: Colors.amber);
-                }),
-              ]),
-              // Price / Position / PnL chips
-              if (last != null || heldQty != 0 || _pnl != null) ...[
-                Row(children: [
-                  Text(
-                    last == null
-                        ? '—'
-                        : NumberFormat.currency(symbol: '\$').format(last),
-                    style: const TextStyle(
-                        fontWeight: FontWeight.w700, fontSize: 18),
-                  ),
-                  const SizedBox(width: 12),
-                  if (heldQty != 0 && avg != null)
-                    Text(
-                      'Pos: ${heldQty.toStringAsFixed(4)} @ ${NumberFormat.currency(symbol: '\$').format(avg)}',
-                      style: const TextStyle(color: Colors.white70),
-                    ),
-                  const Spacer(),
-                  if (_pnl != null)
-                    Wrap(spacing: 6, children: [
-                      Chip(
-                          label: Text(
-                              'Unrl ${NumberFormat.currency(symbol: '\$').format((_pnl!['unrealized'] ?? 0).toDouble())}')),
-                      Chip(
-                          label: Text(
-                              'Rlzd ${NumberFormat.currency(symbol: '\$').format((_pnl!['realized'] ?? 0).toDouble())}')),
-                      Chip(
-                          label: Text(
-                              'Daily ${NumberFormat.currency(symbol: '\$').format((_pnl!['daily'] ?? 0).toDouble())}')),
-                    ]),
-                ]),
-                const SizedBox(height: 8),
-              ],
-              // Chart area: animates height for Advanced ON.
-              AnimatedContainer(
-                duration: const Duration(milliseconds: 220),
-                height: advanced ? _expandedChartHeight(context) : 260,
-                decoration: BoxDecoration(
-                  color: const Color(0xFF111A2E),
-                  border: Border.all(color: const Color(0xFF22314E)),
-                  borderRadius: BorderRadius.circular(12),
-                ),
-                child: advanced
-                    ? MouseRegion(
-                        onEnter: (_) {
-                          if (!_lockParentScroll) {
-                            setState(() => _lockParentScroll = true);
-                          }
-                        },
-                        onExit: (_) {
-                          if (_lockParentScroll) {
-                            setState(() => _lockParentScroll = false);
-                          }
-                        },
-                        child: Center(
-                          child: TradingViewWidget(
-                            symbol: _tvSymbol(widget.symbol, widget.pos),
-                          ),
-                        ),
-                      )
-                    : (spots.length < 2
-                        ? const Center(child: Text('No chart data'))
-                        : LineChart(
-                            LineChartData(
-                              gridData: FlGridData(
-                                  show: true, drawVerticalLine: false),
-                              borderData: FlBorderData(show: false),
-                              titlesData: const FlTitlesData(show: false),
-                              lineBarsData: [
-                                LineChartBarData(
-                                    spots: spots,
-                                    isCurved: true,
-                                    barWidth: 2,
-                                    dotData: const FlDotData(show: false)),
-                              ],
-                            ),
-                          )),
-              ),
-              const SizedBox(height: 12),
-              Wrap(spacing: 12, runSpacing: 12, children: [
-                _chip('Sizing',
-                    trailing: _seg(['QTY', 'USD'], _sizing,
-                        (v) => setState(() => _sizing = v))),
-                if (_sizing == 'QTY')
-                  _chip('Qty', trailing: _qtyField())
-                else
-                  _chip('Notional',
-                      trailing: _usdField(
-                          onChanged: (v) => setState(() => _usd = v))),
-                _chip('BP Mode',
-                    trailing: Row(mainAxisSize: MainAxisSize.min, children: [
-                      const Text('Cash only'),
-                      const SizedBox(width: 6),
-                      Switch(
-                        value: _cashOnlyBP,
-                        onChanged: (v) => setState(() => _cashOnlyBP = v),
-                      ),
-                    ])),
-                _chip('Type',
-                    trailing: _seg(
-                        ['MKT', 'LMT'], type, (v) => setState(() => type = v))),
-                if (type == 'LMT')
-                  _chip('Limit',
-                      trailing: Row(mainAxisSize: MainAxisSize.min, children: [
-                        _lmtField(),
-                        const SizedBox(width: 6),
-                        _tiny('Bid', () => setState(() => lmt = _bid)),
-                        const SizedBox(width: 4),
-                        _tiny('Mid', () => setState(() => lmt = _mid)),
-                        const SizedBox(width: 4),
-                        _tiny('Ask', () => setState(() => lmt = _ask)),
-                        const SizedBox(width: 4),
-                        _tiny('Last', () => setState(() => lmt = _last)),
-                      ])),
-                _chip('TIF',
-                    trailing: _seg(['DAY', 'GTC', 'IOC'], tif,
-                        (v) => setState(() => tif = v))),
-                // quick notional presets
-                _chip('Presets',
-                    trailing: Wrap(spacing: 6, children: [
-                      _tiny('\$100', () {
-                        setState(() {
-                          _sizing = 'USD';
-                          _usd = 100;
-                        });
-                      }),
-                      _tiny('\$500', () {
-                        setState(() {
-                          _sizing = 'USD';
-                          _usd = 500;
-                        });
-                      }),
-                      _tiny('\$1k', () {
-                        setState(() {
-                          _sizing = 'USD';
-                          _usd = 1000;
-                        });
-                      }),
-                      _tiny('\$5k', () {
-                        setState(() {
-                          _sizing = 'USD';
-                          _usd = 5000;
-                        });
-                      }),
-                    ])),
-                if (_activeBp() != null && (_entryPx(side) ?? 0) > 0)
-                  _chip('Max Size', trailing: Builder(builder: (_) {
-                    final px = _entryPx(side)!;
-                    final qMax = _maxQtyFor(px);
-                    final usdMax = _maxUsd()!;
-                    return Row(mainAxisSize: MainAxisSize.min, children: [
-                      Chip(label: Text('~$qMax @ \$${px.toStringAsFixed(2)}')),
-                      const SizedBox(width: 6),
-                      Chip(
-                          label: Text('${_cashOnlyBP ? "Cash" : "Margin"} BP '
-                              '${NumberFormat.currency(symbol: '\$').format(usdMax)}')),
-                      const SizedBox(width: 8),
-                      _tiny('25%', () {
-                        setState(() {
-                          if (_sizing == 'USD') {
-                            _usd = usdMax * 0.25;
-                          } else {
-                            qty = (qMax * 0.25)
-                                .floorToDouble()
-                                .clamp(1, qMax.toDouble());
-                          }
-                        });
-                      }),
-                      const SizedBox(width: 4),
-                      _tiny('50%', () {
-                        setState(() {
-                          if (_sizing == 'USD') {
-                            _usd = usdMax * 0.50;
-                          } else {
-                            qty = (qMax * 0.50)
-                                .floorToDouble()
-                                .clamp(1, qMax.toDouble());
-                          }
-                        });
-                      }),
-                      const SizedBox(width: 4),
-                      _tiny('100%', () {
-                        setState(() {
-                          if (_sizing == 'USD') {
-                            _usd = usdMax;
-                          } else {
-                            qty = qMax.toDouble();
-                          }
-                        });
-                      }),
-                    ]);
-                  })),
-              ]),
-              const SizedBox(height: 8),
-              const SizedBox(height: 8),
-              // --- Account Summary (uses _acctSummary so the field is actually used) ---
-              if (_acctSummary != null) ...[
-                Container(
-                  padding: const EdgeInsets.all(10),
-                  decoration: BoxDecoration(
-                    color: const Color(0xFF0F1A31),
-                    borderRadius: BorderRadius.circular(10),
-                    border: Border.all(color: const Color(0xFF22314E)),
-                  ),
-                  child: Wrap(
-                    spacing: 12,
-                    runSpacing: 12,
-                    children: [
-                      _chip('Account',
-                          trailing: Text((_acctSummary!['accountId'] ??
-                                  _acctSummary!['AccountId'] ??
-                                  _acctSummary!['acctId'] ??
-                                  '')
-                              .toString())),
-                      _chip('Currency',
-                          trailing: Text((_acctSummary!['Currency'] ??
-                                  _acctSummary!['currency'] ??
-                                  'USD')
-                              .toString())),
-                      _chip('NetLiq',
-                          trailing: Text(
-                            NumberFormat.currency(symbol: '\$').format(
-                              _numOrNull(_acctSummary!['NetLiquidation']) ?? 0,
-                            ),
-                          )),
-                      _chip('Excess Liquidity',
-                          trailing: Text(
-                            NumberFormat.currency(symbol: '\$').format(
-                              _numOrNull(_acctSummary!['ExcessLiquidity']) ?? 0,
-                            ),
-                          )),
-                      _chip('Gross Position',
-                          trailing: Text(
-                            NumberFormat.currency(symbol: '\$').format(
-                              _numOrNull(_acctSummary!['GrossPositionValue']) ??
-                                  0,
-                            ),
-                          )),
-                      _chip('BP (Cash)',
-                          trailing: Text(
-                            NumberFormat.currency(symbol: '\$')
-                                .format(_bpCashUsd ?? 0),
-                          )),
-                      _chip('BP (Margin)',
-                          trailing: Text(
-                            NumberFormat.currency(symbol: '\$')
-                                .format(_bpMarginUsd ?? 0),
-                          )),
-                    ],
-                  ),
-                ),
-                const SizedBox(height: 8),
-              ],
-              Container(
-                padding: const EdgeInsets.all(10),
-                decoration: BoxDecoration(
-                  color: const Color(0xFF0F1A31),
-                  borderRadius: BorderRadius.circular(10),
-                  border: Border.all(color: const Color(0xFF22314E)),
-                ),
-                child: Column(
-                  crossAxisAlignment: CrossAxisAlignment.start,
-                  children: [
-                    Row(children: [
-                      Switch(
-                        value: _useBracket,
-                        onChanged: (v) => setState(() => _useBracket = v),
-                      ),
-                      const SizedBox(width: 6),
-                      const Text('Attach Bracket (OCO)',
-                          style: TextStyle(fontWeight: FontWeight.w600)),
-                      const Spacer(),
-                      SegmentedButton<bool>(
-                        segments: const [
-                          ButtonSegment(value: false, label: Text('\$')),
-                          ButtonSegment(value: true, label: Text('%')),
-                        ],
-                        selected: {_tpSlAsPct},
-                        onSelectionChanged: (s) =>
-                            setState(() => _tpSlAsPct = s.first),
-                      ),
-                    ]),
-                    if (_useBracket)
-                      Wrap(spacing: 12, runSpacing: 12, children: [
-                        _chip(_tpSlAsPct ? 'Take Profit %' : 'Take Profit \$',
-                            trailing: SizedBox(
-                              width: 120,
-                              child: TextField(
-                                keyboardType:
-                                    const TextInputType.numberWithOptions(
-                                        decimal: true),
-                                decoration: const InputDecoration(
-                                    isDense: true, hintText: 'e.g. 1.0'),
-                                onChanged: (t) {
-                                  final v = double.tryParse(t);
-                                  setState(() {
-                                    if (_tpSlAsPct) {
-                                      _tpPct = v ?? _tpPct;
-                                    } else {
-                                      _tpAbs = v;
-                                    }
-                                  });
-                                },
-                              ),
-                            )),
-                        _chip(_tpSlAsPct ? 'Stop Loss %' : 'Stop Loss \$',
-                            trailing: SizedBox(
-                              width: 120,
-                              child: TextField(
-                                keyboardType:
-                                    const TextInputType.numberWithOptions(
-                                        decimal: true),
-                                decoration: const InputDecoration(
-                                    isDense: true, hintText: 'e.g. 0.8'),
-                                onChanged: (t) {
-                                  final v = double.tryParse(t);
-                                  setState(() {
-                                    if (_tpSlAsPct) {
-                                      _slPct = v ?? _slPct;
-                                    } else {
-                                      _slAbs = v;
-                                    }
-                                  });
-                                },
-                              ),
-                            )),
-                      ]),
-                  ],
-                ),
-              ),
-
-              const SizedBox(height: 12),
               Row(children: [
-                Expanded(
-                    child: FilledButton(
-                        style: FilledButton.styleFrom(
-                            backgroundColor: const Color(0xFF1F4436)),
-                        onPressed: _busy ? null : () => _place('BUY'),
-                        child: const Text('Buy'))),
-                const SizedBox(width: 10),
-                Expanded(
-                    child: FilledButton(
-                        style: FilledButton.styleFrom(
-                            backgroundColor: const Color(0xFF5A1F1F)),
-                        onPressed: _busy ? null : () => _place('SELL'),
-                        child: const Text('Sell'))),
-              ]),
-              const SizedBox(height: 16),
-              // Open Orders (for this asset)
-              Container(
-                decoration: BoxDecoration(
-                  color: const Color(0xFF111A2E),
-                  border: Border.all(color: const Color(0xFF22314E)),
-                  borderRadius: BorderRadius.circular(12),
+                Switch(
+                  value: _useBracket,
+                  onChanged: (v) => setState(() => _useBracket = v),
                 ),
-                padding: const EdgeInsets.all(12),
-                child: Column(
-                  crossAxisAlignment: CrossAxisAlignment.start,
-                  children: [
-                    Row(children: [
-                      const Text('Open Orders',
-                          style: TextStyle(fontWeight: FontWeight.bold)),
-                      const Spacer(),
-                      IconButton(
-                          onPressed: _refreshLive,
-                          icon: const Icon(Icons.refresh)),
-                    ]),
-                    const SizedBox(height: 6),
-                    _orders.isEmpty
-                        ? const Text('None')
-                        : SingleChildScrollView(
-                            // keep table horizontally scrollable; parent is non-scroll when advanced
-                            scrollDirection: Axis.horizontal,
-                            child: DataTable(
-                              columns: const [
-                                DataColumn(label: Text('OrderId')),
-                                DataColumn(label: Text('Side')),
-                                DataColumn(label: Text('Qty')),
-                                DataColumn(label: Text('Type')),
-                                DataColumn(label: Text('Limit')),
-                                DataColumn(label: Text('TIF')),
-                                DataColumn(label: Text('Status')),
-                                DataColumn(label: Text('Filled')),
-                                DataColumn(label: Text('Remain')),
-                                DataColumn(label: Text('Cancel')),
-                              ],
-                              rows: _orders
-                                  .map((o) => DataRow(cells: [
-                                        DataCell(Text('${o['orderId'] ?? ''}')),
-                                        DataCell(Text('${o['action'] ?? ''}')),
-                                        DataCell(Text('${o['qty'] ?? ''}')),
-                                        DataCell(Text('${o['type'] ?? ''}')),
-                                        DataCell(Text(o['lmt'] == null
-                                            ? '—'
-                                            : '${o['lmt']}')),
-                                        DataCell(Text('${o['tif'] ?? ''}')),
-                                        DataCell(Text('${o['status'] ?? ''}')),
-                                        DataCell(Text('${o['filled'] ?? 0}')),
-                                        DataCell(
-                                            Text('${o['remaining'] ?? 0}')),
-                                        DataCell(IconButton(
-                                          icon: const Icon(Icons.cancel),
-                                          onPressed: () {
-                                            final id =
-                                                (o['orderId'] as num?)?.toInt();
-                                            if (id != null) {
-                                              Api.ibkrCancelOrder(id)
-                                                  .then((_) => _refreshLive());
-                                            }
-                                          },
-                                        )),
-                                      ]))
-                                  .toList(),
-                            ),
-                          ),
+                const SizedBox(width: 6),
+                const Text('Attach Bracket (OCO)',
+                    style: TextStyle(fontWeight: FontWeight.w600)),
+                const Spacer(),
+                SegmentedButton<bool>(
+                  segments: const [
+                    ButtonSegment(value: false, label: Text('\$')),
+                    ButtonSegment(value: true, label: Text('%')),
                   ],
+                  selected: {_tpSlAsPct},
+                  onSelectionChanged: (s) =>
+                      setState(() => _tpSlAsPct = s.first),
                 ),
-              ),
+              ]),
+              if (_useBracket)
+                Wrap(spacing: 12, runSpacing: 12, children: [
+                  _chip(_tpSlAsPct ? 'Take Profit %' : 'Take Profit \$',
+                      trailing: SizedBox(
+                        width: 120,
+                        child: TextField(
+                          keyboardType: const TextInputType.numberWithOptions(
+                              decimal: true),
+                          decoration: const InputDecoration(
+                              isDense: true, hintText: 'e.g. 1.0'),
+                          onChanged: (t) {
+                            final v = double.tryParse(t);
+                            setState(() {
+                              if (_tpSlAsPct) {
+                                _tpPct = v ?? _tpPct;
+                              } else {
+                                _tpAbs = v;
+                              }
+                            });
+                          },
+                        ),
+                      )),
+                  _chip(_tpSlAsPct ? 'Stop Loss %' : 'Stop Loss \$',
+                      trailing: SizedBox(
+                        width: 120,
+                        child: TextField(
+                          keyboardType: const TextInputType.numberWithOptions(
+                              decimal: true),
+                          decoration: const InputDecoration(
+                              isDense: true, hintText: 'e.g. 0.8'),
+                          onChanged: (t) {
+                            final v = double.tryParse(t);
+                            setState(() {
+                              if (_tpSlAsPct) {
+                                _slPct = v ?? _slPct;
+                              } else {
+                                _slAbs = v;
+                              }
+                            });
+                          },
+                        ),
+                      )),
+                ]),
             ],
           ),
-        ));
+        ),
+        const SizedBox(height: 12),
+        Row(children: [
+          Expanded(
+              child: FilledButton(
+                  style: FilledButton.styleFrom(
+                      backgroundColor: const Color(0xFF1F4436)),
+                  onPressed: _busy ? null : () => _place('BUY'),
+                  child: const Text('Buy'))),
+          const SizedBox(width: 10),
+          Expanded(
+              child: FilledButton(
+                  style: FilledButton.styleFrom(
+                      backgroundColor: const Color(0xFF5A1F1F)),
+                  onPressed: _busy ? null : () => _place('SELL'),
+                  child: const Text('Sell'))),
+        ]),
+        const SizedBox(height: 16),
+        Container(
+          decoration: BoxDecoration(
+            color: const Color(0xFF111A2E),
+            border: Border.all(color: const Color(0xFF22314E)),
+            borderRadius: BorderRadius.circular(12),
+          ),
+          padding: const EdgeInsets.all(12),
+          child: Column(
+            crossAxisAlignment: CrossAxisAlignment.start,
+            children: [
+              Row(children: [
+                const Text('Open Orders',
+                    style: TextStyle(fontWeight: FontWeight.bold)),
+                const Spacer(),
+                IconButton(
+                    onPressed: _refreshLive, icon: const Icon(Icons.refresh)),
+              ]),
+              const SizedBox(height: 6),
+              _orders.isEmpty
+                  ? const Text('None')
+                  : SingleChildScrollView(
+                      scrollDirection: Axis.horizontal,
+                      child: DataTable(
+                        columns: const [
+                          DataColumn(label: Text('OrderId')),
+                          DataColumn(label: Text('Side')),
+                          DataColumn(label: Text('Qty')),
+                          DataColumn(label: Text('Type')),
+                          DataColumn(label: Text('Limit')),
+                          DataColumn(label: Text('TIF')),
+                          DataColumn(label: Text('Status')),
+                          DataColumn(label: Text('Filled')),
+                          DataColumn(label: Text('Remain')),
+                          DataColumn(label: Text('Cancel')),
+                        ],
+                        rows: _orders
+                            .map((o) => DataRow(cells: [
+                                  DataCell(Text('${o['orderId'] ?? ''}')),
+                                  DataCell(Text('${o['action'] ?? ''}')),
+                                  DataCell(Text('${o['qty'] ?? ''}')),
+                                  DataCell(Text('${o['type'] ?? ''}')),
+                                  DataCell(Text(
+                                      o['lmt'] == null ? '—' : '${o['lmt']}')),
+                                  DataCell(Text('${o['tif'] ?? ''}')),
+                                  DataCell(Text('${o['status'] ?? ''}')),
+                                  DataCell(Text('${o['filled'] ?? 0}')),
+                                  DataCell(Text('${o['remaining'] ?? 0}')),
+                                  DataCell(IconButton(
+                                    icon: const Icon(Icons.cancel),
+                                    onPressed: () {
+                                      final id =
+                                          (o['orderId'] as num?)?.toInt();
+                                      if (id != null) {
+                                        Api.ibkrCancelOrder(id)
+                                            .then((_) => _refreshLive());
+                                      }
+                                    },
+                                  )),
+                                ]))
+                            .toList(),
+                      ),
+                    ),
+            ],
+          ),
+        ),
+      ],
+    );
+
+    // Responsive arrangement
+    return Padding(
+      padding: const EdgeInsets.all(16),
+      child: LayoutBuilder(builder: (_, c) {
+        final wide = c.maxWidth >= 900; // breakpoint
+        final left = SingleChildScrollView(
+          physics: advanced
+              ? const NeverScrollableScrollPhysics()
+              : const ClampingScrollPhysics(),
+          child: leftTop,
+        );
+        final right = SingleChildScrollView(
+          child: rightControls,
+        );
+        if (wide) {
+          return Row(
+            crossAxisAlignment: CrossAxisAlignment.start,
+            children: [
+              Expanded(flex: 3, child: left),
+              const SizedBox(width: 16),
+              Expanded(flex: 2, child: right),
+            ],
+          );
+        } else {
+          return Column(
+            crossAxisAlignment: CrossAxisAlignment.start,
+            children: [
+              left,
+              const SizedBox(height: 16),
+              right,
+            ],
+          );
+        }
+      }),
+    );
   }
 
   // --- small UI helper used above ---

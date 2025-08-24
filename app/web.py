@@ -6,6 +6,7 @@ from fastapi import FastAPI, HTTPException, Request
 from fastapi.middleware.cors import CORSMiddleware
 from fastapi.staticfiles import StaticFiles
 from fastapi.responses import FileResponse, JSONResponse, StreamingResponse
+from fastapi import Body
 
 mimetypes.init()
 mimetypes.add_type("text/javascript", ".mjs")
@@ -110,6 +111,11 @@ def _queue_len() -> int:
         return sum(1 for _ in (_runtime_dir() / "cmd").glob("*.json"))
     except Exception:
         return 0
+    
+def _enqueue_control(module: str, action: str) -> dict:
+    module = module.strip().lower()
+    action = action.strip().lower()
+    return _enqueue_control(module, action)
 
 @app.get("/health")
 def health():
