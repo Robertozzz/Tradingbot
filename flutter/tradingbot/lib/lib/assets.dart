@@ -668,12 +668,14 @@ class _AssetPanelState extends State<_AssetPanel> {
           child: advanced
               ? MouseRegion(
                   onEnter: (_) {
-                    if (!_lockParentScroll)
+                    if (!_lockParentScroll) {
                       setState(() => _lockParentScroll = true);
+                    }
                   },
                   onExit: (_) {
-                    if (_lockParentScroll)
+                    if (_lockParentScroll) {
                       setState(() => _lockParentScroll = false);
+                    }
                   },
                   child: Center(
                     child: TradingViewWidget(
@@ -698,6 +700,73 @@ class _AssetPanelState extends State<_AssetPanel> {
                         ],
                       ),
                     )),
+        ),
+        const SizedBox(height: 12),
+        // --- Open Orders (moved under the graph) ---
+        Container(
+          decoration: BoxDecoration(
+            color: const Color(0xFF111A2E),
+            border: Border.all(color: const Color(0xFF22314E)),
+            borderRadius: BorderRadius.circular(12),
+          ),
+          padding: const EdgeInsets.all(12),
+          child: Column(
+            crossAxisAlignment: CrossAxisAlignment.start,
+            children: [
+              Row(children: [
+                const Text('Open Orders',
+                    style: TextStyle(fontWeight: FontWeight.bold)),
+                const Spacer(),
+                IconButton(
+                    onPressed: _refreshLive, icon: const Icon(Icons.refresh)),
+              ]),
+              const SizedBox(height: 6),
+              _orders.isEmpty
+                  ? const Text('None')
+                  : SingleChildScrollView(
+                      scrollDirection: Axis.horizontal,
+                      child: DataTable(
+                        columns: const [
+                          DataColumn(label: Text('OrderId')),
+                          DataColumn(label: Text('Side')),
+                          DataColumn(label: Text('Qty')),
+                          DataColumn(label: Text('Type')),
+                          DataColumn(label: Text('Limit')),
+                          DataColumn(label: Text('TIF')),
+                          DataColumn(label: Text('Status')),
+                          DataColumn(label: Text('Filled')),
+                          DataColumn(label: Text('Remain')),
+                          DataColumn(label: Text('Cancel')),
+                        ],
+                        rows: _orders
+                            .map((o) => DataRow(cells: [
+                                  DataCell(Text('${o['orderId'] ?? ''}')),
+                                  DataCell(Text('${o['action'] ?? ''}')),
+                                  DataCell(Text('${o['qty'] ?? ''}')),
+                                  DataCell(Text('${o['type'] ?? ''}')),
+                                  DataCell(Text(
+                                      o['lmt'] == null ? '—' : '${o['lmt']}')),
+                                  DataCell(Text('${o['tif'] ?? ''}')),
+                                  DataCell(Text('${o['status'] ?? ''}')),
+                                  DataCell(Text('${o['filled'] ?? 0}')),
+                                  DataCell(Text('${o['remaining'] ?? 0}')),
+                                  DataCell(IconButton(
+                                    icon: const Icon(Icons.cancel),
+                                    onPressed: () {
+                                      final id =
+                                          (o['orderId'] as num?)?.toInt();
+                                      if (id != null) {
+                                        Api.ibkrCancelOrder(id)
+                                            .then((_) => _refreshLive());
+                                      }
+                                    },
+                                  )),
+                                ]))
+                            .toList(),
+                      ),
+                    ),
+            ],
+          ),
         ),
       ],
     );
@@ -954,71 +1023,6 @@ class _AssetPanelState extends State<_AssetPanel> {
                   child: const Text('Sell'))),
         ]),
         const SizedBox(height: 16),
-        Container(
-          decoration: BoxDecoration(
-            color: const Color(0xFF111A2E),
-            border: Border.all(color: const Color(0xFF22314E)),
-            borderRadius: BorderRadius.circular(12),
-          ),
-          padding: const EdgeInsets.all(12),
-          child: Column(
-            crossAxisAlignment: CrossAxisAlignment.start,
-            children: [
-              Row(children: [
-                const Text('Open Orders',
-                    style: TextStyle(fontWeight: FontWeight.bold)),
-                const Spacer(),
-                IconButton(
-                    onPressed: _refreshLive, icon: const Icon(Icons.refresh)),
-              ]),
-              const SizedBox(height: 6),
-              _orders.isEmpty
-                  ? const Text('None')
-                  : SingleChildScrollView(
-                      scrollDirection: Axis.horizontal,
-                      child: DataTable(
-                        columns: const [
-                          DataColumn(label: Text('OrderId')),
-                          DataColumn(label: Text('Side')),
-                          DataColumn(label: Text('Qty')),
-                          DataColumn(label: Text('Type')),
-                          DataColumn(label: Text('Limit')),
-                          DataColumn(label: Text('TIF')),
-                          DataColumn(label: Text('Status')),
-                          DataColumn(label: Text('Filled')),
-                          DataColumn(label: Text('Remain')),
-                          DataColumn(label: Text('Cancel')),
-                        ],
-                        rows: _orders
-                            .map((o) => DataRow(cells: [
-                                  DataCell(Text('${o['orderId'] ?? ''}')),
-                                  DataCell(Text('${o['action'] ?? ''}')),
-                                  DataCell(Text('${o['qty'] ?? ''}')),
-                                  DataCell(Text('${o['type'] ?? ''}')),
-                                  DataCell(Text(
-                                      o['lmt'] == null ? '—' : '${o['lmt']}')),
-                                  DataCell(Text('${o['tif'] ?? ''}')),
-                                  DataCell(Text('${o['status'] ?? ''}')),
-                                  DataCell(Text('${o['filled'] ?? 0}')),
-                                  DataCell(Text('${o['remaining'] ?? 0}')),
-                                  DataCell(IconButton(
-                                    icon: const Icon(Icons.cancel),
-                                    onPressed: () {
-                                      final id =
-                                          (o['orderId'] as num?)?.toInt();
-                                      if (id != null) {
-                                        Api.ibkrCancelOrder(id)
-                                            .then((_) => _refreshLive());
-                                      }
-                                    },
-                                  )),
-                                ]))
-                            .toList(),
-                      ),
-                    ),
-            ],
-          ),
-        ),
       ],
     );
 
