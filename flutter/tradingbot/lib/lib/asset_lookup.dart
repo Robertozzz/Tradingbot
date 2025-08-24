@@ -73,9 +73,12 @@ class _AssetLookupSheetState extends State<AssetLookupSheet> {
         if (sym.isEmpty || _sparks.containsKey(key)) continue;
         _loadSpark(symbol: sym, conId: cid, secType: sec);
       }
-    } catch (_) {
+    } catch (e) {
       if (mounted) {
         setState(() => _loading = false);
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(content: Text('Lookup failed: $e')),
+        );
       }
     }
   }

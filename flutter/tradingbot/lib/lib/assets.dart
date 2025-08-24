@@ -1283,16 +1283,16 @@ class _AssetPanelDialog extends StatefulWidget {
 }
 
 class _AssetPanelDialogState extends State<_AssetPanelDialog> {
-  double _widthFactor = 0.65;
-  double _heightFactor = 0.65;
+  double _widthFactor = 0.8;
+  double _heightFactor = 0.8;
 
   @override
   Widget build(BuildContext context) {
     return ValueListenableBuilder<bool>(
       valueListenable: widget.advancedVN,
       builder: (_, adv, child) {
-        _widthFactor = adv ? 0.95 : 0.65;
-        _heightFactor = adv ? 0.95 : 0.65;
+        _widthFactor = adv ? 0.95 : 0.8;
+        _heightFactor = adv ? 0.95 : 0.8;
         final size = MediaQuery.of(context).size;
         final targetW = size.width * _widthFactor;
         final targetH = size.height * _heightFactor;

@@ -493,6 +493,32 @@ async def search(q: str | None = Query(None), query: str | None = Query(None)):
         cid = d.get("conId")
         if not cid or cid in seen: continue
         seen.add(cid); uniq.append(d)
+    # If nothing matched, try a direct resolve of the exact token (e.g., "AAPL", "EURUSD")
+    if not uniq:
+        try:
+            c = await _resolve_contract(q, "STK", "SMART", "USD")
+            uniq.append({
+                "symbol": getattr(c, "localSymbol", None) or c.symbol or q.upper(),
+                "name": getattr(c, "symbol", None) or q.upper(),
+                "secType": c.secType,
+                "conId": c.conId,
+                "currency": c.currency,
+                "exchange": c.primaryExchange or c.exchange or "SMART",
+            })
+        except Exception:
+            # Try common alternates (FX)
+            try:
+                cfx = await _resolve_contract(q, "FX", "IDEALPRO", "USD")
+                uniq.append({
+                    "symbol": getattr(cfx, "localSymbol", None) or cfx.symbol or q.upper(),
+                    "name": getattr(cfx, "symbol", None) or q.upper(),
+                    "secType": cfx.secType,
+                    "conId": cfx.conId,
+                    "currency": cfx.currency,
+                    "exchange": cfx.primaryExchange or cfx.exchange or "IDEALPRO",
+                })
+            except Exception:
+                pass
     return uniq[:50]
 
 # --- quotes (last/bid/ask/high/low/close) ----------------------------------
@@ -705,7 +731,8 @@ async def orders_place(payload: dict = Body(...)):
             order = MarketOrder(side, qty, tif=tif)
 
         trade = ib.placeOrder(c, order)
-        await trade.end()  # wait until IB assigns ids / status
+        # Older ib_insync doesn't expose Trade.end(); give IB a short beat
+        await ib.sleep(0.25)
     except Exception as e:
         log.exception("place order failed")
         raise HTTPException(502, detail=f"IBKR place failed: {e!s}")
@@ -767,7 +794,7 @@ async def orders_bracket(payload: dict = Body(...)):
         o.ocaType = 1
     # send
     ptrade = ib.placeOrder(c, parent)
-    await ptrade.end()
+    await ib.sleep(0.25)
     pid = getattr(ptrade.order, "orderId", None)
     if pid is None:
         raise HTTPException(502, "Parent orderId missing")
@@ -775,8 +802,7 @@ async def orders_bracket(payload: dict = Body(...)):
     sl.parentId = pid
     t1 = ib.placeOrder(c, tp)
     t2 = ib.placeOrder(c, sl)
-    # don't strictly need to await, but it helps when the UI refreshes immediately
-    await asyncio.gather(t1.end(), t2.end())
+    await ib.sleep(0.25)
     _log_order("bracket", {
         "symbol": symbol, "conId": getattr(c, "conId", None), "side": side,
         "qty": qty, "entryType": entryType, "limitPrice": lmt,
