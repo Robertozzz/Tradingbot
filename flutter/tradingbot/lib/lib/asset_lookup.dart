@@ -21,6 +21,7 @@ class _AssetLookupSheetState extends State<AssetLookupSheet> {
   // tiny semaphore to avoid IBKR historical pacing
   static int _inflight = 0;
   static const int _maxInflight = 3;
+  bool _loading = false;
 
   @override
   void initState() {
@@ -45,15 +46,23 @@ class _AssetLookupSheetState extends State<AssetLookupSheet> {
   Future<void> _searchNow() async {
     final q = _ctl.text.trim();
     if (q.isEmpty) {
-      setState(() => _rows = []);
+      setState(() {
+        _rows = [];
+        _loading = false;
+      });
       return;
     }
     try {
+      setState(() => _loading = true);
       final list = await Api.ibkrSearch(q);
       final cast = list
           .map<Map<String, dynamic>>((e) => Map<String, dynamic>.from(e as Map))
           .toList();
       setState(() => _rows = cast.take(30).toList());
+      setState(() {
+        _rows = cast.take(30).toList();
+        _loading = false;
+      });
       // best-effort sparks
       for (final r in cast.take(12)) {
         // keep the cap (good!)
@@ -64,7 +73,11 @@ class _AssetLookupSheetState extends State<AssetLookupSheet> {
         if (sym.isEmpty || _sparks.containsKey(key)) continue;
         _loadSpark(symbol: sym, conId: cid, secType: sec);
       }
-    } catch (_) {}
+    } catch (_) {
+      if (mounted) {
+        setState(() => _loading = false);
+      }
+    }
   }
 
   Future<void> _loadSpark({String? symbol, int? conId, String? secType}) async {
@@ -135,47 +148,58 @@ class _AssetLookupSheetState extends State<AssetLookupSheet> {
             ),
             const SizedBox(height: 12),
             Expanded(
-              child: SingleChildScrollView(
-                controller: ctrl,
-                scrollDirection: Axis.horizontal,
-                child: DataTable(
-                  columns: const [
-                    DataColumn(label: Text('Symbol')),
-                    DataColumn(label: Text('Name')),
-                    DataColumn(label: Text('Type')),
-                    DataColumn(label: Text('Exch')),
-                    DataColumn(label: Text('CCY')),
-                    DataColumn(label: Text('Spark')),
-                    DataColumn(label: Text('Trade')),
-                  ],
-                  rows: _rows.map((r) {
-                    final sym = (r['symbol'] ?? '').toString();
-                    final cid = (r['conId'] as num?);
-                    final key = cid != null ? cid.toString() : sym;
-                    final spark = _sparks[key] ?? const [];
-                    return DataRow(cells: [
-                      DataCell(Text(sym)),
-                      DataCell(SizedBox(
-                          width: 240,
-                          child: Text(
-                              ((r['name'] ?? r['description'] ?? '') as String),
-                              overflow: TextOverflow.ellipsis))),
-                      DataCell(Text((r['secType'] ?? '') as String)),
-                      DataCell(
-                        Text(((r['exchange'] ?? r['primaryExchange'] ?? '')
-                            as String)),
-                      ),
-                      DataCell(Text((r['currency'] ?? '') as String)),
-                      DataCell(SizedBox(
-                          width: 120, height: 36, child: sparkLine(spark))),
-                      DataCell(FilledButton(
-                        onPressed: () => widget.onSelect(r),
-                        child: const Text('Open'),
-                      )),
-                    ]);
-                  }).toList(),
-                ),
-              ),
+              child: _loading
+                  ? const Center(child: CircularProgressIndicator())
+                  : _rows.isEmpty && _ctl.text.trim().isNotEmpty
+                      ? Center(
+                          child: Text('No results for "${_ctl.text.trim()}"'))
+                      : SingleChildScrollView(
+                          controller: ctrl,
+                          scrollDirection: Axis.horizontal,
+                          child: DataTable(
+                            columns: const [
+                              DataColumn(label: Text('Symbol')),
+                              DataColumn(label: Text('Name')),
+                              DataColumn(label: Text('Type')),
+                              DataColumn(label: Text('Exch')),
+                              DataColumn(label: Text('CCY')),
+                              DataColumn(label: Text('Spark')),
+                              DataColumn(label: Text('Trade')),
+                            ],
+                            rows: _rows.map((r) {
+                              final sym = (r['symbol'] ?? '').toString();
+                              final cid = (r['conId'] as num?);
+                              final key = cid != null ? cid.toString() : sym;
+                              final spark = _sparks[key] ?? const [];
+                              return DataRow(cells: [
+                                DataCell(Text(sym)),
+                                DataCell(SizedBox(
+                                    width: 240,
+                                    child: Text(
+                                        (r['name'] ?? r['description'] ?? '')
+                                            .toString(),
+                                        overflow: TextOverflow.ellipsis))),
+                                DataCell(Text((r['secType'] ?? '').toString())),
+                                DataCell(
+                                  Text((r['exchange'] ??
+                                          r['primaryExchange'] ??
+                                          '')
+                                      .toString()),
+                                ),
+                                DataCell(
+                                    Text((r['currency'] ?? '').toString())),
+                                DataCell(SizedBox(
+                                    width: 120,
+                                    height: 36,
+                                    child: sparkLine(spark))),
+                                DataCell(FilledButton(
+                                  onPressed: () => widget.onSelect(r),
+                                  child: const Text('Open'),
+                                )),
+                              ]);
+                            }).toList(),
+                          ),
+                        ),
             ),
           ],
         ),
