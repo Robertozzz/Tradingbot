@@ -643,15 +643,28 @@ async def orders_place(payload: dict = Body(...)):
     limit    = payload.get("limitPrice")
     if (not conId and not symbol) or qty <= 0:
         raise HTTPException(400, "symbol/conId and qty required")
+    # basic guards
+    if typ not in ("MKT", "LMT"):
+        raise HTTPException(400, f"unsupported order type {typ}")
+    if tif not in ("DAY", "GTC", "IOC"):
+        raise HTTPException(400, f"unsupported TIF {tif}")
+
     c = Contract(conId=int(conId)) if conId else await _resolve_contract(symbol, secType, exchange, currency)
-    if typ == "LMT":
-        if limit is None:
-            raise HTTPException(400, "limitPrice required for LMT")
-        order: Order = LimitOrder(side, qty, float(limit), tif=tif)
-    else:
-        order = MarketOrder(side, qty, tif=tif)
-    trade = ib.placeOrder(c, order)
-    await ib.sleep(0.5)
+
+    try:
+        if typ == "LMT":
+            if limit is None:
+                raise HTTPException(400, "limitPrice required for LMT")
+            order: Order = LimitOrder(side, qty, float(limit), tif=tif)
+        else:
+            order = MarketOrder(side, qty, tif=tif)
+
+        trade = ib.placeOrder(c, order)
+        # give IB a moment to assign orderId; avoid long sleeps
+        await ib.sleep(0.2)
+    except Exception as e:
+        log.exception("place order failed")
+        raise HTTPException(502, detail=f"IBKR place failed: {e!s}")
     _log_order("place", {
         "symbol": symbol, "conId": getattr(c, "conId", None), "side": side,
         "type": typ, "qty": qty, "limitPrice": limit, "tif": tif,

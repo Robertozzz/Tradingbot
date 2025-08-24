@@ -316,9 +316,22 @@ class _AssetPanel extends StatefulWidget {
 class _AssetPanelState extends State<_AssetPanel> {
   String side = 'BUY';
   String type = 'MKT';
-  String tif = 'DAY';
+  String tif = 'DAY'; // DAY | GTC | IOC
   double qty = 1;
   double? lmt;
+  // Live L1
+  double? _bid, _ask, _last;
+  Timer? _quoteTimer;
+
+  // Sizing: by quantity OR by USD notional (auto size)
+  String _sizing = 'QTY'; // 'QTY' | 'USD'
+  double _usd = 1000;
+
+  // Bracket / OCO
+  bool _useBracket = false;
+  bool _tpSlAsPct = false; // false => absolute $, true => %
+  double? _tpAbs, _slAbs;
+  double _tpPct = 1.0, _slPct = 0.8;
   //bool advanced =
   //   false; // NEW: replaces "TradingView" switch & controls size/TV
 
@@ -333,6 +346,68 @@ class _AssetPanelState extends State<_AssetPanel> {
   bool get advanced => widget.advancedVN.value;
   VoidCallback? _advListener;
 
+  // --- Account / Buying Power state ---
+  Map<String, dynamic>? _acctSummary; // raw /ibkr/accounts (first account)
+  // Split: cash-only vs margin buying power (USD)
+  double? _bpCashUsd; // AvailableFunds / FullAvailableFunds
+  double? _bpMarginUsd; // BuyingPower (fall back to cash if missing)
+  bool _cashOnlyBP = true; // UI toggle: default to cash-only
+
+  // Parse "12345.67" or "12345.67 USD" → 12345.67
+  double? _numOrNull(dynamic v) {
+    if (v == null) return null;
+    final s = v.toString().trim();
+    final n = double.tryParse(s.replaceAll(RegExp(r'[^0-9\.\-]'), ''));
+    return (n != null && n.isFinite) ? n : null;
+  }
+
+  Future<void> _loadAccount() async {
+    try {
+      final m = await Api.ibkrAccounts();
+      if (m.isNotEmpty) {
+        final first = m.values.first as Map<String, dynamic>;
+        // Cash-only proxy
+        final cash = _numOrNull(first['AvailableFunds']) ??
+            _numOrNull(first['FullAvailableFunds']);
+        // Margin BP (IBKR-style)
+        final marg = _numOrNull(first['BuyingPower']) ?? cash;
+        setState(() {
+          _acctSummary = first;
+          _bpCashUsd = cash;
+          _bpMarginUsd = marg;
+        });
+      }
+    } catch (_) {/* ignore */}
+  }
+
+  // For now assume STK 1x notional; refine for FUT/FX later if needed.
+  int _maxQtyFor(double px) {
+    final bp = _activeBp();
+    if (bp == null || bp <= 0 || px <= 0) return 0;
+    final q = (bp / px).floor();
+    return q.clamp(0, 1 << 30);
+  }
+
+  double? _activeBp() => _cashOnlyBP ? _bpCashUsd : _bpMarginUsd;
+  double? _maxUsd() => _activeBp();
+
+  double? get _mid =>
+      (_bid != null && _ask != null) ? (_bid! + _ask!) / 2.0 : null;
+  double? _entryPx(String action) {
+    // prefer touch (ask for BUY, bid for SELL), fall back to last
+    if (action == 'BUY') return _ask ?? _last ?? _mid;
+    return _bid ?? _last ?? _mid;
+  }
+
+  int _sizedQty(String action) {
+    if (_sizing == 'QTY') return qty.isFinite ? qty.round() : 0;
+    final px = _entryPx(action);
+    if (px == null || px <= 0) return 0;
+    final q = (_usd / px);
+    // STK often integer; if you want fractional, remove round()
+    return q.isFinite ? q.round().clamp(1, 1 << 31) : 0;
+  }
+
   @override
   void initState() {
     super.initState();
@@ -340,6 +415,25 @@ class _AssetPanelState extends State<_AssetPanel> {
     _quoteLive = widget.quote;
     _histLive = widget.hist;
     _refreshLive();
+    _loadAccount(); // <-- fetch account summary / buying power
+    // start light quote poller for L1
+    _quoteTimer = Timer.periodic(const Duration(seconds: 2), (_) async {
+      try {
+        final int? conId = ((widget.pos['conId'] as num?) ??
+                (_quoteLive?['conId'] as num?) ??
+                (_histLive?['contract']?['conId'] as num?))
+            ?.toInt();
+        final q = await Api.ibkrQuote(conId: conId, symbol: widget.symbol);
+        if (!mounted) return;
+        setState(() {
+          _quoteLive = q;
+          _bid = (q['bid'] as num?)?.toDouble();
+          _ask = (q['ask'] as num?)?.toDouble();
+          _last = (q['last'] as num?)?.toDouble() ??
+              (q['close'] as num?)?.toDouble();
+        });
+      } catch (_) {}
+    });
     // No listener needed here; dialog listens to VN for sizing.
     // BUT the PANEL also must rebuild so the Switch, height, and TV swap update.
     _advListener = () {
@@ -351,15 +445,16 @@ class _AssetPanelState extends State<_AssetPanel> {
   @override
   void dispose() {
     if (_advListener != null) widget.advancedVN.removeListener(_advListener!);
+    _quoteTimer?.cancel();
     super.dispose();
   }
 
   Future<void> _reloadQuoteHist() async {
-    final int? conId = ((widget.pos['conId'] as num?) ??
-            (_quoteLive?['contract']?['conId'] as num?) ??
+    final int? conId = ((_quoteLive?['conId'] as num?) ??
             (_histLive?['contract']?['conId'] as num?) ??
-            (widget.quote?['contract']?['conId'] as num?) ??
-            (widget.hist?['contract']?['conId'] as num?))
+            (widget.quote?['conId'] as num?) ??
+            (widget.hist?['contract']?['conId'] as num?) ??
+            (widget.pos['conId'] as num?))
         ?.toInt();
     try {
       final q = await Api.ibkrQuote(conId: conId, symbol: widget.symbol);
@@ -435,6 +530,36 @@ class _AssetPanelState extends State<_AssetPanel> {
     }
   }
 
+  Widget _pill(String label, double? v, {bool money = false, Color? tone}) {
+    final txt = (v == null || !v.isFinite)
+        ? '—'
+        : (money
+            ? NumberFormat.currency(symbol: '\$').format(v)
+            : NumberFormat('0.#####').format(v));
+    return Chip(
+      label: Row(mainAxisSize: MainAxisSize.min, children: [
+        Text('$label '),
+        Text(txt, style: TextStyle(fontWeight: FontWeight.w700, color: tone)),
+      ]),
+    );
+  }
+
+  Widget _usdField({required ValueChanged<double> onChanged}) => SizedBox(
+        width: 130,
+        child: TextField(
+          keyboardType: const TextInputType.numberWithOptions(decimal: true),
+          decoration: const InputDecoration(isDense: true, hintText: 'USD'),
+          onChanged: (t) => onChanged(double.tryParse(t) ?? _usd),
+        ),
+      );
+  Widget _tiny(String label, VoidCallback onTap) => OutlinedButton(
+        onPressed: onTap,
+        style: OutlinedButton.styleFrom(
+            padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 6),
+            minimumSize: const Size(0, 0)),
+        child: Text(label),
+      );
+
   @override
   Widget build(BuildContext context) {
     final q = _quoteLive ?? widget.quote;
@@ -499,6 +624,21 @@ class _AssetPanelState extends State<_AssetPanel> {
               ),
 
               const SizedBox(height: 8),
+              // Live L1 chips
+              Wrap(spacing: 8, runSpacing: 8, children: [
+                _pill('Bid', _bid),
+                _pill('Mid', _mid),
+                _pill('Ask', _ask),
+                _pill('Last', _last),
+                const SizedBox(width: 12),
+                Builder(builder: (_) {
+                  final px = _entryPx(side);
+                  final qn = _sizedQty(side);
+                  final notional = (px != null && qn > 0) ? px * qn : null;
+                  return _pill('Est. Notional', notional,
+                      money: true, tone: Colors.amber);
+                }),
+              ]),
               // Price / Position / PnL chips
               if (last != null || heldQty != 0 || _pnl != null) ...[
                 Row(children: [
@@ -578,15 +718,257 @@ class _AssetPanelState extends State<_AssetPanel> {
               ),
               const SizedBox(height: 12),
               Wrap(spacing: 12, runSpacing: 12, children: [
-                _chip('Qty', trailing: _qtyField()),
+                _chip('Sizing',
+                    trailing: _seg(['QTY', 'USD'], _sizing,
+                        (v) => setState(() => _sizing = v))),
+                if (_sizing == 'QTY')
+                  _chip('Qty', trailing: _qtyField())
+                else
+                  _chip('Notional',
+                      trailing: _usdField(
+                          onChanged: (v) => setState(() => _usd = v))),
+                _chip('BP Mode',
+                    trailing: Row(mainAxisSize: MainAxisSize.min, children: [
+                      const Text('Cash only'),
+                      const SizedBox(width: 6),
+                      Switch(
+                        value: _cashOnlyBP,
+                        onChanged: (v) => setState(() => _cashOnlyBP = v),
+                      ),
+                    ])),
                 _chip('Type',
                     trailing: _seg(
                         ['MKT', 'LMT'], type, (v) => setState(() => type = v))),
-                if (type == 'LMT') _chip('Limit', trailing: _lmtField()),
+                if (type == 'LMT')
+                  _chip('Limit',
+                      trailing: Row(mainAxisSize: MainAxisSize.min, children: [
+                        _lmtField(),
+                        const SizedBox(width: 6),
+                        _tiny('Bid', () => setState(() => lmt = _bid)),
+                        const SizedBox(width: 4),
+                        _tiny('Mid', () => setState(() => lmt = _mid)),
+                        const SizedBox(width: 4),
+                        _tiny('Ask', () => setState(() => lmt = _ask)),
+                        const SizedBox(width: 4),
+                        _tiny('Last', () => setState(() => lmt = _last)),
+                      ])),
                 _chip('TIF',
-                    trailing: _seg(
-                        ['DAY', 'GTC'], tif, (v) => setState(() => tif = v))),
+                    trailing: _seg(['DAY', 'GTC', 'IOC'], tif,
+                        (v) => setState(() => tif = v))),
+                // quick notional presets
+                _chip('Presets',
+                    trailing: Wrap(spacing: 6, children: [
+                      _tiny('\$100', () {
+                        setState(() {
+                          _sizing = 'USD';
+                          _usd = 100;
+                        });
+                      }),
+                      _tiny('\$500', () {
+                        setState(() {
+                          _sizing = 'USD';
+                          _usd = 500;
+                        });
+                      }),
+                      _tiny('\$1k', () {
+                        setState(() {
+                          _sizing = 'USD';
+                          _usd = 1000;
+                        });
+                      }),
+                      _tiny('\$5k', () {
+                        setState(() {
+                          _sizing = 'USD';
+                          _usd = 5000;
+                        });
+                      }),
+                    ])),
+                if (_activeBp() != null && (_entryPx(side) ?? 0) > 0)
+                  _chip('Max Size', trailing: Builder(builder: (_) {
+                    final px = _entryPx(side)!;
+                    final qMax = _maxQtyFor(px);
+                    final usdMax = _maxUsd()!;
+                    return Row(mainAxisSize: MainAxisSize.min, children: [
+                      Chip(label: Text('~$qMax @ \$${px.toStringAsFixed(2)}')),
+                      const SizedBox(width: 6),
+                      Chip(
+                          label: Text('${_cashOnlyBP ? "Cash" : "Margin"} BP '
+                              '${NumberFormat.currency(symbol: '\$').format(usdMax)}')),
+                      const SizedBox(width: 8),
+                      _tiny('25%', () {
+                        setState(() {
+                          if (_sizing == 'USD') {
+                            _usd = usdMax * 0.25;
+                          } else {
+                            qty = (qMax * 0.25)
+                                .floorToDouble()
+                                .clamp(1, qMax.toDouble());
+                          }
+                        });
+                      }),
+                      const SizedBox(width: 4),
+                      _tiny('50%', () {
+                        setState(() {
+                          if (_sizing == 'USD') {
+                            _usd = usdMax * 0.50;
+                          } else {
+                            qty = (qMax * 0.50)
+                                .floorToDouble()
+                                .clamp(1, qMax.toDouble());
+                          }
+                        });
+                      }),
+                      const SizedBox(width: 4),
+                      _tiny('100%', () {
+                        setState(() {
+                          if (_sizing == 'USD') {
+                            _usd = usdMax;
+                          } else {
+                            qty = qMax.toDouble();
+                          }
+                        });
+                      }),
+                    ]);
+                  })),
               ]),
+              const SizedBox(height: 8),
+              const SizedBox(height: 8),
+              // --- Account Summary (uses _acctSummary so the field is actually used) ---
+              if (_acctSummary != null) ...[
+                Container(
+                  padding: const EdgeInsets.all(10),
+                  decoration: BoxDecoration(
+                    color: const Color(0xFF0F1A31),
+                    borderRadius: BorderRadius.circular(10),
+                    border: Border.all(color: const Color(0xFF22314E)),
+                  ),
+                  child: Wrap(
+                    spacing: 12,
+                    runSpacing: 12,
+                    children: [
+                      _chip('Account',
+                          trailing: Text((_acctSummary!['accountId'] ??
+                                  _acctSummary!['AccountId'] ??
+                                  _acctSummary!['acctId'] ??
+                                  '')
+                              .toString())),
+                      _chip('Currency',
+                          trailing: Text((_acctSummary!['Currency'] ??
+                                  _acctSummary!['currency'] ??
+                                  'USD')
+                              .toString())),
+                      _chip('NetLiq',
+                          trailing: Text(
+                            NumberFormat.currency(symbol: '\$').format(
+                              _numOrNull(_acctSummary!['NetLiquidation']) ?? 0,
+                            ),
+                          )),
+                      _chip('Excess Liquidity',
+                          trailing: Text(
+                            NumberFormat.currency(symbol: '\$').format(
+                              _numOrNull(_acctSummary!['ExcessLiquidity']) ?? 0,
+                            ),
+                          )),
+                      _chip('Gross Position',
+                          trailing: Text(
+                            NumberFormat.currency(symbol: '\$').format(
+                              _numOrNull(_acctSummary!['GrossPositionValue']) ??
+                                  0,
+                            ),
+                          )),
+                      _chip('BP (Cash)',
+                          trailing: Text(
+                            NumberFormat.currency(symbol: '\$')
+                                .format(_bpCashUsd ?? 0),
+                          )),
+                      _chip('BP (Margin)',
+                          trailing: Text(
+                            NumberFormat.currency(symbol: '\$')
+                                .format(_bpMarginUsd ?? 0),
+                          )),
+                    ],
+                  ),
+                ),
+                const SizedBox(height: 8),
+              ],
+              Container(
+                padding: const EdgeInsets.all(10),
+                decoration: BoxDecoration(
+                  color: const Color(0xFF0F1A31),
+                  borderRadius: BorderRadius.circular(10),
+                  border: Border.all(color: const Color(0xFF22314E)),
+                ),
+                child: Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    Row(children: [
+                      Switch(
+                        value: _useBracket,
+                        onChanged: (v) => setState(() => _useBracket = v),
+                      ),
+                      const SizedBox(width: 6),
+                      const Text('Attach Bracket (OCO)',
+                          style: TextStyle(fontWeight: FontWeight.w600)),
+                      const Spacer(),
+                      SegmentedButton<bool>(
+                        segments: const [
+                          ButtonSegment(value: false, label: Text('\$')),
+                          ButtonSegment(value: true, label: Text('%')),
+                        ],
+                        selected: {_tpSlAsPct},
+                        onSelectionChanged: (s) =>
+                            setState(() => _tpSlAsPct = s.first),
+                      ),
+                    ]),
+                    if (_useBracket)
+                      Wrap(spacing: 12, runSpacing: 12, children: [
+                        _chip(_tpSlAsPct ? 'Take Profit %' : 'Take Profit \$',
+                            trailing: SizedBox(
+                              width: 120,
+                              child: TextField(
+                                keyboardType:
+                                    const TextInputType.numberWithOptions(
+                                        decimal: true),
+                                decoration: const InputDecoration(
+                                    isDense: true, hintText: 'e.g. 1.0'),
+                                onChanged: (t) {
+                                  final v = double.tryParse(t);
+                                  setState(() {
+                                    if (_tpSlAsPct) {
+                                      _tpPct = v ?? _tpPct;
+                                    } else {
+                                      _tpAbs = v;
+                                    }
+                                  });
+                                },
+                              ),
+                            )),
+                        _chip(_tpSlAsPct ? 'Stop Loss %' : 'Stop Loss \$',
+                            trailing: SizedBox(
+                              width: 120,
+                              child: TextField(
+                                keyboardType:
+                                    const TextInputType.numberWithOptions(
+                                        decimal: true),
+                                decoration: const InputDecoration(
+                                    isDense: true, hintText: 'e.g. 0.8'),
+                                onChanged: (t) {
+                                  final v = double.tryParse(t);
+                                  setState(() {
+                                    if (_tpSlAsPct) {
+                                      _slPct = v ?? _slPct;
+                                    } else {
+                                      _slAbs = v;
+                                    }
+                                  });
+                                },
+                              ),
+                            )),
+                      ]),
+                  ],
+                ),
+              ),
+
               const SizedBox(height: 12),
               Row(children: [
                 Expanded(
@@ -728,17 +1110,82 @@ class _AssetPanelState extends State<_AssetPanel> {
 
   Future<void> _place(String side) async {
     try {
-      final conId = (widget.quote?['contract']?['conId'] as num?) ??
+      // Resolve conId from several places (pos, quote root, hist.contract)
+      final conIdNum = (widget.pos['conId'] as num?) ??
+          (widget.quote?['conId'] as num?) ??
           (widget.hist?['contract']?['conId'] as num?);
-      await Api.ibkrPlaceOrder(
-        symbol: conId == null ? widget.symbol : null,
-        conId: conId?.toInt(),
-        side: side,
-        type: type,
-        qty: qty,
-        limitPrice: lmt,
-        tif: tif,
-      );
+      final conId = conIdNum?.toInt();
+
+      // Only send limitPrice for LMT; avoid sending null/NaN
+      final double? limit = (type == 'LMT') ? lmt : null;
+      if (type == 'LMT' && (limit == null || limit.isNaN)) {
+        throw Exception('Limit price required for LMT');
+      }
+      // compute final size
+      final qFinal = _sizedQty(side);
+      if (qFinal <= 0) {
+        throw Exception('Qty must be > 0 (check USD sizing and price).');
+      }
+
+      // Optional clamp to Buying Power
+      final pxCtx = (type == 'LMT') ? limit : _entryPx(side);
+      final bpActive = _activeBp();
+      if (pxCtx != null && bpActive != null) {
+        final qMax = _maxQtyFor(pxCtx);
+        if (_sizing == 'QTY' && qFinal > qMax) {
+          throw Exception('Qty exceeds max by Buying Power (~$qMax).');
+        }
+        if (_sizing == 'USD' && _usd > bpActive) {
+          throw Exception(
+              'Notional exceeds ${_cashOnlyBP ? "Cash" : "Margin"} Buying Power '
+              '(${NumberFormat.currency(symbol: '\$').format(bpActive)})');
+        }
+      }
+
+      if (_useBracket) {
+        // derive absolute TP/SL from pct if needed
+        final px = (type == 'LMT') ? limit : _entryPx(side);
+        if (px == null || px <= 0) {
+          throw Exception('No price context for bracket.');
+        }
+        double? tp = _tpAbs;
+        double? sl = _slAbs;
+        if (_tpSlAsPct) {
+          // Treat as absolute delta in % of price (1.0 means +1.0 *not* 1%)
+          // If you want 1.0% style, change to (px * (1 + _tpPct/100))
+          tp = side == 'BUY' ? px + _tpPct : px - _tpPct;
+          sl = side == 'BUY' ? px - _slPct : px + _slPct;
+        } else {
+          if (tp == null || sl == null) {
+            throw Exception('Provide TP and SL for bracket.');
+          }
+          // For SELL, ensure tp < px and sl > px by convention
+          if (side == 'SELL') {
+            // nothing to do; server expects absolute prices either way
+          }
+        }
+        await Api.ibkrPlaceBracket(
+          symbol: conId == null ? widget.symbol : null,
+          conId: conId,
+          side: side,
+          qty: qFinal.toDouble(),
+          entryType: type,
+          limitPrice: limit,
+          takeProfit: tp,
+          stopLoss: sl,
+          tif: tif,
+        );
+      } else {
+        await Api.ibkrPlaceOrder(
+          symbol: conId == null ? widget.symbol : null,
+          conId: conId,
+          side: side,
+          type: type,
+          qty: qFinal.toDouble(),
+          limitPrice: limit,
+          tif: tif,
+        );
+      }
       if (!mounted) return;
       ScaffoldMessenger.of(context)
           .showSnackBar(const SnackBar(content: Text('Order sent')));

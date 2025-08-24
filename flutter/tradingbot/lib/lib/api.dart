@@ -85,6 +85,36 @@ class Api {
     return _getObj('/ibkr/history?$q');
   }
 
+  static Future<Map<String, dynamic>> ibkrPlaceBracket({
+    String? symbol,
+    int? conId,
+    required String side,
+    required String entryType, // 'MKT' | 'LMT'
+    required double qty,
+    double? limitPrice,
+    required double takeProfit,
+    required double stopLoss,
+    String tif = 'DAY',
+  }) async {
+    final body = <String, dynamic>{
+      if (symbol != null) 'symbol': symbol,
+      if (conId != null) 'conId': conId,
+      'side': side,
+      'entryType': entryType,
+      'qty': qty,
+      if (limitPrice != null) 'limitPrice': limitPrice,
+      'takeProfit': takeProfit,
+      'stopLoss': stopLoss,
+      'tif': tif,
+    };
+    final r = await http.post(Uri.parse('/ibkr/orders/bracket'),
+        headers: {'Content-Type': 'application/json'}, body: json.encode(body));
+    if (r.statusCode >= 300) {
+      throw Exception('bracket failed ${r.body}');
+    }
+    return json.decode(r.body) as Map<String, dynamic>;
+  }
+
   static Future<List<dynamic>> ibkrOpenOrders() =>
       _getList('/ibkr/orders/open');
   static Future<List<dynamic>> ibkrOrdersHistory({int limit = 200}) =>
