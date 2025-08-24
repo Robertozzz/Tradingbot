@@ -3,6 +3,7 @@ from __future__ import annotations
 import os, math, logging, json, time
 from pathlib import Path
 from fastapi import APIRouter, HTTPException, Body, Query
+import re
 from fastapi.responses import StreamingResponse
 from ib_insync import IB, util, Stock, Forex, Future, Contract, Order, MarketOrder, LimitOrder, BarData
 from typing import Any, Callable
@@ -465,41 +466,59 @@ async def search(q: str | None = Query(None), query: str | None = Query(None)):
     if not term:
         return []
 
-    try:
-        syms = await ib.reqMatchingSymbolsAsync(term)
-    except Exception as e:
-        # Surface the real reason (gateway not logged in, pacing, etc.)
-        raise HTTPException(502, detail=f"IBKR matchingSymbols failed: {e!s}")
-
-    out: list[dict] = []
-    for s in (syms or []):
-        for desc in (getattr(s, "contractDescriptions", None) or []):
-            try:
-                c = getattr(desc, "contract", None)
-                if not c:
+    async def _query_and_collect(qtext: str, out: list[dict]):
+        """Run reqMatchingSymbols on qtext and append normalized rows into out."""
+        try:
+            syms = await ib.reqMatchingSymbolsAsync(qtext)
+        except Exception as e:
+            # return silently so other variants still try
+            return
+        for s in (syms or []):
+            for desc in (getattr(s, "contractDescriptions", None) or []):
+                try:
+                    c = getattr(desc, "contract", None)
+                    if not c:
+                        continue
+                    # Qualify only if missing conId/exchange/currency
+                    need_qual = not getattr(c, "conId", None) or not getattr(c, "exchange", None) or not getattr(c, "currency", None)
+                    if need_qual:
+                        try:
+                            qc = (await ib.qualifyContractsAsync(c)) or []
+                            c = qc[0] if qc else c
+                        except Exception:
+                            pass
+                    out.append({
+                        "symbol": s.symbol or getattr(c, "symbol", None) or qtext.upper(),
+                        "name": s.description or getattr(c, "localSymbol", None) or getattr(c, "symbol", None) or qtext.upper(),
+                        "secType": getattr(c, "secType", None) or "STK",
+                        "conId": int(getattr(c, "conId", 0)) or None,
+                        "currency": getattr(c, "currency", None) or "USD",
+                        "exchange": getattr(c, "primaryExchange", None) or getattr(c, "exchange", None) or "SMART",
+                    })
+                except Exception:
                     continue
 
-                # Qualify only if missing conId or missing exchange/currency
-                need_qual = not getattr(c, "conId", None) or not getattr(c, "exchange", None) or not getattr(c, "currency", None)
-                if need_qual:
-                    try:
-                        qc = (await ib.qualifyContractsAsync(c)) or []
-                        c = qc[0] if qc else c
-                    except Exception:
-                        # Don’t fail the whole search—use what we have
-                        pass
+    # 1) Primary attempt
+    out: list[dict] = []
+    await _query_and_collect(term, out)
 
-                out.append({
-                    "symbol": s.symbol or getattr(c, "symbol", None) or term.upper(),
-                    "name": s.description or getattr(c, "localSymbol", None) or getattr(c, "symbol", None) or term.upper(),
-                    "secType": getattr(c, "secType", None) or "STK",
-                    "conId": int(getattr(c, "conId", 0)) or None,
-                    "currency": getattr(c, "currency", None) or "USD",
-                    "exchange": getattr(c, "primaryExchange", None) or getattr(c, "exchange", None) or "SMART",
-                })
-            except Exception:
-                # Skip this description only
-                continue
+    # 2) If weak or empty, try robust variants (helps for "Tesla", "Micro Soft", etc.)
+    if len(out) < 5:
+        variants: list[str] = []
+        # case variants
+        variants += [term.upper(), term.lower(), term.title()]
+        # de-space & punctuation stripped
+        compact = re.sub(r"\s+", "", term)
+        if compact and compact != term:
+            variants.append(compact)
+        # tokenized words (length >= 3), e.g., ["Tesla", "Motors", "Inc"]
+        tokens = [t for t in re.split(r"[^A-Za-z0-9]+", term) if len(t) >= 3]
+        variants += tokens
+        # unique order-preserving
+        seen_v = set()
+        variants = [v for v in variants if not (v in seen_v or seen_v.add(v))]
+        for v in variants[:8]:  # keep it sane
+            await _query_and_collect(v, out)
 
     # De-dup by conId (keep first)
     seen: set[int] = set()
