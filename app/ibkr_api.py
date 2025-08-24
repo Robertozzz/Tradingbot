@@ -318,7 +318,7 @@ async def positions():
             pos = await ib.reqPositionsAsync()
         else:
             ib.reqPositions()
-            await ib.sleep(1.0)  # brief window to collect snapshots
+            await asyncio.sleep(1.0)  # brief window to collect snapshots
             pos = list(ib.positions())
     except Exception as e:
         raise HTTPException(status_code=502, detail=f"reqPositions failed: {e!s}")
@@ -461,64 +461,87 @@ def _mk_contract(symbol: str | None = None, conId: int | None = None, exchange: 
 @router.get("/search")
 async def search(q: str | None = Query(None), query: str | None = Query(None)):
     await _ensure_connected()
-    q = (q or query or "").strip()
-    if not q:
+    term = (q or query or "").strip()
+    if not term:
         return []
+
     try:
-        syms = await ib.reqMatchingSymbolsAsync(q)
+        syms = await ib.reqMatchingSymbolsAsync(term)
     except Exception as e:
-        raise HTTPException(502, detail=f"search failed: {e!s}")
-    out = []
+        # Surface the real reason (gateway not logged in, pacing, etc.)
+        raise HTTPException(502, detail=f"IBKR matchingSymbols failed: {e!s}")
+
+    out: list[dict] = []
     for s in (syms or []):
-        # pick the 'best' contract description
-        for desc in s.contractDescriptions or []:
-            c = desc.contract
-            # qualify if conId missing/incomplete
-            if not getattr(c, "conId", None):
-                try:
-                    [c] = await ib.qualifyContractsAsync(c)
-                except Exception:
-                    pass
-            out.append({
-                "symbol": s.symbol,
-                "name": s.description or s.symbol,
-                "secType": c.secType,
-                "conId": c.conId,
-                "currency": c.currency,
-                "exchange": c.primaryExchange or c.exchange or "SMART",
-            })
-    # de-dup by conId
-    seen, uniq = set(), []
+        for desc in (getattr(s, "contractDescriptions", None) or []):
+            try:
+                c = getattr(desc, "contract", None)
+                if not c:
+                    continue
+
+                # Qualify only if missing conId or missing exchange/currency
+                need_qual = not getattr(c, "conId", None) or not getattr(c, "exchange", None) or not getattr(c, "currency", None)
+                if need_qual:
+                    try:
+                        qc = (await ib.qualifyContractsAsync(c)) or []
+                        c = qc[0] if qc else c
+                    except Exception:
+                        # Don’t fail the whole search—use what we have
+                        pass
+
+                out.append({
+                    "symbol": s.symbol or getattr(c, "symbol", None) or term.upper(),
+                    "name": s.description or getattr(c, "localSymbol", None) or getattr(c, "symbol", None) or term.upper(),
+                    "secType": getattr(c, "secType", None) or "STK",
+                    "conId": int(getattr(c, "conId", 0)) or None,
+                    "currency": getattr(c, "currency", None) or "USD",
+                    "exchange": getattr(c, "primaryExchange", None) or getattr(c, "exchange", None) or "SMART",
+                })
+            except Exception:
+                # Skip this description only
+                continue
+
+    # De-dup by conId (keep first)
+    seen: set[int] = set()
+    uniq: list[dict] = []
     for d in out:
         cid = d.get("conId")
-        if not cid or cid in seen: continue
-        seen.add(cid); uniq.append(d)
-    # If nothing matched, try a direct resolve of the exact token (e.g., "AAPL", "EURUSD")
+        if not cid:   # keep those without conId too (rare)
+            uniq.append(d)
+            continue
+        if cid in seen:
+            continue
+        seen.add(cid)
+        uniq.append(d)
+
+    # Fallback: try direct resolve if nothing matched (e.g., “AAPL”, “EURUSD”)
     if not uniq:
+        # Try stock
         try:
-            c = await _resolve_contract(q, "STK", "SMART", "USD")
+            c = await _resolve_contract(term, "STK", "SMART", "USD")
             uniq.append({
-                "symbol": getattr(c, "localSymbol", None) or c.symbol or q.upper(),
-                "name": getattr(c, "symbol", None) or q.upper(),
-                "secType": c.secType,
-                "conId": c.conId,
-                "currency": c.currency,
-                "exchange": c.primaryExchange or c.exchange or "SMART",
+                "symbol": getattr(c, "localSymbol", None) or getattr(c, "symbol", None) or term.upper(),
+                "name": getattr(c, "symbol", None) or term.upper(),
+                "secType": getattr(c, "secType", None) or "STK",
+                "conId": int(getattr(c, "conId", 0)) or None,
+                "currency": getattr(c, "currency", None) or "USD",
+                "exchange": getattr(c, "primaryExchange", None) or getattr(c, "exchange", None) or "SMART",
             })
         except Exception:
-            # Try common alternates (FX)
+            # Try FX (EURUSD style)
             try:
-                cfx = await _resolve_contract(q, "FX", "IDEALPRO", "USD")
+                cfx = await _resolve_contract(term, "FX", "IDEALPRO", "USD")
                 uniq.append({
-                    "symbol": getattr(cfx, "localSymbol", None) or cfx.symbol or q.upper(),
-                    "name": getattr(cfx, "symbol", None) or q.upper(),
-                    "secType": cfx.secType,
-                    "conId": cfx.conId,
-                    "currency": cfx.currency,
-                    "exchange": cfx.primaryExchange or cfx.exchange or "IDEALPRO",
+                    "symbol": getattr(cfx, "localSymbol", None) or getattr(cfx, "symbol", None) or term.upper(),
+                    "name": getattr(cfx, "symbol", None) or term.upper(),
+                    "secType": getattr(cfx, "secType", None) or "FX",
+                    "conId": int(getattr(cfx, "conId", 0)) or None,
+                    "currency": getattr(cfx, "currency", None) or "USD",
+                    "exchange": getattr(cfx, "primaryExchange", None) or getattr(cfx, "exchange", None) or "IDEALPRO",
                 })
             except Exception:
                 pass
+
     return uniq[:50]
 
 # --- quotes (last/bid/ask/high/low/close) ----------------------------------
@@ -544,7 +567,7 @@ async def quote(
         if not t or all(getattr(t, f, None) is None for f in ("last", "close", "bid", "ask")):
             # one-shot snapshot fallback (for accounts without live ticks)
             tkr = ib.reqMktData(c, snapshot=True)
-            await ib.sleep(0.25)
+            await asyncio.sleep(0.25)
             ib.cancelMktData(c)
             t = next((x for x in ib.tickers() if x.contract.conId == getattr(c, "conId", None)), None)
     except Exception as e:
@@ -639,7 +662,7 @@ async def portfolio_spark(duration: str = "1 D", barSize: str = "5 mins"):
             pos = await ib.reqPositionsAsync()
         else:
             ib.reqPositions()
-            await ib.sleep(1.0)
+            await asyncio.sleep(1.0)
             pos = list(ib.positions())
     finally:
         try: ib.cancelPositions()
@@ -677,7 +700,7 @@ async def pnl_summary():
             pos = await ib.reqPositionsAsync()
         else:
             ib.reqPositions()
-            await ib.sleep(1.0)
+            await asyncio.sleep(1.0)
             pos = list(ib.positions())
     finally:
         try: ib.cancelPositions()
@@ -732,7 +755,7 @@ async def orders_place(payload: dict = Body(...)):
 
         trade = ib.placeOrder(c, order)
         # Older ib_insync doesn't expose Trade.end(); give IB a short beat
-        await ib.sleep(0.25)
+        await asyncio.sleep(0.25)
     except Exception as e:
         log.exception("place order failed")
         raise HTTPException(502, detail=f"IBKR place failed: {e!s}")
@@ -794,7 +817,7 @@ async def orders_bracket(payload: dict = Body(...)):
         o.ocaType = 1
     # send
     ptrade = ib.placeOrder(c, parent)
-    await ib.sleep(0.25)
+    await asyncio.sleep(0.25)
     pid = getattr(ptrade.order, "orderId", None)
     if pid is None:
         raise HTTPException(502, "Parent orderId missing")
@@ -802,7 +825,7 @@ async def orders_bracket(payload: dict = Body(...)):
     sl.parentId = pid
     t1 = ib.placeOrder(c, tp)
     t2 = ib.placeOrder(c, sl)
-    await ib.sleep(0.25)
+    await asyncio.sleep(0.25)
     _log_order("bracket", {
         "symbol": symbol, "conId": getattr(c, "conId", None), "side": side,
         "qty": qty, "entryType": entryType, "limitPrice": lmt,
@@ -862,7 +885,7 @@ async def orders_replace(payload: dict = Body(...)):
     else:
         order = MarketOrder(side, qty, tif=tif)
     trade = ib.placeOrder(c, order)
-    await trade.end()
+    await asyncio.sleep(0.25)  # Trade.end() may not be awaitable on older ib_insync
     _log_order("replace", {
         "oldOrderId": int(old), "symbol": symbol, "conId": getattr(c, "conId", None),
         "side": side, "type": typ, "qty": qty, "limitPrice": limit, "tif": tif,
