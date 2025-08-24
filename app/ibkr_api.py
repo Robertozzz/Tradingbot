@@ -17,7 +17,13 @@ IB_HOST = os.getenv("IB_HOST", "127.0.0.1")
 IB_PORT = int(os.getenv("IB_PORT", "4002"))
 IB_CLIENT_ID = int(os.getenv("IB_CLIENT_ID", "11"))
 
+# Make ib_insync safe under ASGI/Jupyter nested loops
+try:
+    util.patchAsyncio()
+except Exception:
+    pass
 ib = IB()
+
 RUNTIME = Path(os.getenv("TB_RUNTIME_DIR", Path(__file__).resolve().parent.parent / "runtime"))
 RUNTIME.mkdir(parents=True, exist_ok=True)
 ORDERS_LOG = RUNTIME / "orders.log"
@@ -458,16 +464,24 @@ async def search(q: str | None = Query(None), query: str | None = Query(None)):
     q = (q or query or "").strip()
     if not q:
         return []
-    # fast symbol search
-    syms = await ib.reqMatchingSymbolsAsync(q)
+    try:
+        syms = await ib.reqMatchingSymbolsAsync(q)
+    except Exception as e:
+        raise HTTPException(502, detail=f"search failed: {e!s}")
     out = []
-    for s in syms:
+    for s in (syms or []):
         # pick the 'best' contract description
         for desc in s.contractDescriptions or []:
             c = desc.contract
+            # qualify if conId missing/incomplete
+            if not getattr(c, "conId", None):
+                try:
+                    [c] = await ib.qualifyContractsAsync(c)
+                except Exception:
+                    pass
             out.append({
                 "symbol": s.symbol,
-                "name": s.description,
+                "name": s.description or s.symbol,
                 "secType": c.secType,
                 "conId": c.conId,
                 "currency": c.currency,
@@ -477,7 +491,7 @@ async def search(q: str | None = Query(None), query: str | None = Query(None)):
     seen, uniq = set(), []
     for d in out:
         cid = d.get("conId")
-        if cid in seen: continue
+        if not cid or cid in seen: continue
         seen.add(cid); uniq.append(d)
     return uniq[:50]
 
@@ -492,16 +506,39 @@ async def quote(
 ):
     await _ensure_connected()
     c = _mk_contract(symbol, conId, exchange, secType, currency)
-    [t] = await ib.reqTickersAsync(c)
+    # qualify conId-only contracts so exchange/currency are present
+    if conId and (not getattr(c, "exchange", None) or not getattr(c, "currency", None)):
+        try:
+            [c] = await ib.qualifyContractsAsync(c)
+        except Exception:
+            pass
+    try:
+        tkrs = await ib.reqTickersAsync(c)
+        t = tkrs[0] if tkrs else None
+        if not t or all(getattr(t, f, None) is None for f in ("last", "close", "bid", "ask")):
+            # one-shot snapshot fallback (for accounts without live ticks)
+            tkr = ib.reqMktData(c, snapshot=True)
+            await ib.sleep(0.25)
+            ib.cancelMktData(c)
+            t = next((x for x in ib.tickers() if x.contract.conId == getattr(c, "conId", None)), None)
+    except Exception as e:
+        raise HTTPException(502, detail=f"quote failed: {e!s}")
+    if not t:
+        return {
+            "conId": getattr(c, "conId", None),
+            "symbol": getattr(c, "localSymbol", None) or getattr(c, "symbol", None),
+            "last": None, "close": None, "bid": None, "ask": None,
+            "high": None, "low": None, "time": None,
+        }
     return {
         "conId": getattr(t.contract, "conId", None),
         "symbol": getattr(t.contract, "localSymbol", None) or t.contract.symbol,
-        "last": t.last,
-        "close": t.close,
-        "bid": t.bid,
-        "ask": t.ask,
-        "high": t.high,
-        "low": t.low,
+        "last": _num_or_none(t.last),
+        "close": _num_or_none(t.close),
+        "bid": _num_or_none(t.bid),
+        "ask": _num_or_none(t.ask),
+        "high": _num_or_none(t.high),
+        "low": _num_or_none(t.low),
         "time": util.formatIBDatetime(t.time) if getattr(t, "time", None) else None,
     }
 
@@ -520,16 +557,24 @@ async def history(
 ):
     await _ensure_connected()
     c = _mk_contract(symbol, conId, exchange, secType, currency)
-    bars: list[BarData] = await ib.reqHistoricalDataAsync(
-        c,
-        endDateTime="",
-        durationStr=duration,
-        barSizeSetting=barSize,
-        whatToShow=what,
-        useRTH=useRTH,
-        formatDate=2,
-        keepUpToDate=False,
-    )
+    if conId and (not getattr(c, "exchange", None) or not getattr(c, "currency", None)):
+        try:
+            [c] = await ib.qualifyContractsAsync(c)
+        except Exception:
+            pass
+    try:
+        bars: list[BarData] = await ib.reqHistoricalDataAsync(
+            c,
+            endDateTime="",
+            durationStr=duration,
+            barSizeSetting=barSize,
+            whatToShow=what,
+            useRTH=useRTH,
+            formatDate=2,
+            keepUpToDate=False,
+        )
+    except Exception as e:
+        raise HTTPException(502, detail=f"history failed: {e!s}")
     return {
         "contract": {
             "conId": getattr(c, "conId", None),
@@ -660,8 +705,7 @@ async def orders_place(payload: dict = Body(...)):
             order = MarketOrder(side, qty, tif=tif)
 
         trade = ib.placeOrder(c, order)
-        # give IB a moment to assign orderId; avoid long sleeps
-        await ib.sleep(0.2)
+        await trade.end()  # wait until IB assigns ids / status
     except Exception as e:
         log.exception("place order failed")
         raise HTTPException(502, detail=f"IBKR place failed: {e!s}")
@@ -723,15 +767,16 @@ async def orders_bracket(payload: dict = Body(...)):
         o.ocaType = 1
     # send
     ptrade = ib.placeOrder(c, parent)
-    # bind children to parentId (orderId is assigned after placement)
-    await ib.sleep(0.2)
+    await ptrade.end()
     pid = getattr(ptrade.order, "orderId", None)
     if pid is None:
         raise HTTPException(502, "Parent orderId missing")
     tp.parentId = pid
     sl.parentId = pid
-    ib.placeOrder(c, tp)
-    ib.placeOrder(c, sl)
+    t1 = ib.placeOrder(c, tp)
+    t2 = ib.placeOrder(c, sl)
+    # don't strictly need to await, but it helps when the UI refreshes immediately
+    await asyncio.gather(t1.end(), t2.end())
     _log_order("bracket", {
         "symbol": symbol, "conId": getattr(c, "conId", None), "side": side,
         "qty": qty, "entryType": entryType, "limitPrice": lmt,
@@ -791,7 +836,7 @@ async def orders_replace(payload: dict = Body(...)):
     else:
         order = MarketOrder(side, qty, tif=tif)
     trade = ib.placeOrder(c, order)
-    await ib.sleep(0.5)
+    await trade.end()
     _log_order("replace", {
         "oldOrderId": int(old), "symbol": symbol, "conId": getattr(c, "conId", None),
         "side": side, "type": typ, "qty": qty, "limitPrice": limit, "tif": tif,

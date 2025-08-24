@@ -6,15 +6,23 @@ class Api {
   static String baseUrl = '';
 
   static Uri _uri(String path) {
-    // TODO
-    return Uri.parse(path.startsWith('/') ? path : '/$path'); // RELEASE
-    // return Uri.parse(
-    //     'http://192.168.133.130${path.startsWith('/') ? path : '/$path'}'); // FLUTTER DEV
+    final p = path.startsWith('/') ? path : '/$path';
+    if (baseUrl.isEmpty) {
+      // Relative (works when your Flutter Web/app is reverse-proxied with the API)
+      return Uri.parse(p);
+    }
+    final root = baseUrl.endsWith('/')
+        ? baseUrl.substring(0, baseUrl.length - 1)
+        : baseUrl;
+    return Uri.parse('$root$p');
   }
 
   static Future<Map<String, dynamic>> _getObj(String path) async {
     final r = await http.get(_uri(path));
-    if (r.statusCode != 200) throw Exception('GET $path -> ${r.statusCode}');
+    if (r.statusCode != 200) {
+      throw Exception(
+          'GET $path -> ${r.statusCode} ${r.reasonPhrase ?? ''} ${r.body}');
+    }
     final d = jsonDecode(r.body);
     if (d is! Map<String, dynamic>) throw Exception('Expected object');
     return d;
@@ -22,7 +30,10 @@ class Api {
 
   static Future<List<dynamic>> _getList(String path) async {
     final r = await http.get(_uri(path));
-    if (r.statusCode != 200) throw Exception('GET $path -> ${r.statusCode}');
+    if (r.statusCode != 200) {
+      throw Exception(
+          'GET $path -> ${r.statusCode} ${r.reasonPhrase ?? ''} ${r.body}');
+    }
     final d = jsonDecode(r.body);
     if (d is! List) throw Exception('Expected list');
     return d;
@@ -107,7 +118,7 @@ class Api {
       'stopLoss': stopLoss,
       'tif': tif,
     };
-    final r = await http.post(Uri.parse('/ibkr/orders/bracket'),
+    final r = await http.post(_uri('/ibkr/orders/bracket'),
         headers: {'Content-Type': 'application/json'}, body: json.encode(body));
     if (r.statusCode >= 300) {
       throw Exception('bracket failed ${r.body}');
