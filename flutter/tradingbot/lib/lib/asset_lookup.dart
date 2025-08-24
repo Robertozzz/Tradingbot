@@ -146,7 +146,8 @@ class _AssetLookupSheetState extends State<AssetLookupSheet> {
             TextField(
               controller: _ctl,
               decoration: const InputDecoration(
-                  hintText: 'e.g. AAPL, MSFT, ES, EURUSD'),
+                  hintText:
+                      'Search by ticker or name (e.g. AAPL, Microsoft, EURUSD)'),
               onSubmitted: (_) => _searchNow(),
             ),
             const SizedBox(height: 12),

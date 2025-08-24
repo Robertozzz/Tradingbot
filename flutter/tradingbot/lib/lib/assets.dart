@@ -322,6 +322,7 @@ class _AssetPanelState extends State<_AssetPanel> {
   // Live L1
   double? _bid, _ask, _last;
   Timer? _quoteTimer;
+  String? _assetName; // pretty name for header
 
   // Sizing: by quantity OR by USD notional (auto size)
   String _sizing = 'QTY'; // 'QTY' | 'USD'
@@ -414,6 +415,15 @@ class _AssetPanelState extends State<_AssetPanel> {
     // seed with passed-in data so panel renders instantly
     _quoteLive = widget.quote;
     _histLive = widget.hist;
+    // <-- also seed L1 so pills/notional work before the first poll tick
+    if (_quoteLive != null) {
+      _bid = (_quoteLive!['bid'] as num?)?.toDouble();
+      _ask = (_quoteLive!['ask'] as num?)?.toDouble();
+      _last = (_quoteLive!['last'] as num?)?.toDouble() ??
+          (_quoteLive!['close'] as num?)?.toDouble();
+    }
+    // try to discover a nice display name (positions don't have names)
+    _loadPrettyName();
     _refreshLive();
     _loadAccount(); // <-- fetch account summary / buying power
     // start light quote poller for L1
@@ -440,6 +450,30 @@ class _AssetPanelState extends State<_AssetPanel> {
       if (mounted) setState(() {});
     };
     widget.advancedVN.addListener(_advListener!);
+  }
+
+  Future<void> _loadPrettyName() async {
+    try {
+      // Prefer matching by conId if available, else by symbol
+      final int? conId = ((widget.pos['conId'] as num?) ??
+              (_quoteLive?['conId'] as num?) ??
+              (_histLive?['contract']?['conId'] as num?))
+          ?.toInt();
+      final list = await Api.ibkrSearch(widget.symbol);
+      for (final e in list) {
+        final m = Map<String, dynamic>.from(e as Map);
+        final cid = (m['conId'] as num?)?.toInt();
+        if (conId != null && cid != null && cid == conId) {
+          if (mounted)
+            setState(() => _assetName = (m['name'] ?? '').toString());
+          return;
+        }
+      }
+      if (list.isNotEmpty && mounted) {
+        final m = Map<String, dynamic>.from(list.first as Map);
+        setState(() => _assetName = (m['name'] ?? '').toString());
+      }
+    } catch (_) {/* ignore */}
   }
 
   @override
@@ -585,9 +619,12 @@ class _AssetPanelState extends State<_AssetPanel> {
       children: [
         Row(
           children: [
-            Text(widget.symbol,
-                style:
-                    const TextStyle(fontWeight: FontWeight.bold, fontSize: 18)),
+            Text(
+              _assetName == null || _assetName!.isEmpty
+                  ? widget.symbol
+                  : '${widget.symbol} — $_assetName',
+              style: const TextStyle(fontWeight: FontWeight.bold, fontSize: 18),
+            ),
             const Spacer(),
             const Text('Advanced'),
             const SizedBox(width: 8),
@@ -736,6 +773,7 @@ class _AssetPanelState extends State<_AssetPanel> {
                           DataColumn(label: Text('Status')),
                           DataColumn(label: Text('Filled')),
                           DataColumn(label: Text('Remain')),
+                          DataColumn(label: Text('Modify')),
                           DataColumn(label: Text('Cancel')),
                         ],
                         rows: _orders
@@ -750,6 +788,7 @@ class _AssetPanelState extends State<_AssetPanel> {
                                   DataCell(Text('${o['status'] ?? ''}')),
                                   DataCell(Text('${o['filled'] ?? 0}')),
                                   DataCell(Text('${o['remaining'] ?? 0}')),
+                                  DataCell(_modifyButton(o)),
                                   DataCell(IconButton(
                                     icon: const Icon(Icons.cancel),
                                     onPressed: () {
@@ -794,8 +833,16 @@ class _AssetPanelState extends State<_AssetPanel> {
                 ),
               ])),
           _chip('Type',
-              trailing:
-                  _seg(['MKT', 'LMT'], type, (v) => setState(() => type = v))),
+              trailing: _seg(['MKT', 'LMT'], type, (v) {
+                setState(() {
+                  type = v;
+                  // when switching to LMT, auto-populate limit from touch
+                  if (type == 'LMT' && (lmt == null || lmt!.isNaN)) {
+                    final px = _entryPx(side);
+                    if (px != null && px.isFinite) lmt = px;
+                  }
+                });
+              })),
           if (type == 'LMT')
             _chip('Limit',
                 trailing: Row(mainAxisSize: MainAxisSize.min, children: [
@@ -812,33 +859,6 @@ class _AssetPanelState extends State<_AssetPanel> {
           _chip('TIF',
               trailing: _seg(
                   ['DAY', 'GTC', 'IOC'], tif, (v) => setState(() => tif = v))),
-          _chip('Presets',
-              trailing: Wrap(spacing: 6, children: [
-                _tiny('\$100', () {
-                  setState(() {
-                    _sizing = 'USD';
-                    _usd = 100;
-                  });
-                }),
-                _tiny('\$500', () {
-                  setState(() {
-                    _sizing = 'USD';
-                    _usd = 500;
-                  });
-                }),
-                _tiny('\$1k', () {
-                  setState(() {
-                    _sizing = 'USD';
-                    _usd = 1000;
-                  });
-                }),
-                _tiny('\$5k', () {
-                  setState(() {
-                    _sizing = 'USD';
-                    _usd = 5000;
-                  });
-                }),
-              ])),
           if (_activeBp() != null && (_entryPx(side) ?? 0) > 0)
             _chip('Max Size', trailing: Builder(builder: (_) {
               final px = _entryPx(side)!;
@@ -900,7 +920,7 @@ class _AssetPanelState extends State<_AssetPanel> {
               spacing: 12,
               runSpacing: 12,
               children: [
-                _chip('Account',
+                _chip('Account ID',
                     trailing: Text((_acctSummary!['accountId'] ??
                             _acctSummary!['AccountId'] ??
                             _acctSummary!['acctId'] ??
@@ -1109,6 +1129,75 @@ class _AssetPanelState extends State<_AssetPanel> {
           onChanged: (t) => setState(() => lmt = double.tryParse(t)),
         ),
       );
+
+  Widget _modifyButton(Map<String, dynamic> o) {
+    final isLmt = (o['type'] ?? '').toString().toUpperCase() == 'LMT';
+    if (!isLmt) {
+      return const Text('—');
+    }
+    return IconButton(
+      icon: const Icon(Icons.edit),
+      onPressed: () async {
+        final ctlPx = TextEditingController(text: (o['lmt'] ?? '').toString());
+        final ctlQty = TextEditingController(text: (o['qty'] ?? '').toString());
+        String tifLocal = (o['tif'] ?? 'DAY').toString();
+        final result = await showDialog<bool>(
+          context: context,
+          builder: (_) => AlertDialog(
+            title: const Text('Modify Order'),
+            content: Column(
+              mainAxisSize: MainAxisSize.min,
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                TextField(
+                    controller: ctlPx,
+                    decoration: const InputDecoration(labelText: 'Limit')),
+                const SizedBox(height: 8),
+                TextField(
+                    controller: ctlQty,
+                    decoration: const InputDecoration(labelText: 'Qty')),
+                const SizedBox(height: 8),
+                DropdownButton<String>(
+                  value: tifLocal,
+                  items: const [
+                    DropdownMenuItem(value: 'DAY', child: Text('DAY')),
+                    DropdownMenuItem(value: 'GTC', child: Text('GTC')),
+                    DropdownMenuItem(value: 'IOC', child: Text('IOC')),
+                  ],
+                  onChanged: (v) => tifLocal = v ?? 'DAY',
+                ),
+              ],
+            ),
+            actions: [
+              TextButton(
+                  onPressed: () => Navigator.pop(context, false),
+                  child: const Text('Cancel')),
+              FilledButton(
+                  onPressed: () => Navigator.pop(context, true),
+                  child: const Text('Save')),
+            ],
+          ),
+        );
+        if (result != true) return;
+        final id = (o['orderId'] as num?)?.toInt();
+        if (id == null) return;
+        final newPx = double.tryParse(ctlPx.text);
+        final newQty = double.tryParse(ctlQty.text)?.toDouble();
+        if (newPx == null || newQty == null) return;
+        await Api.ibkrReplaceOrder({
+          'orderId': id,
+          'symbol': o['symbol'],
+          'conId': o['conId'],
+          'side': o['action'],
+          'type': 'LMT',
+          'qty': newQty,
+          'limitPrice': newPx,
+          'tif': tifLocal,
+        });
+        _refreshLive();
+      },
+    );
+  }
 
   Future<void> _place(String side) async {
     try {
