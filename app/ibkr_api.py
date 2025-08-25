@@ -29,6 +29,47 @@ RUNTIME = Path(os.getenv("TB_RUNTIME_DIR", Path(__file__).resolve().parent.paren
 RUNTIME.mkdir(parents=True, exist_ok=True)
 ORDERS_LOG = RUNTIME / "orders.log"
 
+# ---------- order streaming state ----------
+ORD_QUEUE: "asyncio.Queue[dict]" = asyncio.Queue(maxsize=1000)
+
+def _order_trade_to_dict(t) -> dict:
+    c = t.contract
+    o = t.order
+    st = t.orderStatus
+    return {
+        "ts": int(time.time()),
+        "event": "tradeUpdate",
+        "orderId": getattr(o, "orderId", None),
+        "permId": getattr(o, "permId", None),
+        "symbol": getattr(c, "localSymbol", None) or getattr(c, "symbol", None),
+        "conId": getattr(c, "conId", None),
+        "secType": getattr(c, "secType", None),
+        "action": getattr(o, "action", None),
+        "type": getattr(o, "orderType", None),
+        "lmt": getattr(o, "lmtPrice", None),
+        "tif": getattr(o, "tif", None),
+        "qty": getattr(o, "totalQuantity", None),
+        "status": getattr(st, "status", None),
+        "filled": getattr(st, "filled", None),
+        "remaining": getattr(st, "remaining", None),
+        "avgFillPrice": getattr(st, "avgFillPrice", None),
+    }
+
+def _attach_trade_listener(trade):
+    # Send one snapshot now, then on every update
+    async def _emit_snapshot():
+        try:
+            ORD_QUEUE.put_nowait(_order_trade_to_dict(trade))
+        except asyncio.QueueFull:
+            pass
+    trade.updateEvent += lambda _=None: asyncio.get_running_loop().create_task(_emit_snapshot())
+    # initial
+    try:
+        loop = asyncio.get_running_loop()
+        loop.create_task(_emit_snapshot())
+    except RuntimeError:
+        pass
+
 # ---------- news streaming state ----------
 # in-memory state; simple and sturdy for single-process FastAPI
 NEWS_SEEN: dict[int, set[str]] = defaultdict(set)    # tickerId -> set(articleId)
@@ -428,6 +469,38 @@ async def orders_open():
         })
     return out
 
+@router.get("/orders/stream")
+async def orders_stream():
+    """
+    Server-Sent Events for order/trade updates.
+    On connect: emits a snapshot of current open trades, then pushes live updates.
+    """
+    await _ensure_connected()
+    # attach listeners to existing trades so further updates are pushed
+    for t in ib.openTrades():
+        _attach_trade_listener(t)
+    # also attach to any new trades created later
+    def _on_new_trade(trade):
+        _attach_trade_listener(trade)
+    ib.newOrderEvent += _on_new_trade
+
+    async def _gen():
+        # initial snapshot (open)
+        for t in ib.openTrades():
+            yield f"event: trade\ndata: {json.dumps(_order_trade_to_dict(t), separators=(',',':'))}\n\n"
+        try:
+            while True:
+                item = await ORD_QUEUE.get()
+                yield f"event: trade\ndata: {json.dumps(item, separators=(',',':'))}\n\n"
+        except asyncio.CancelledError:
+            return
+        finally:
+            try:
+                ib.newOrderEvent -= _on_new_trade
+            except Exception:
+                pass
+    return StreamingResponse(_gen(), media_type="text/event-stream")
+
 @router.get("/orders/history")
 async def orders_history(limit: int = 200):
     if not ORDERS_LOG.exists():
@@ -457,6 +530,27 @@ def _mk_contract(symbol: str | None = None, conId: int | None = None, exchange: 
     # default to SMART/US stocks unless specified
     c = Stock(symbol, exchange or 'SMART', currency or 'USD')
     return c
+
+async def _qualify(c: Contract) -> Contract:
+    """Best-effort qualification so exchange/currency are present."""
+    try:
+        qc = await ib.qualifyContractsAsync(c)
+        if qc:
+            return qc[0]
+    except Exception:
+        pass
+    return c
+
+async def _await_status(trade, beats: int = 12, delay: float = 0.10):
+    """
+    Give TWS a brief moment to attach an initial orderStatus (Submitted/PreSubmitted/…).
+    """
+    for _ in range(max(1, beats)):
+        st = getattr(trade, "orderStatus", None)
+        if st and getattr(st, "status", None):
+            return st
+        await asyncio.sleep(delay)
+    return getattr(trade, "orderStatus", None)
 
 # --- search/contracts (find tradables by text) -----------------------------
 @router.get("/search")
@@ -532,6 +626,10 @@ async def search(q: str | None = Query(None), query: str | None = Query(None)):
             continue
         seen.add(cid)
         uniq.append(d)
+
+    # Soft-rank: prefer rows whose 'name' contains the term (case-insensitive)
+    tl = term.lower()
+    uniq.sort(key=lambda r: 0 if tl in (r.get("name","") or "").lower() else 1)
 
     # Fallback: try direct resolve if nothing matched (e.g., “AAPL”, “EURUSD”)
     if not uniq:
@@ -763,7 +861,7 @@ async def orders_place(payload: dict = Body(...)):
         raise HTTPException(400, f"unsupported TIF {tif}")
 
     c = Contract(conId=int(conId)) if conId else await _resolve_contract(symbol, secType, exchange, currency)
-
+    c = await _qualify(c)
     try:
         if typ == "LMT":
             if limit is None:
@@ -773,17 +871,26 @@ async def orders_place(payload: dict = Body(...)):
             order = MarketOrder(side, qty, tif=tif)
 
         trade = ib.placeOrder(c, order)
-        # Older ib_insync doesn't expose Trade.end(); give IB a short beat
-        await asyncio.sleep(0.25)
+        # attach live listener so clients on /orders/stream get push updates
+        _attach_trade_listener(trade)
+        st = await _await_status(trade)
     except Exception as e:
         log.exception("place order failed")
         raise HTTPException(502, detail=f"IBKR place failed: {e!s}")
     _log_order("place", {
         "symbol": symbol, "conId": getattr(c, "conId", None), "side": side,
         "type": typ, "qty": qty, "limitPrice": limit, "tif": tif,
-        "orderId": getattr(trade.order, "orderId", None), "permId": getattr(trade.order, "permId", None)
+        "orderId": getattr(trade.order, "orderId", None),
+        "permId": getattr(trade.order, "permId", None),
+        "status": getattr(st, "status", None) if st else None,
     })
-    return {"orderId": trade.order.orderId, "permId": trade.order.permId}
+    return {
+        "orderId": getattr(trade.order, "orderId", None),
+        "permId": getattr(trade.order, "permId", None),
+        "status": getattr(st, "status", None) if st else None,
+        "filled": getattr(st, "filled", None) if st else None,
+        "remaining": getattr(st, "remaining", None) if st else None,
+    }
     
 @router.post("/orders/bracket")
 async def orders_bracket(payload: dict = Body(...)):
@@ -811,6 +918,7 @@ async def orders_bracket(payload: dict = Body(...)):
     if tp_px <= 0 or sl_px <= 0:
         raise HTTPException(400, "takeProfit and stopLoss absolute prices required")
     c = Contract(conId=int(conId)) if conId else await _resolve_contract(symbol)
+    c = await _qualify(c)
     parent = LimitOrder(side, qty, float(lmt)) if entryType == "LMT" else MarketOrder(side, qty)
     parent.tif = tif
     parent.transmit = False
@@ -836,7 +944,9 @@ async def orders_bracket(payload: dict = Body(...)):
         o.ocaType = 1
     # send
     ptrade = ib.placeOrder(c, parent)
-    await asyncio.sleep(0.25)
+    # push updates for parent
+    _attach_trade_listener(ptrade)
+    pst = await _await_status(ptrade)
     pid = getattr(ptrade.order, "orderId", None)
     if pid is None:
         raise HTTPException(502, "Parent orderId missing")
@@ -844,13 +954,26 @@ async def orders_bracket(payload: dict = Body(...)):
     sl.parentId = pid
     t1 = ib.placeOrder(c, tp)
     t2 = ib.placeOrder(c, sl)
-    await asyncio.sleep(0.25)
+    # push updates for children
+    _attach_trade_listener(t1)
+    _attach_trade_listener(t2)
+    st1 = await _await_status(t1)
+    st2 = await _await_status(t2)
     _log_order("bracket", {
         "symbol": symbol, "conId": getattr(c, "conId", None), "side": side,
         "qty": qty, "entryType": entryType, "limitPrice": lmt,
-        "tp": tp_px, "sl": sl_px, "parentId": pid
+        "tp": tp_px, "sl": sl_px, "parentId": pid,
+        "parentStatus": getattr(pst, "status", None),
+        "tpStatus": getattr(st1, "status", None),
+        "slStatus": getattr(st2, "status", None),
     })
-    return {"parentId": pid, "ocaGroup": oca}
+    return {
+        "parentId": pid,
+        "ocaGroup": oca,
+        "parentStatus": getattr(pst, "status", None),
+        "tpStatus": getattr(st1, "status", None),
+        "slStatus": getattr(st2, "status", None),
+    }
 
 @router.post("/orders/cancel")
 async def orders_cancel(payload: dict = Body(...)):
@@ -897,6 +1020,7 @@ async def orders_replace(payload: dict = Body(...)):
     if (not conId and not symbol) or qty <= 0:
         raise HTTPException(400, "symbol/conId and qty required")
     c = Contract(conId=int(conId)) if conId else await _resolve_contract(symbol, secType, exchange, currency)
+    c = await _qualify(c)
     if typ == "LMT":
         if limit is None:
             raise HTTPException(400, "limitPrice required for LMT")
@@ -904,10 +1028,19 @@ async def orders_replace(payload: dict = Body(...)):
     else:
         order = MarketOrder(side, qty, tif=tif)
     trade = ib.placeOrder(c, order)
-    await asyncio.sleep(0.25)  # Trade.end() may not be awaitable on older ib_insync
+    # push updates for the replacement order as well
+    _attach_trade_listener(trade)
+    st = await _await_status(trade)
     _log_order("replace", {
         "oldOrderId": int(old), "symbol": symbol, "conId": getattr(c, "conId", None),
         "side": side, "type": typ, "qty": qty, "limitPrice": limit, "tif": tif,
-        "orderId": getattr(trade.order, "orderId", None), "permId": getattr(trade.order, "permId", None)
+        "orderId": getattr(trade.order, "orderId", None),
+        "permId": getattr(trade.order, "permId", None),
+        "status": getattr(st, "status", None) if st else None,
     })
-    return {"ok": True, "orderId": trade.order.orderId, "permId": trade.order.permId}
+    return {
+        "ok": True,
+        "orderId": getattr(trade.order, "orderId", None),
+        "permId": getattr(trade.order, "permId", None),
+        "status": getattr(st, "status", None) if st else None,
+    }

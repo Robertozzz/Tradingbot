@@ -1,5 +1,8 @@
 import 'dart:async';
+import 'dart:convert';
 import 'dart:math' as math;
+import 'package:flutter_client_sse/constants/sse_request_type_enum.dart';
+import 'package:flutter_client_sse/flutter_client_sse.dart';
 import 'package:fl_chart/fl_chart.dart';
 import 'package:flutter/material.dart';
 import 'package:intl/intl.dart';
@@ -346,6 +349,7 @@ class _AssetPanelState extends State<_AssetPanel> {
   bool _lockParentScroll = false;
   bool get advanced => widget.advancedVN.value;
   VoidCallback? _advListener;
+  StreamSubscription<SSEModel>? _orderSseSub;
 
   // --- Account / Buying Power state ---
   Map<String, dynamic>? _acctSummary; // raw /ibkr/accounts (first account)
@@ -450,6 +454,25 @@ class _AssetPanelState extends State<_AssetPanel> {
       if (mounted) setState(() {});
     };
     widget.advancedVN.addListener(_advListener!);
+
+    // --- Subscribe to server-sent order updates and refresh when relevant ---
+    _orderSseSub = SSEClient.subscribeToSSE(
+      url: '${Api.baseUrl}/ibkr/orders/stream',
+      method: SSERequestType.GET, // ✅ use enum instead of string
+      header: const {
+        'Accept': 'text/event-stream',
+      },
+    ).listen((evt) async {
+      if (!mounted) return;
+      try {
+        final String? data = evt.data;
+        if (data == null || data.isEmpty) return;
+        final m = jsonDecode(data);
+        // your event handling...
+      } catch (_) {}
+    }, onError: (_) {
+      // ignore errors
+    });
   }
 
   Future<void> _loadPrettyName() async {
@@ -480,6 +503,9 @@ class _AssetPanelState extends State<_AssetPanel> {
   void dispose() {
     if (_advListener != null) widget.advancedVN.removeListener(_advListener!);
     _quoteTimer?.cancel();
+    try {
+      _orderSseSub?.cancel();
+    } catch (_) {}
     super.dispose();
   }
 
@@ -1233,6 +1259,7 @@ class _AssetPanelState extends State<_AssetPanel> {
         }
       }
 
+      dynamic res;
       if (_useBracket) {
         // derive absolute TP/SL from pct if needed
         final px = (type == 'LMT') ? limit : _entryPx(side);
@@ -1255,7 +1282,7 @@ class _AssetPanelState extends State<_AssetPanel> {
             // nothing to do; server expects absolute prices either way
           }
         }
-        await Api.ibkrPlaceBracket(
+        res = await Api.ibkrPlaceBracket(
           symbol: conId == null ? widget.symbol : null,
           conId: conId,
           side: side,
@@ -1267,7 +1294,7 @@ class _AssetPanelState extends State<_AssetPanel> {
           tif: tif,
         );
       } else {
-        await Api.ibkrPlaceOrder(
+        res = await Api.ibkrPlaceOrder(
           symbol: conId == null ? widget.symbol : null,
           conId: conId,
           side: side,
@@ -1278,8 +1305,15 @@ class _AssetPanelState extends State<_AssetPanel> {
         );
       }
       if (!mounted) return;
-      ScaffoldMessenger.of(context)
-          .showSnackBar(const SnackBar(content: Text('Order sent')));
+      // Prefer 'status' (simple orders) or 'parentStatus' (brackets)
+      String? st;
+      if (res is Map) {
+        final m = Map<String, dynamic>.from(res);
+        st = (m['status'] ?? m['parentStatus'])?.toString();
+      }
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(content: Text(st == null ? 'Order sent' : 'Order $st')),
+      );
       _refreshLive();
     } catch (e) {
       if (!mounted) return;
