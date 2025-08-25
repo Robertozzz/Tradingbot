@@ -56,14 +56,41 @@ def _order_trade_to_dict(t) -> dict:
     }
 
 def _attach_trade_listener(trade):
-    # Send one snapshot now, then on every update
+    """
+    Attach a listener to a Trade that fires on any meaningful change.
+    Different ib_insync versions expose different events, so we probe a set.
+    """
     async def _emit_snapshot():
         try:
             ORD_QUEUE.put_nowait(_order_trade_to_dict(trade))
         except asyncio.QueueFull:
             pass
-    trade.updateEvent += lambda _=None: asyncio.get_running_loop().create_task(_emit_snapshot())
-    # initial
+
+    def _on_any(_=None, *args, **kwargs):
+        try:
+            asyncio.get_running_loop().create_task(_emit_snapshot())
+        except RuntimeError:
+            # Not in an event loop yet; ignore
+            pass
+
+    # Try a range of possible event names across ib_insync versions.
+    for evname in (
+        "updateEvent",              # some builds had this
+        "statusEvent",              # status changes
+        "filledEvent", "fillEvent", # fills
+        "commissionReportEvent",    # commission updates
+        "cancelledEvent",           # cancellations
+        "modifyEvent",              # modifications
+        "logEvent",                 # generic trade log entries
+    ):
+        ev = getattr(trade, evname, None)
+        if ev is not None:
+            try:
+                ev += _on_any
+            except Exception:
+                pass
+
+    # Emit an initial snapshot so clients get immediate state.
     try:
         loop = asyncio.get_running_loop()
         loop.create_task(_emit_snapshot())
