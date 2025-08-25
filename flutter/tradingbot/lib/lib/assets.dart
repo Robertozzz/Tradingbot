@@ -420,12 +420,7 @@ class _AssetPanelState extends State<_AssetPanel> {
     _quoteLive = widget.quote;
     _histLive = widget.hist;
     // <-- also seed L1 so pills/notional work before the first poll tick
-    if (_quoteLive != null) {
-      _bid = (_quoteLive!['bid'] as num?)?.toDouble();
-      _ask = (_quoteLive!['ask'] as num?)?.toDouble();
-      _last = (_quoteLive!['last'] as num?)?.toDouble() ??
-          (_quoteLive!['close'] as num?)?.toDouble();
-    }
+    if (_quoteLive != null) _applyQuote(_quoteLive!);
     // try to discover a nice display name (positions don't have names)
     _loadPrettyName();
     _refreshLive();
@@ -441,10 +436,7 @@ class _AssetPanelState extends State<_AssetPanel> {
         if (!mounted) return;
         setState(() {
           _quoteLive = q;
-          _bid = (q['bid'] as num?)?.toDouble();
-          _ask = (q['ask'] as num?)?.toDouble();
-          _last = (q['last'] as num?)?.toDouble() ??
-              (q['close'] as num?)?.toDouble();
+          _applyQuote(q);
         });
       } catch (_) {}
     });
@@ -455,24 +447,95 @@ class _AssetPanelState extends State<_AssetPanel> {
     };
     widget.advancedVN.addListener(_advListener!);
 
-    // --- Subscribe to server-sent order updates and refresh when relevant ---
     _orderSseSub = SSEClient.subscribeToSSE(
       url: '${Api.baseUrl}/ibkr/orders/stream',
-      method: SSERequestType.GET, // ✅ use enum instead of string
-      header: const {
-        'Accept': 'text/event-stream',
-      },
-    ).listen((evt) async {
+      method: SSERequestType.GET,
+      header: const {'Accept': 'text/event-stream'},
+    ).listen((evt) {
       if (!mounted) return;
+
+      // We only care about "trade" events from the server
+      final evName = (evt.event ?? '').toLowerCase();
+      if (evName != 'trade') return;
+
+      final data = evt.data;
+      if (data == null || data.isEmpty) return;
+
+      Map<String, dynamic> m;
       try {
-        final String? data = evt.data;
-        if (data == null || data.isEmpty) return;
-        final m = jsonDecode(data);
-        // your event handling...
-      } catch (_) {}
+        m = Map<String, dynamic>.from(jsonDecode(data) as Map);
+      } catch (_) {
+        return;
+      }
+
+      // Determine if the update is for the instrument displayed in this panel
+      final int? panelCid = ((widget.pos['conId'] as num?) ??
+              (_quoteLive?['conId'] as num?) ??
+              (_histLive?['contract']?['conId'] as num?))
+          ?.toInt();
+      final int? msgCid = (m['conId'] as num?)?.toInt();
+      final bool sameInstrument = panelCid != null
+          ? (msgCid == panelCid)
+          : ((m['symbol']?.toString() ?? '').toUpperCase() ==
+              widget.symbol.toUpperCase());
+      if (!sameInstrument) return;
+
+      // Merge/insert into the Open Orders table
+      setState(() {
+        final oid = (m['orderId'] as num?)?.toInt();
+        if (oid == null) return;
+        final idx =
+            _orders.indexWhere((o) => (o['orderId'] as num?)?.toInt() == oid);
+        if (idx >= 0) {
+          _orders = [
+            ..._orders.sublist(0, idx),
+            {..._orders[idx], ...m},
+            ..._orders.sublist(idx + 1),
+          ];
+        } else {
+          _orders = [..._orders, m];
+        }
+      });
+
+      // Surface status transitions to the user (optional but helpful)
+      final st = (m['status'] ?? '').toString();
+      if (st.isNotEmpty) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(content: Text('Order ${m['orderId']}: $st')),
+        );
+      }
     }, onError: (_) {
-      // ignore errors
+      // ignore transient SSE/network errors
     });
+  }
+
+  // ---- Quote normalization: fill _bid/_ask/_last from many possible keys ----
+  void _applyQuote(Map<String, dynamic> q) {
+    double? asDouble(dynamic v) {
+      if (v == null) return null;
+      if (v is num) return v.toDouble();
+      return double.tryParse(v.toString());
+    }
+
+    // common alternates that various feeds use
+    final b = asDouble(q['bid']) ??
+        asDouble(q['bidPrice']) ??
+        asDouble(q['bidPx']) ??
+        asDouble(q['b']);
+    final a = asDouble(q['ask']) ??
+        asDouble(q['askPrice']) ??
+        asDouble(q['askPx']) ??
+        asDouble(q['a']);
+    final l = asDouble(q['last']) ??
+        asDouble(q['lastPrice']) ??
+        asDouble(q['trade']) ??
+        asDouble(q['price']) ??
+        asDouble(q['close']) ??
+        asDouble(q['c']); // some compact payloads
+
+    _bid = b;
+    _ask = a;
+    _last = l;
   }
 
   Future<void> _loadPrettyName() async {
