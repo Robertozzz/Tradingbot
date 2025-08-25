@@ -420,7 +420,12 @@ class _AssetPanelState extends State<_AssetPanel> {
     _quoteLive = widget.quote;
     _histLive = widget.hist;
     // <-- also seed L1 so pills/notional work before the first poll tick
-    if (_quoteLive != null) _applyQuote(_quoteLive!);
+    if (_quoteLive != null) {
+      _bid = (_quoteLive!['bid'] as num?)?.toDouble();
+      _ask = (_quoteLive!['ask'] as num?)?.toDouble();
+      _last = (_quoteLive!['last'] as num?)?.toDouble() ??
+          (_quoteLive!['close'] as num?)?.toDouble();
+    }
     // try to discover a nice display name (positions don't have names)
     _loadPrettyName();
     _refreshLive();
@@ -436,7 +441,10 @@ class _AssetPanelState extends State<_AssetPanel> {
         if (!mounted) return;
         setState(() {
           _quoteLive = q;
-          _applyQuote(q);
+          _bid = (q['bid'] as num?)?.toDouble();
+          _ask = (q['ask'] as num?)?.toDouble();
+          _last = (q['last'] as num?)?.toDouble() ??
+              (q['close'] as num?)?.toDouble();
         });
       } catch (_) {}
     });
@@ -507,35 +515,6 @@ class _AssetPanelState extends State<_AssetPanel> {
     }, onError: (_) {
       // ignore transient SSE/network errors
     });
-  }
-
-  // ---- Quote normalization: fill _bid/_ask/_last from many possible keys ----
-  void _applyQuote(Map<String, dynamic> q) {
-    double? asDouble(dynamic v) {
-      if (v == null) return null;
-      if (v is num) return v.toDouble();
-      return double.tryParse(v.toString());
-    }
-
-    // common alternates that various feeds use
-    final b = asDouble(q['bid']) ??
-        asDouble(q['bidPrice']) ??
-        asDouble(q['bidPx']) ??
-        asDouble(q['b']);
-    final a = asDouble(q['ask']) ??
-        asDouble(q['askPrice']) ??
-        asDouble(q['askPx']) ??
-        asDouble(q['a']);
-    final l = asDouble(q['last']) ??
-        asDouble(q['lastPrice']) ??
-        asDouble(q['trade']) ??
-        asDouble(q['price']) ??
-        asDouble(q['close']) ??
-        asDouble(q['c']); // some compact payloads
-
-    _bid = b;
-    _ask = a;
-    _last = l;
   }
 
   Future<void> _loadPrettyName() async {
