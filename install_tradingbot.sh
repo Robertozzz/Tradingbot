@@ -279,7 +279,7 @@ ExecStart=/usr/bin/xpra start :100 \
   --start-child=/home/ibkr/Jts/ibgateway/1037/ibgateway \
   --start-child=/usr/local/bin/pin-ibgw.sh
 Restart=always
-RestartSec=5
+RestartSec=1
 
 [Install]
 WantedBy=multi-user.target

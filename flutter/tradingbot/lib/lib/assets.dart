@@ -11,7 +11,6 @@ import 'package:tradingbot/lib/charts.dart';
 import 'asset_lookup.dart';
 import 'tradingview_widget.dart';
 import 'app_events.dart';
-import 'package:tradingbot/lib/order_bus.dart';
 
 class AssetsPage extends StatefulWidget {
   const AssetsPage({super.key});
@@ -28,7 +27,7 @@ class _AssetsPageState extends State<AssetsPage> {
   final Map<int, Map<String, num>> _pnl =
       {}; // conId -> {unrealized, realized, daily}
   final _searchCtl = TextEditingController();
-  VoidCallback? _orderTickListener;
+  StreamSubscription<Map<String, dynamic>>? _orderBusSub;
 
   @override
   void initState() {
@@ -38,19 +37,24 @@ class _AssetsPageState extends State<AssetsPage> {
     timer = Timer.periodic(const Duration(seconds: 20), (_) {
       _loadIbkr();
     });
-    // System-wide: when any order status changes, refresh positions/PnL.
-    _orderTickListener = () {
-      _loadIbkr(); // refresh positions, sparks, and per-conId P&L
-    };
-    OrderBus.instance.tick.addListener(_orderTickListener!);
+    // System-wide refresh whenever any order status changes anywhere.
+    _orderBusSub = OrderEvents.instance.stream.listen((event) {
+      // Heuristic: only refresh when meaningful status transitions arrive.
+      final st = (event['status'] ?? event['parentStatus'] ?? '').toString();
+      if (st.isNotEmpty) {
+        _loadIbkr(); // refresh positions, sparks, and per-conId P&L
+      }
+    }, onError: (_) {
+      // ignore bus errors
+    });
   }
 
   @override
   void dispose() {
     timer?.cancel();
-    if (_orderTickListener != null) {
-      OrderBus.instance.tick.removeListener(_orderTickListener!);
-    }
+    try {
+      _orderBusSub?.cancel();
+    } catch (_) {}
     super.dispose();
   }
 
@@ -506,6 +510,8 @@ class _AssetPanelState extends State<_AssetPanel> {
           _orders = [..._orders, m];
         }
       });
+
+      OrderEvents.instance.emit(m);
 
       // Optional: surface status bumps in a snackbar
       final st = (m['status'] ?? '').toString();

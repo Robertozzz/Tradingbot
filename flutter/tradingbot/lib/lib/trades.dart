@@ -1,8 +1,6 @@
 import 'package:flutter/material.dart';
 import 'package:tradingbot/lib/api.dart';
 import 'package:intl/intl.dart';
-import 'dart:async';
-import 'package:tradingbot/lib/order_bus.dart';
 
 class TradesPage extends StatefulWidget {
   const TradesPage({super.key});
@@ -14,25 +12,11 @@ class _TradesPageState extends State<TradesPage> {
   List<Map<String, dynamic>> _open = const [];
   List<Map<String, dynamic>> _hist = const [];
   final f = NumberFormat.decimalPattern();
-  VoidCallback? _orderTickListener;
 
   @override
   void initState() {
     super.initState();
     _load();
-    // Auto-refresh when any order status changes anywhere in the app.
-    _orderTickListener = () {
-      _load();
-    };
-    OrderBus.instance.tick.addListener(_orderTickListener!);
-  }
-
-  @override
-  void dispose() {
-    if (_orderTickListener != null) {
-      OrderBus.instance.tick.removeListener(_orderTickListener!);
-    }
-    super.dispose();
   }
 
   Future<void> _load() async {
