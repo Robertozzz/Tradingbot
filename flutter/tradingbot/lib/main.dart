@@ -1,13 +1,6 @@
-import 'dart:async';
-
 import 'package:flutter/material.dart';
 import 'lib/auth_gate.dart';
 import 'lib/dashboard.dart';
-import 'dart:convert';
-import 'package:flutter_client_sse/flutter_client_sse.dart';
-import 'package:flutter_client_sse/constants/sse_request_type_enum.dart';
-import 'lib/app_events.dart';
-import 'lib/api.dart';
 import 'lib/accounts.dart';
 import 'lib/assets.dart';
 import 'lib/news_stream_panel.dart';
@@ -15,6 +8,7 @@ import 'lib/trades.dart';
 import 'lib/settings.dart';
 import 'lib/trading_clock.dart';
 import 'lib/ibkr_page.dart';
+import 'lib/order_bus.dart';
 
 void main() async {
   WidgetsFlutterBinding.ensureInitialized();
@@ -74,6 +68,7 @@ class Shell extends StatefulWidget {
 class _ShellState extends State<Shell> {
   int index = 0;
   bool railExpanded = true;
+  late final VoidCallback _orderTickListener;
 
   bool showMarketClock = true;
   // "UTC" or "Local"
@@ -100,37 +95,20 @@ class _ShellState extends State<Shell> {
     'DUBAI': false,
   };
 
-  // --- Global SSE subscription so ALL pages get status changes ---
-  StreamSubscription<SSEModel>? _ordersSse;
-
   @override
   void initState() {
     super.initState();
-    // Single app-wide SSE for /ibkr/orders/stream
-    _ordersSse = SSEClient.subscribeToSSE(
-      url: '${Api.baseUrl}/ibkr/orders/stream',
-      method: SSERequestType.GET,
-      header: const {'Accept': 'text/event-stream'},
-    ).listen((evt) {
-      final ev = (evt.event ?? '').toLowerCase();
-      if (ev != 'trade') return; // server uses "trade" for order updates
-      final data = evt.data;
-      if (data == null || data.isEmpty) return;
-      try {
-        final m = Map<String, dynamic>.from(jsonDecode(data) as Map);
-        // Broadcast to listeners (Assets/Trades/etc.)
-        OrderEvents.instance.emit(m);
-      } catch (_) {/* ignore malformed */}
-    }, onError: (_) {
-      // ignore transient SSE errors; server may recycle connections
-    });
+    // Start the global order stream bus once and repaint on any tick
+    OrderBus.instance.start();
+    _orderTickListener = () {
+      if (mounted) setState(() {});
+    };
+    OrderBus.instance.tick.addListener(_orderTickListener);
   }
 
   @override
   void dispose() {
-    try {
-      _ordersSse?.cancel();
-    } catch (_) {}
+    OrderBus.instance.tick.removeListener(_orderTickListener);
     super.dispose();
   }
 
