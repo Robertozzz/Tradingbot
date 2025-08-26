@@ -616,6 +616,14 @@ else
   echo "[DEV] Running without TLS. Cookies allowed over HTTP via TB_INSECURE_COOKIES=1 in uvicorn service."
 fi
 
+echo "[DAEMONS] Restarting TradingBot services so changes take effect..."
+systemctl daemon-reexec || true
+systemctl restart uvicorn.service || true
+systemctl restart xpra-ibgateway-main.service || true
+systemctl reload nginx || true
+
+echo "[DAEMONS] All core services restarted."
+
 echo "---------------------------------------------"
 if [[ $NO_TLS -eq 1 ]]; then
   echo "Install complete (DEV, HTTP). Open:  http://$DOMAIN"
