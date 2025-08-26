@@ -267,6 +267,10 @@ RuntimeDirectory=xpra-main
 Environment=XDG_RUNTIME_DIR=/run/xpra-main
 ExecStart=/usr/bin/xpra start :100 \
   --daemon=no --html=on \
+  --speaker=off \
+  --microphone=off \
+  --pulseaudio=no \
+  --bell=off \
   --bind-tcp=127.0.0.1:14500 \
   --dpi=96 \
   --exit-with-children=yes \

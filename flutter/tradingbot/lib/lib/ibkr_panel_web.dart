@@ -37,21 +37,14 @@ class _IbkrGatewayPanelState extends State<IbkrGatewayPanel> {
       ..sandbox.add('allow-same-origin') // same-origin so we can inspect body
       ..tabIndex = -1;
 
-    // If the iframe loads an error page (e.g., gateway down), show overlay.
+    // If the iframe loads successfully, hide overlay.
     _iframe.onLoad.listen((_) {
-      try {
-        final doc = _iframe.contentDocument;
-        final bodyText = (doc?.body?.textContent ?? '').toLowerCase();
-        final title = (doc?.title ?? '').toLowerCase();
-        final looksBad = bodyText.contains('gateway') ||
-            title.contains('gateway') ||
-            bodyText.contains('error') ||
-            title.contains('error');
-        setState(() => _showOverlay = looksBad);
-      } catch (_) {
-        // same-origin expected; ignore on error
-        if (mounted) setState(() => _showOverlay = false);
-      }
+      if (mounted) setState(() => _showOverlay = false);
+    });
+
+    // If the iframe fails to load at all (network/server down), show overlay.
+    _iframe.onError.listen((_) {
+      if (mounted) setState(() => _showOverlay = true);
     });
 
     if (!_registered) {
@@ -67,12 +60,12 @@ class _IbkrGatewayPanelState extends State<IbkrGatewayPanel> {
   String _xpraUrl() {
     final base = '/xpra-main/index.html';
     final u = web.URL(base, web.window.location.href);
-    u.searchParams.set('scaling', 'off');
-    u.searchParams.set('pixel_ratio', '1');
-    u.searchParams.set('dpi', '96');
-    u.searchParams.set('speaker', 'false');
-    u.searchParams.set('microphone', 'false');
-    u.searchParams.set('audio', 'false');
+
+    // Clear query (not used) and set options in the hash:
+    u.search = '';
+    u.hash =
+        'scaling=off&pixel_ratio=1&dpi=96&speaker=off&microphone=off&audio=off&bell=off';
+
     return u.toString();
   }
 

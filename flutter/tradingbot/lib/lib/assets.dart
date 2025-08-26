@@ -462,50 +462,41 @@ class _AssetPanelState extends State<_AssetPanel> {
     ).listen((evt) {
       if (!mounted) return;
 
-      // We only care about "trade" events from the server
-      final evName = (evt.event ?? '').toLowerCase();
-      if (evName != 'trade') return;
-
       final data = evt.data;
       if (data == null || data.isEmpty) return;
 
-      Map<String, dynamic> m;
-      try {
-        m = Map<String, dynamic>.from(jsonDecode(data) as Map);
-      } catch (_) {
-        return;
-      }
+      // flutter_client_sse exposes `event` for "event: trade"
+      final evName = (evt.event ?? '').toLowerCase();
+      if (evName != 'trade') return;
 
-      // Determine if the update is for the instrument displayed in this panel
+      final m = Map<String, dynamic>.from(jsonDecode(data) as Map);
+      final int? mCid = (m['conId'] as num?)?.toInt();
+
+      // current panel’s conId/symbol
       final int? panelCid = ((widget.pos['conId'] as num?) ??
               (_quoteLive?['conId'] as num?) ??
               (_histLive?['contract']?['conId'] as num?))
           ?.toInt();
-      final int? msgCid = (m['conId'] as num?)?.toInt();
-      final bool sameInstrument = panelCid != null
-          ? (msgCid == panelCid)
+
+      final sameInstrument = panelCid != null
+          ? (mCid == panelCid)
           : ((m['symbol']?.toString() ?? '').toUpperCase() ==
               widget.symbol.toUpperCase());
       if (!sameInstrument) return;
 
-      // Merge/insert into the Open Orders table
       setState(() {
         final oid = (m['orderId'] as num?)?.toInt();
-        if (oid == null) return;
-        final idx =
-            _orders.indexWhere((o) => (o['orderId'] as num?)?.toInt() == oid);
-        if (idx >= 0) {
-          _orders = [
-            ..._orders.sublist(0, idx),
-            {..._orders[idx], ...m},
-            ..._orders.sublist(idx + 1),
-          ];
+        final i = _orders.indexWhere(
+            (o) => (o['orderId'] as num?)?.toInt() == oid && oid != null);
+        if (i >= 0) {
+          // merge update
+          _orders[i] = {..._orders[i], ...m};
         } else {
           _orders = [..._orders, m];
         }
       });
 
-      // Surface status transitions to the user (optional but helpful)
+      // Optional: surface status bumps in a snackbar
       final st = (m['status'] ?? '').toString();
       if (st.isNotEmpty) {
         ScaffoldMessenger.of(context).showSnackBar(
@@ -513,7 +504,7 @@ class _AssetPanelState extends State<_AssetPanel> {
         );
       }
     }, onError: (_) {
-      // ignore transient SSE/network errors
+      // ignore network hiccups
     });
   }
 

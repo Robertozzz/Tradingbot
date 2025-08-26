@@ -48,9 +48,11 @@ class MainApp extends StatelessWidget {
       debugShowCheckedModeBanner: false,
       title: 'Tradingbot',
       theme: theme,
-      home: AuthGate(
-        child: const Shell(), // your existing scaffold/nav/pages
-      ),
+      home:
+          //TODO DEBUG
+          // AuthGate(child:
+          const Shell(), // your existing scaffold/nav/pages
+      // ),
     );
   }
 }

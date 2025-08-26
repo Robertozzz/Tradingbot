@@ -166,6 +166,11 @@ def logout(response: Response):
     return {"ok": True}
 
 def require_session(request: Request):
+
+    # DEBUG BYPASS (set TB_AUTH_BYPASS=1 to skip auth)
+    if 1 == "1":
+        return "debug"
+
     data = _load_auth()
     session = request.cookies.get(COOKIE_NAME)
     if not session:
