@@ -1,6 +1,8 @@
 import 'package:flutter/material.dart';
 import 'package:tradingbot/lib/api.dart';
 import 'package:intl/intl.dart';
+import 'dart:async';
+import 'package:tradingbot/lib/app_events.dart';
 
 class TradesPage extends StatefulWidget {
   const TradesPage({super.key});
@@ -12,11 +14,16 @@ class _TradesPageState extends State<TradesPage> {
   List<Map<String, dynamic>> _open = const [];
   List<Map<String, dynamic>> _hist = const [];
   final f = NumberFormat.decimalPattern();
+  StreamSubscription<Map<String, dynamic>>? _orderBusSub;
 
   @override
   void initState() {
     super.initState();
     _load();
+    // Live refresh when any order status changes (from global SSE bus).
+    _orderBusSub = OrderEvents.instance.stream.listen((_) {
+      _load();
+    }, onError: (_) {});
   }
 
   Future<void> _load() async {
@@ -38,7 +45,17 @@ class _TradesPageState extends State<TradesPage> {
     try {
       await Api.ibkrCancelOrder(id);
     } catch (_) {}
+    // SSE will deliver status → table refresh via _orderBusSub.
+    // Also do a safety refresh in case SSE is delayed.
     _load();
+  }
+
+  @override
+  void dispose() {
+    try {
+      _orderBusSub?.cancel();
+    } catch (_) {}
+    super.dispose();
   }
 
   @override
