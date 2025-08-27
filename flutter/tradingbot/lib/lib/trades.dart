@@ -18,6 +18,11 @@ class _TradesPageState extends State<TradesPage> {
 
   Timer? _poll;
 
+  final Set<String> _hiddenLogKeys = <String>{};
+
+  String _logKey(Map r) =>
+      '${r['ts']}-${r['orderId']}-${r['event']}-${r['symbol']}';
+
   bool _isTerminal(String? s) {
     final st = (s ?? '').toUpperCase();
     return st == 'FILLED' ||
@@ -64,6 +69,25 @@ class _TradesPageState extends State<TradesPage> {
     }, onError: (_) {});
   }
 
+  Widget _statusCell(dynamic v) {
+    final s = (v ?? '').toString();
+    final up = s.toUpperCase();
+    final isPending = up.startsWith('PENDING');
+    return Row(
+      mainAxisSize: MainAxisSize.min,
+      children: [
+        if (isPending)
+          const SizedBox(
+            width: 16,
+            height: 16,
+            child: CircularProgressIndicator(strokeWidth: 2),
+          ),
+        if (isPending) const SizedBox(width: 6),
+        Text(s),
+      ],
+    );
+  }
+
   Future<void> _load() async {
     try {
       final o = await Api.ibkrOpenOrders();
@@ -75,6 +99,7 @@ class _TradesPageState extends State<TradesPage> {
           .map<Map<String, dynamic>>((e) => Map<String, dynamic>.from(e as Map))
           .toList()
           .reversed
+          .where((r) => !_hiddenLogKeys.contains(_logKey(r)))
           .toList());
       _ensurePoll();
     } catch (_) {}
@@ -102,77 +127,127 @@ class _TradesPageState extends State<TradesPage> {
 
   @override
   Widget build(BuildContext context) {
-    return ListView(
+    return SingleChildScrollView(
       padding: const EdgeInsets.all(16),
-      children: [
-        Row(children: [
-          const Text('Open Orders',
-              style: TextStyle(fontWeight: FontWeight.bold)),
-          const Spacer(),
-          IconButton(onPressed: _load, icon: const Icon(Icons.refresh)),
-        ]),
-        const SizedBox(height: 8),
-        SingleChildScrollView(
-          scrollDirection: Axis.horizontal,
-          child: DataTable(
-            columns: const [
-              DataColumn(label: Text('OrderId')),
-              DataColumn(label: Text('Symbol')),
-              DataColumn(label: Text('Action')),
-              DataColumn(label: Text('Qty')),
-              DataColumn(label: Text('Type')),
-              DataColumn(label: Text('Limit')),
-              DataColumn(label: Text('TIF')),
-              DataColumn(label: Text('Status')),
-              DataColumn(label: Text('Filled')),
-              DataColumn(label: Text('Remaining')),
-              DataColumn(label: Text('Cancel')),
-            ],
-            rows: _open
-                .map((m) => DataRow(cells: [
-                      DataCell(Text('${m['orderId'] ?? ''}')),
-                      DataCell(Text('${m['symbol'] ?? ''}')),
-                      DataCell(Text('${m['action'] ?? ''}')),
-                      DataCell(Text(f.format((m['qty'] as num?) ?? 0))),
-                      DataCell(Text('${m['type'] ?? ''}')),
-                      DataCell(Text(m['lmt'] == null ? '—' : '${m['lmt']}')),
-                      DataCell(Text('${m['tif'] ?? ''}')),
-                      DataCell(Text('${m['status'] ?? ''}')),
-                      DataCell(Text('${m['filled'] ?? 0}')),
-                      DataCell(Text('${m['remaining'] ?? 0}')),
-                      DataCell(IconButton(
-                          icon: const Icon(Icons.cancel),
-                          onPressed: () =>
-                              _cancel((m['orderId'] as num).toInt()))),
-                    ]))
-                .toList(),
-          ),
-        ),
-        const SizedBox(height: 24),
-        const Text('Orders Log', style: TextStyle(fontWeight: FontWeight.bold)),
-        const SizedBox(height: 8),
-        Container(
-          decoration: BoxDecoration(
-            color: const Color(0xFF111A2E),
-            border: Border.all(color: const Color(0xFF22314E)),
-            borderRadius: BorderRadius.circular(12),
-          ),
+      child: Align(
+        alignment: Alignment.topCenter,
+        child: ConstrainedBox(
+          constraints: const BoxConstraints(maxWidth: 1200),
           child: Column(
-            children: _hist.map((r) {
-              final ts = DateTime.fromMillisecondsSinceEpoch(
-                  ((r['ts'] ?? 0) as int) * 1000,
-                  isUtc: false);
-              return ListTile(
-                dense: true,
-                title: Text(
-                    '${r['event']?.toString().toUpperCase()} ${r['symbol'] ?? ''} ${r['side'] ?? ''} ${r['qty'] ?? ''} ${r['type'] ?? ''}'),
-                subtitle: Text(
-                    '$ts  ${r['ok'] == true ? "OK" : ""}  orderId=${r['orderId'] ?? ""} conId=${r['conId'] ?? ""}'),
-              );
-            }).toList(),
+            crossAxisAlignment: CrossAxisAlignment.stretch,
+            children: [
+              Row(children: [
+                const Text('Open Orders',
+                    style: TextStyle(fontWeight: FontWeight.bold)),
+                const Spacer(),
+                IconButton(onPressed: _load, icon: const Icon(Icons.refresh)),
+              ]),
+              const SizedBox(height: 8),
+              SingleChildScrollView(
+                scrollDirection: Axis.horizontal,
+                child: DataTable(
+                  columns: const [
+                    DataColumn(label: Text('OrderId')),
+                    DataColumn(label: Text('Symbol')),
+                    DataColumn(label: Text('Action')),
+                    DataColumn(label: Text('Qty')),
+                    DataColumn(label: Text('Type')),
+                    DataColumn(label: Text('Limit')),
+                    DataColumn(label: Text('TIF')),
+                    DataColumn(label: Text('Status')),
+                    DataColumn(label: Text('Filled')),
+                    DataColumn(label: Text('Remaining')),
+                    DataColumn(label: Text('Cancel')),
+                  ],
+                  rows: _open
+                      .map((m) => DataRow(cells: [
+                            DataCell(Text('${m['orderId'] ?? ''}')),
+                            DataCell(Text('${m['symbol'] ?? ''}')),
+                            DataCell(Text('${m['action'] ?? ''}')),
+                            DataCell(Text(f.format((m['qty'] as num?) ?? 0))),
+                            DataCell(Text('${m['type'] ?? ''}')),
+                            DataCell(
+                                Text(m['lmt'] == null ? '—' : '${m['lmt']}')),
+                            DataCell(Text('${m['tif'] ?? ''}')),
+                            DataCell(_statusCell(m['status'])),
+                            DataCell(Text('${m['filled'] ?? 0}')),
+                            DataCell(Text('${m['remaining'] ?? 0}')),
+                            DataCell(IconButton(
+                                icon: const Icon(Icons.cancel),
+                                onPressed: () =>
+                                    _cancel((m['orderId'] as num).toInt()))),
+                          ]))
+                      .toList(),
+                ),
+              ),
+              const SizedBox(height: 24),
+              Row(
+                children: [
+                  const Text('Orders Log',
+                      style: TextStyle(fontWeight: FontWeight.bold)),
+                  const Spacer(),
+                  IconButton(
+                    tooltip: 'Clear all (local)',
+                    icon: const Icon(Icons.delete_sweep),
+                    onPressed: () {
+                      setState(() {
+                        for (final r in _hist) {
+                          _hiddenLogKeys.add(_logKey(r));
+                        }
+                        _hist = const [];
+                      });
+                    },
+                  ),
+                  IconButton(
+                    tooltip: 'Reset log (show all)',
+                    icon: const Icon(Icons.restore),
+                    onPressed: () {
+                      setState(() {
+                        _hiddenLogKeys.clear();
+                      });
+                      _load();
+                    },
+                  ),
+                ],
+              ),
+              const SizedBox(height: 8),
+              Container(
+                decoration: BoxDecoration(
+                  color: const Color(0xFF111A2E),
+                  border: Border.all(color: const Color(0xFF22314E)),
+                  borderRadius: BorderRadius.circular(12),
+                ),
+                child: Column(
+                  children: _hist.map((r) {
+                    final ts = DateTime.fromMillisecondsSinceEpoch(
+                        ((r['ts'] ?? 0) as int) * 1000,
+                        isUtc: false);
+                    return ListTile(
+                      dense: true,
+                      title: Text(
+                          '${r['event']?.toString().toUpperCase()} ${r['symbol'] ?? ''} ${r['side'] ?? ''} ${r['qty'] ?? ''} ${r['type'] ?? ''}'),
+                      subtitle: Text(
+                          '$ts  ${r['ok'] == true ? "OK" : ""}  orderId=${r['orderId'] ?? ""} conId=${r['conId'] ?? ""}'),
+                      trailing: IconButton(
+                        tooltip: 'Clear this entry (local)',
+                        icon: const Icon(Icons.close),
+                        onPressed: () {
+                          setState(() {
+                            _hiddenLogKeys.add(_logKey(r));
+                            _hist = _hist
+                                .where((x) => _logKey(x) != _logKey(r))
+                                .toList();
+                          });
+                        },
+                      ),
+                    );
+                  }).toList(),
+                ),
+              ),
+            ],
           ),
         ),
-      ],
+      ),
     );
   }
 }

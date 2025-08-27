@@ -254,25 +254,7 @@ class _AssetsPageState extends State<AssetsPage> {
     );
   }
 
-  void _showAssetPanel(String symbol, Map<String, dynamic> pos) async {
-    Map<String, dynamic>? quote;
-    Map<String, dynamic>? hist;
-    try {
-      final conId = (pos['conId'] as num?)?.toInt();
-      final st = (pos['secType'] ?? '').toString().toUpperCase();
-      final what =
-          (st == 'FX' || st == 'CASH' || st == 'IND') ? 'MIDPOINT' : 'TRADES';
-      final useRth = !(st == 'FX' || st == 'CASH');
-      quote = await Api.ibkrQuote(conId: conId, symbol: symbol);
-      hist = await Api.ibkrHistory(
-          conId: conId,
-          symbol: symbol,
-          duration: '5 D',
-          barSize: '30 mins',
-          what: what,
-          useRTH: useRth);
-    } catch (_) {}
-
+  void _showAssetPanel(String symbol, Map<String, dynamic> pos) {
     if (!mounted) return;
     // STATIC modal dialog (no draggable sheet)
     // Share a ValueNotifier so the dialog can resize when "Advanced" toggles.
@@ -290,8 +272,8 @@ class _AssetsPageState extends State<AssetsPage> {
             child: _AssetPanel(
               symbol: symbol,
               pos: pos,
-              quote: quote,
-              hist: hist,
+              quote: null,
+              hist: null,
               advancedVN: advVN,
             ),
           ),
@@ -461,6 +443,10 @@ class _AssetPanelState extends State<_AssetPanel> {
     // try to discover a nice display name (positions don't have names)
     _loadPrettyName();
     _refreshLive();
+    // If history wasn’t provided, fetch it right away so the chart appears quickly.
+    if (_histLive == null) {
+      _reloadQuoteHist();
+    }
     _loadAccount(); // <-- fetch account summary / buying power
     // start light quote poller for L1
     _quoteTimer = Timer.periodic(const Duration(seconds: 2), (_) async {
@@ -669,6 +655,25 @@ class _AssetPanelState extends State<_AssetPanel> {
         child: Text(label),
       );
 
+  Widget _statusCell(dynamic v) {
+    final s = (v ?? '').toString();
+    final up = s.toUpperCase();
+    final isPending = up.startsWith('PENDING');
+    return Row(
+      mainAxisSize: MainAxisSize.min,
+      children: [
+        if (isPending)
+          const SizedBox(
+            width: 16,
+            height: 16,
+            child: CircularProgressIndicator(strokeWidth: 2),
+          ),
+        if (isPending) const SizedBox(width: 6),
+        Text(s),
+      ],
+    );
+  }
+
   @override
   Widget build(BuildContext context) {
     final q = _quoteLive ?? widget.quote;
@@ -835,48 +840,54 @@ class _AssetPanelState extends State<_AssetPanel> {
               const SizedBox(height: 6),
               _orders.isEmpty
                   ? const Text('None')
-                  : SingleChildScrollView(
-                      scrollDirection: Axis.horizontal,
-                      child: DataTable(
-                        columns: const [
-                          DataColumn(label: Text('OrderId')),
-                          DataColumn(label: Text('Side')),
-                          DataColumn(label: Text('Qty')),
-                          DataColumn(label: Text('Type')),
-                          DataColumn(label: Text('Limit')),
-                          DataColumn(label: Text('TIF')),
-                          DataColumn(label: Text('Status')),
-                          DataColumn(label: Text('Filled')),
-                          DataColumn(label: Text('Remain')),
-                          DataColumn(label: Text('Modify')),
-                          DataColumn(label: Text('Cancel')),
-                        ],
-                        rows: _orders
-                            .map((o) => DataRow(cells: [
-                                  DataCell(Text('${o['orderId'] ?? ''}')),
-                                  DataCell(Text('${o['action'] ?? ''}')),
-                                  DataCell(Text('${o['qty'] ?? ''}')),
-                                  DataCell(Text('${o['type'] ?? ''}')),
-                                  DataCell(Text(
-                                      o['lmt'] == null ? '—' : '${o['lmt']}')),
-                                  DataCell(Text('${o['tif'] ?? ''}')),
-                                  DataCell(Text('${o['status'] ?? ''}')),
-                                  DataCell(Text('${o['filled'] ?? 0}')),
-                                  DataCell(Text('${o['remaining'] ?? 0}')),
-                                  DataCell(_modifyButton(o)),
-                                  DataCell(IconButton(
-                                    icon: const Icon(Icons.cancel),
-                                    onPressed: () {
-                                      final id =
-                                          (o['orderId'] as num?)?.toInt();
-                                      if (id != null) {
-                                        Api.ibkrCancelOrder(id)
-                                            .then((_) => _refreshLive());
-                                      }
-                                    },
-                                  )),
-                                ]))
-                            .toList(),
+                  : SizedBox(
+                      width: double.infinity,
+                      child: SingleChildScrollView(
+                        scrollDirection: Axis.horizontal,
+                        child: DataTable(
+                          columnSpacing: 12,
+                          horizontalMargin: 12,
+                          columns: const [
+                            DataColumn(label: Text('OrderId')),
+                            DataColumn(label: Text('Side')),
+                            DataColumn(label: Text('Qty')),
+                            DataColumn(label: Text('Type')),
+                            DataColumn(label: Text('Limit')),
+                            DataColumn(label: Text('TIF')),
+                            DataColumn(label: Text('Status')),
+                            DataColumn(label: Text('Filled')),
+                            DataColumn(label: Text('Remain')),
+                            DataColumn(label: Text('Modify')),
+                            DataColumn(label: Text('Cancel')),
+                          ],
+                          rows: _orders
+                              .map((o) => DataRow(cells: [
+                                    DataCell(Text('${o['orderId'] ?? ''}')),
+                                    DataCell(Text('${o['action'] ?? ''}')),
+                                    DataCell(Text('${o['qty'] ?? ''}')),
+                                    DataCell(Text('${o['type'] ?? ''}')),
+                                    DataCell(Text(o['lmt'] == null
+                                        ? '—'
+                                        : '${o['lmt']}')),
+                                    DataCell(Text('${o['tif'] ?? ''}')),
+                                    DataCell(_statusCell(o['status'])),
+                                    DataCell(Text('${o['filled'] ?? 0}')),
+                                    DataCell(Text('${o['remaining'] ?? 0}')),
+                                    DataCell(_modifyButton(o)),
+                                    DataCell(IconButton(
+                                      icon: const Icon(Icons.cancel),
+                                      onPressed: () {
+                                        final id =
+                                            (o['orderId'] as num?)?.toInt();
+                                        if (id != null) {
+                                          Api.ibkrCancelOrder(id)
+                                              .then((_) => _refreshLive());
+                                        }
+                                      },
+                                    )),
+                                  ]))
+                              .toList(),
+                        ),
                       ),
                     ),
             ],
