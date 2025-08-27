@@ -27320,7 +27320,7 @@ aHA(a,b,c,d,e){var s,r,q,p,o,n,m=null,l={}
 l.a=A.amx(m,m,m,t.Tt)
 if(d!=null)l.a=d
 s=A.bS("^([^:]*)(?::)?(?: )?(.*)?$",!0,!1)
-l.b=new A.rP("","")
+l.b=new A.rP("")
 A.pA("--SUBSCRIBING TO SSE---")
 try{o=A.c([],t.O)
 $.aZJ=new A.uq(o)
@@ -27367,8 +27367,7 @@ _.b=b
 _.c=c
 _.d=d
 _.e=e},
-rP:function rP(a,b){this.b=a
-this.c=b},
+rP:function rP(a){this.c=a},
 Qg:function Qg(){},
 agB:function agB(a){this.a=a},
 aEO(a){return A.a2R(new A.aEQ(a,null),t.Wd)},
@@ -93282,7 +93281,7 @@ A.aj2.prototype={
 $1(a){var s,r,q,p,o,n,m=this
 if(a.length===0){p=m.a
 p.a.D(0,p.b)
-p.b=new A.rP("","")
+p.b=new A.rP("")
 return}p=m.b.nA(a)
 p.toString
 s=p
@@ -93293,8 +93292,7 @@ if(J.bu(p)===0)return
 q=""
 if(r==="data")q=B.d.cn(a,5)
 else{o=s.b[2]
-q=o==null?"":o}switch(r){case"event":m.a.b.b=q
-break
+q=o==null?"":o}switch(r){case"event":break
 case"data":p=m.a.b
 n=p.c
 p.c=B.d.S(n,q)+"\n"
@@ -96898,27 +96896,25 @@ $1(a){var s,r,q,p,o,n,m,l=null,k="conId",j=this.a
 if(j.c==null)return
 s=a.c
 if(s.length===0)return
-r=a.b
-if(r.toLowerCase()!=="trade")return
-q=A.ho(t.f.a(B.aw.p0(s,l)),t.N,t.z)
-r=A.b9(q.h(0,k))
-p=r==null?l:B.e.bQ(r)
-r=A.b9(j.a.d.h(0,k))
-if(r==null){r=j.fr
-r=A.b9(r==null?l:r.h(0,k))}if(r==null){r=j.fx
-if(r==null)r=l
-else{r=r.h(0,"contract")
-r=r==null?l:J.bF(r,k)}A.b9(r)}o=r==null?l:B.e.bQ(r)
+r=A.ho(t.f.a(B.aw.p0(s,l)),t.N,t.z)
+q=A.b9(r.h(0,k))
+p=q==null?l:B.e.bQ(q)
+q=A.b9(j.a.d.h(0,k))
+if(q==null){q=j.fr
+q=A.b9(q==null?l:q.h(0,k))}if(q==null){q=j.fx
+if(q==null)q=l
+else{q=q.h(0,"contract")
+q=q==null?l:J.bF(q,k)}A.b9(q)}o=q==null?l:B.e.bQ(q)
 if(o!=null)n=p===o
-else{r=q.h(0,"symbol")
-r=r==null?l:J.bv(r)
-if(r==null)r=""
-n=r.toUpperCase()===j.a.c.toUpperCase()}if(!n)return
-j.N(new A.aqV(j,q))
-$.aFC().Xx(q)
-r=q.h(0,"status")
-m=J.bv(r==null?"":r)
-if(m.length!==0)j.c.ac(t.Pu).f.mI(A.oA(l,l,l,l,l,B.H,l,A.aj("Order "+A.m(q.h(0,"orderId"))+": "+m,l,l,l,l,l,l),l,B.d5,l,l,l,l,l,l,l,l,l))},
+else{q=r.h(0,"symbol")
+q=q==null?l:J.bv(q)
+if(q==null)q=""
+n=q.toUpperCase()===j.a.c.toUpperCase()}if(!n)return
+j.N(new A.aqV(j,r))
+$.aFC().Xx(r)
+q=r.h(0,"status")
+m=J.bv(q==null?"":q)
+if(m.length!==0)j.c.ac(t.Pu).f.mI(A.oA(l,l,l,l,l,B.H,l,A.aj("Order "+A.m(r.h(0,"orderId"))+": "+m,l,l,l,l,l,l),l,B.d5,l,l,l,l,l,l,l,l,l))},
 $S:233}
 A.aqV.prototype={
 $0(){var s,r,q=this.b,p=A.b9(q.h(0,"orderId")),o=p==null?null:B.e.bQ(p)
@@ -98688,12 +98684,10 @@ k=s.w
 p.push(new A.br(B.er,A.d5(A.c([new A.F9(n,k,o,!0,84,new A.dx("Tape-"+o,t.kK))],l),B.B,B.p,B.E),r))}p=A.d5(p,B.B,B.p,B.E)
 return A.aNr(m,p,q?r:new A.Pi(s.d,B.Pa,new A.aAL(s),r))}}
 A.aAM.prototype={
-$1(a){var s,r,q,p=a.b
-if(p.toLowerCase()!=="trade")return
-s=a.c
-if(s==null||s.length===0)return
-try{r=A.ho(t.f.a(B.aw.p0(s,null)),t.N,t.z)
-$.aFC().Xx(r)}catch(q){}},
+$1(a){var s,r,q=a.c
+if(q==null||q.length===0)return
+try{s=A.ho(t.f.a(B.aw.p0(q,null)),t.N,t.z)
+$.aFC().Xx(s)}catch(r){}},
 $S:233}
 A.aAN.prototype={
 $1(a){},

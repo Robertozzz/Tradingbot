@@ -477,13 +477,10 @@ class _AssetPanelState extends State<_AssetPanel> {
     ).listen((evt) {
       if (!mounted) return;
 
+      // Some clients don't propagate the custom event name consistently.
+      // Don't filter by evt.event; just parse data when present.
       final data = evt.data;
       if (data == null || data.isEmpty) return;
-
-      // flutter_client_sse exposes `event` for "event: trade"
-      final evName = (evt.event ?? '').toLowerCase();
-      if (evName != 'trade') return;
-
       final m = Map<String, dynamic>.from(jsonDecode(data) as Map);
       final int? mCid = (m['conId'] as num?)?.toInt();
 

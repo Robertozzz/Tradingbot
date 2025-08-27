@@ -111,8 +111,7 @@ class _ShellState extends State<Shell> {
       method: SSERequestType.GET,
       header: const {'Accept': 'text/event-stream'},
     ).listen((evt) {
-      final ev = (evt.event ?? '').toLowerCase();
-      if (ev != 'trade') return; // server uses "trade" for order updates
+      // Some SSE clients set event to null/"message" — don't filter by name.
       final data = evt.data;
       if (data == null || data.isEmpty) return;
       try {
