@@ -1,12 +1,7 @@
-import 'dart:async';
 import 'package:flutter/material.dart';
 import 'lib/auth_gate.dart';
 import 'lib/dashboard.dart';
-import 'dart:convert';
-import 'package:flutter_client_sse/flutter_client_sse.dart';
-import 'package:flutter_client_sse/constants/sse_request_type_enum.dart';
 import 'lib/app_events.dart';
-import 'lib/api.dart';
 import 'lib/accounts.dart';
 import 'lib/assets.dart';
 import 'lib/news_stream_panel.dart';
@@ -99,36 +94,15 @@ class _ShellState extends State<Shell> {
     'DUBAI': false,
   };
 
-  // --- Global SSE subscription so ALL pages get status changes ---
-  StreamSubscription<SSEModel>? _ordersSse;
-
   @override
   void initState() {
     super.initState();
-    // Single app-wide SSE for /ibkr/orders/stream
-    _ordersSse = SSEClient.subscribeToSSE(
-      url: '${Api.baseUrl}/ibkr/orders/stream',
-      method: SSERequestType.GET,
-      header: const {'Accept': 'text/event-stream'},
-    ).listen((evt) {
-      // Some SSE clients set event to null/"message" — don't filter by name.
-      final data = evt.data;
-      if (data == null || data.isEmpty) return;
-      try {
-        final m = Map<String, dynamic>.from(jsonDecode(data) as Map);
-        // Broadcast to listeners (Assets/Trades/etc.)
-        OrderEvents.instance.emit(m);
-      } catch (_) {/* ignore malformed */}
-    }, onError: (_) {
-      // ignore transient SSE errors; server may recycle connections
-    });
+    // Start the single, auto-reconnecting global orders stream.
+    OrderEvents.instance.ensureStarted();
   }
 
   @override
   void dispose() {
-    try {
-      _ordersSse?.cancel();
-    } catch (_) {}
     super.dispose();
   }
 

@@ -1,8 +1,5 @@
 import 'dart:async';
-import 'dart:convert';
 import 'dart:math' as math;
-import 'package:flutter_client_sse/constants/sse_request_type_enum.dart';
-import 'package:flutter_client_sse/flutter_client_sse.dart';
 import 'package:fl_chart/fl_chart.dart';
 import 'package:flutter/material.dart';
 import 'package:intl/intl.dart';
@@ -364,7 +361,7 @@ class _AssetPanelState extends State<_AssetPanel> {
   bool _lockParentScroll = false;
   bool get advanced => widget.advancedVN.value;
   VoidCallback? _advListener;
-  StreamSubscription<SSEModel>? _orderSseSub;
+  StreamSubscription<Map<String, dynamic>>? _orderBusSub;
 
   // --- Account / Buying Power state ---
   Map<String, dynamic>? _acctSummary; // raw /ibkr/accounts (first account)
@@ -470,56 +467,35 @@ class _AssetPanelState extends State<_AssetPanel> {
     };
     widget.advancedVN.addListener(_advListener!);
 
-    _orderSseSub = SSEClient.subscribeToSSE(
-      url: '${Api.baseUrl}/ibkr/orders/stream',
-      method: SSERequestType.GET,
-      header: const {'Accept': 'text/event-stream'},
-    ).listen((evt) {
+    // Listen to the global order bus and merge updates for this instrument.
+    _orderBusSub = OrderEvents.instance.stream.listen((m) {
       if (!mounted) return;
-
-      // Some clients don't propagate the custom event name consistently.
-      // Don't filter by evt.event; just parse data when present.
-      final data = evt.data;
-      if (data == null || data.isEmpty) return;
-      final m = Map<String, dynamic>.from(jsonDecode(data) as Map);
       final int? mCid = (m['conId'] as num?)?.toInt();
-
-      // current panel’s conId/symbol
       final int? panelCid = ((widget.pos['conId'] as num?) ??
               (_quoteLive?['conId'] as num?) ??
               (_histLive?['contract']?['conId'] as num?))
           ?.toInt();
-
       final sameInstrument = panelCid != null
           ? (mCid == panelCid)
           : ((m['symbol']?.toString() ?? '').toUpperCase() ==
               widget.symbol.toUpperCase());
       if (!sameInstrument) return;
-
       setState(() {
         final oid = (m['orderId'] as num?)?.toInt();
         final i = _orders.indexWhere(
             (o) => (o['orderId'] as num?)?.toInt() == oid && oid != null);
         if (i >= 0) {
-          // merge update
           _orders[i] = {..._orders[i], ...m};
         } else {
           _orders = [..._orders, m];
         }
       });
-
-      OrderEvents.instance.emit(m);
-
-      // Optional: surface status bumps in a snackbar
-      final st = (m['status'] ?? '').toString();
+      final st = (m['status'] ?? m['parentStatus'] ?? '').toString();
       if (st.isNotEmpty) {
         ScaffoldMessenger.of(context).showSnackBar(
-          SnackBar(content: Text('Order ${m['orderId']}: $st')),
-        );
+            SnackBar(content: Text('Order ${m['orderId']}: $st')));
       }
-    }, onError: (_) {
-      // ignore network hiccups
-    });
+    }, onError: (_) {});
   }
 
   Future<void> _loadPrettyName() async {
@@ -552,7 +528,7 @@ class _AssetPanelState extends State<_AssetPanel> {
     if (_advListener != null) widget.advancedVN.removeListener(_advListener!);
     _quoteTimer?.cancel();
     try {
-      _orderSseSub?.cancel();
+      _orderBusSub?.cancel();
     } catch (_) {}
     super.dispose();
   }
