@@ -2,6 +2,7 @@
 import 'dart:convert';
 import 'package:flutter/material.dart';
 import 'package:http/http.dart' as http;
+import 'package:web/web.dart' as web; // for window.open on web
 
 class IbcConfigCard extends StatefulWidget {
   const IbcConfigCard({super.key});
@@ -17,11 +18,14 @@ class _IbcConfigCardState extends State<IbcConfigCard> {
   String _mode = 'paper';
   bool _busy = false;
   String? _status;
+  bool _dbg = false;
+  bool _dbgBusy = false;
 
   @override
   void initState() {
     super.initState();
     _load();
+    _loadDebug();
   }
 
   Future<void> _load() async {
@@ -35,6 +39,16 @@ class _IbcConfigCardState extends State<IbcConfigCard> {
           _status =
               'Using port ${j['IB_PORT'] ?? '4002'}${(j['IB_TOTP_SECRET_SET'] == true) ? ' • TOTP set' : ''}';
         });
+      }
+    } catch (_) {}
+  }
+
+  Future<void> _loadDebug() async {
+    try {
+      final r = await http.get(Uri.parse('/ibkr/ibc/debugviewer/status'));
+      if (r.statusCode == 200) {
+        final j = json.decode(r.body) as Map<String, dynamic>;
+        setState(() => _dbg = (j['active'] == true));
       }
     } catch (_) {}
   }
@@ -76,6 +90,31 @@ class _IbcConfigCardState extends State<IbcConfigCard> {
         _pass.clear();
         _totp.clear();
       });
+    }
+  }
+
+  Future<void> _setDebug(bool enable) async {
+    setState(() => _dbgBusy = true);
+    try {
+      final r = await http.post(
+        Uri.parse('/ibkr/ibc/debugviewer'),
+        headers: {'Content-Type': 'application/json'},
+        body: json.encode({'enabled': enable}),
+      );
+      if (r.statusCode == 200) {
+        final j = json.decode(r.body) as Map<String, dynamic>;
+        setState(() => _dbg = (j['active'] == true));
+      } else {
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(content: Text('Debug viewer: ${r.statusCode} ${r.body}')),
+        );
+      }
+    } catch (e) {
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(content: Text('Debug viewer error: $e')),
+      );
+    } finally {
+      setState(() => _dbgBusy = false);
     }
   }
 
@@ -141,6 +180,30 @@ class _IbcConfigCardState extends State<IbcConfigCard> {
               ),
               obscureText: true,
             ),
+            const SizedBox(height: 12),
+            // --- Debug viewer toggle row ---
+            Row(children: [
+              const Icon(Icons.display_settings, size: 18),
+              const SizedBox(width: 8),
+              const Text('Debug Viewer (Xpra)'),
+              const Spacer(),
+              TextButton.icon(
+                onPressed: _dbg
+                    ? () {
+                        try {
+                          web.window.open('/xpra-ibc/', '_blank');
+                        } catch (_) {}
+                      }
+                    : null,
+                icon: const Icon(Icons.open_in_new),
+                label: const Text('Open viewer'),
+              ),
+              const SizedBox(width: 8),
+              Switch.adaptive(
+                value: _dbg,
+                onChanged: _dbgBusy ? null : (v) => _setDebug(v),
+              ),
+            ]),
             const SizedBox(height: 12),
             Row(children: [
               FilledButton.icon(

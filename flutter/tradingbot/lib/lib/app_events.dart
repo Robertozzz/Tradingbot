@@ -1,12 +1,11 @@
-// lib/app_events.dart
 import 'dart:async';
 import 'dart:convert';
-import 'dart:math' as math;
+import 'package:flutter/foundation.dart';
 import 'package:flutter_client_sse/flutter_client_sse.dart';
 import 'package:flutter_client_sse/constants/sse_request_type_enum.dart';
-import 'package:tradingbot/lib/api.dart';
+import 'api.dart';
 
-/// Lightweight global bus for IBKR order/trade state changes.
+/// Global order/status bus with auto-reconnect and health pings.
 class OrderEvents {
   OrderEvents._();
   static final OrderEvents instance = OrderEvents._();
@@ -14,59 +13,65 @@ class OrderEvents {
   final _ctrl = StreamController<Map<String, dynamic>>.broadcast();
   Stream<Map<String, dynamic>> get stream => _ctrl.stream;
 
-  void emit(Map<String, dynamic> event) {
-    if (!_ctrl.isClosed) _ctrl.add(event);
-  }
+  final ValueNotifier<bool> onlineVN = ValueNotifier<bool>(false);
+  bool get online => onlineVN.value;
 
-  // --- Global SSE wiring (single subscription + auto-reconnect) ---
-  StreamSubscription<SSEModel>? _sseSub;
+  StreamSubscription<SSEModel>? _sse;
+  Timer? _pingTimer;
   Timer? _reconnectTimer;
-  bool _started = false;
-  int _retries = 0;
 
-  /// Call once on app start (e.g., in your root widget initState).
   void ensureStarted() {
-    if (_started) return;
-    _started = true;
-    _connect();
+    _startSse();
+    _startPing();
   }
 
-  void _connect() {
-    // Cancel any previous sub just in case
-    _sseSub?.cancel();
-    _sseSub = SSEClient.subscribeToSSE(
+  void _startPing() {
+    _pingTimer?.cancel();
+    _pingTimer = Timer.periodic(const Duration(seconds: 6), (_) async {
+      try {
+        final m = await Api.ibkrPing();
+        final c = (m['connected'] == true);
+        if (onlineVN.value != c) onlineVN.value = c;
+      } catch (_) {
+        if (onlineVN.value) onlineVN.value = false;
+      }
+    });
+  }
+
+  void _startSse() {
+    _sse?.cancel();
+    _sse = SSEClient.subscribeToSSE(
       url: '${Api.baseUrl}/ibkr/orders/stream',
       method: SSERequestType.GET,
       header: const {'Accept': 'text/event-stream'},
     ).listen((evt) {
+      // Connected & receiving -> online
+      if (!onlineVN.value) onlineVN.value = true;
       final data = evt.data;
       if (data == null || data.isEmpty) return;
       try {
         final m = Map<String, dynamic>.from(jsonDecode(data) as Map);
-        emit(m); // fan-out to the whole app
-      } catch (_) {
-        // ignore malformed events
-      }
+        _ctrl.add(m);
+      } catch (_) {}
     }, onError: (_) {
+      // drop to offline and schedule reconnect
+      if (onlineVN.value) onlineVN.value = false;
       _scheduleReconnect();
     }, onDone: () {
+      if (onlineVN.value) onlineVN.value = false;
       _scheduleReconnect();
     });
   }
 
   void _scheduleReconnect() {
-    if (_reconnectTimer != null) return;
-    final ms = (math.min(30, 1 << _retries)) * 500; // 0.5s,1s,2s,... up to 15s
-    _reconnectTimer = Timer(Duration(milliseconds: ms), () {
-      _reconnectTimer = null;
-      _retries = math.min(_retries + 1, 10);
-      _connect();
-    });
+    _reconnectTimer?.cancel();
+    _reconnectTimer = Timer(const Duration(seconds: 3), _startSse);
   }
 
-  void dispose() {
-    _ctrl.close();
-    _sseSub?.cancel();
+  Future<void> dispose() async {
+    await _sse?.cancel();
+    _pingTimer?.cancel();
     _reconnectTimer?.cancel();
+    await _ctrl.close();
   }
 }

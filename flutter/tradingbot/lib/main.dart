@@ -333,6 +333,9 @@ class _SidePanel extends StatelessWidget {
                   ),
                 ],
               ),
+              const SizedBox(height: 8),
+              // IBKR status is always visible
+              _IbkrStatusPill(expanded: expanded),
               const SizedBox(height: 4),
               Divider(color: Colors.white.withValues(alpha: .08)),
               // Scrollable middle section (prevents overflow)
@@ -392,6 +395,45 @@ class _SidePanel extends StatelessWidget {
           ),
         ),
       ),
+    );
+  }
+}
+
+/// Small online/offline pill with a colored dot, bound to OrderEvents.onlineVN.
+class _IbkrStatusPill extends StatelessWidget {
+  final bool expanded;
+  const _IbkrStatusPill({required this.expanded});
+  @override
+  Widget build(BuildContext context) {
+    final scheme = Theme.of(context).colorScheme;
+    return ValueListenableBuilder<bool>(
+      valueListenable: OrderEvents.instance.onlineVN,
+      builder: (_, online, __) {
+        final bg = (online ? const Color(0xFF13301F) : const Color(0xFF3A1C1C));
+        final fg = (online ? const Color(0xFF4CC38A) : const Color(0xFFEF4444));
+        final label = online ? 'IBKR • Online' : 'IBKR • Offline';
+        final icon = online ? Icons.check_circle : Icons.error;
+        final pill = Container(
+          padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 8),
+          decoration: BoxDecoration(
+            color: bg,
+            borderRadius: BorderRadius.circular(999),
+            border: Border.all(color: fg.withValues(alpha: .35)),
+          ),
+          child: Row(
+            mainAxisSize: MainAxisSize.min,
+            children: [
+              Icon(icon, size: 16, color: fg),
+              const SizedBox(width: 8),
+              Text(label,
+                  style: TextStyle(color: fg, fontWeight: FontWeight.w700)),
+            ],
+          ),
+        );
+        return expanded
+            ? Align(alignment: Alignment.centerLeft, child: pill)
+            : pill;
+      },
     );
   }
 }

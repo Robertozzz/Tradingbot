@@ -22,6 +22,7 @@ class _AssetLookupSheetState extends State<AssetLookupSheet> {
   static int _inflight = 0;
   static const int _maxInflight = 3;
   bool _loading = false;
+  bool _maybeIbkrOffline = false; // shows a friendly hint when no name results
 
   @override
   void initState() {
@@ -49,22 +50,82 @@ class _AssetLookupSheetState extends State<AssetLookupSheet> {
       setState(() {
         _rows = [];
         _loading = false;
+        _maybeIbkrOffline = false;
       });
       return;
     }
     try {
       setState(() => _loading = true);
-      final list = await Api.ibkrSearch(q);
-      final cast = list
-          .map<Map<String, dynamic>>((e) => Map<String, dynamic>.from(e as Map))
-          .toList();
-      setState(() => _rows = cast.take(30).toList());
+      // Build a handful of query variants to improve name search.
+      // (The backend is robust, but this helps when connectivity is flaky.)
+      final seenVariant = <String>{};
+      final variants = <String>[];
+      void addVar(String v) {
+        if (v.isEmpty) return;
+        if (seenVariant.add(v)) variants.add(v);
+      }
+
+      addVar(q);
+      addVar(q.toUpperCase());
+      addVar(q.toLowerCase());
+      // compact (strip spaces/punct)
+      final compact = q.replaceAll(RegExp(r'[^A-Za-z0-9]+'), '');
+      if (compact.isNotEmpty && compact != q) addVar(compact);
+      // tokens (words length >= 3)
+      for (final t in q.split(RegExp(r'[^A-Za-z0-9]+'))) {
+        if (t.length >= 3) addVar(t);
+      }
+
+      // Query a few variants (cap to be gentle with the gateway).
+      final out = <Map<String, dynamic>>[];
+      for (final v in variants.take(6)) {
+        try {
+          final list = await Api.ibkrSearch(v);
+          for (final e in list) {
+            out.add(Map<String, dynamic>.from(e as Map));
+          }
+        } catch (_) {
+          // ignore per-variant errors; we'll still show any other results
+        }
+      }
+
+      // De-dupe: prefer unique conId; fall back to (symbol, exchange).
+      final seenCon = <int>{};
+      final seenKey = <String>{};
+      final dedup = <Map<String, dynamic>>[];
+      for (final m in out) {
+        final cid = (m['conId'] as num?)?.toInt();
+        if (cid != null) {
+          if (seenCon.add(cid)) dedup.add(m);
+          continue;
+        }
+        final key =
+            '${(m['symbol'] ?? '').toString()}::${(m['exchange'] ?? m['primaryExchange'] ?? '').toString()}';
+        if (seenKey.add(key)) dedup.add(m);
+      }
+
+      // Soft-rank: exact ticker match first, then "name contains q".
+      final qLower = q.toLowerCase();
+      dedup.sort((a, b) {
+        int score(Map<String, dynamic> m) {
+          final sym = (m['symbol'] ?? '').toString();
+          final name = (m['name'] ?? m['description'] ?? '').toString();
+          int s = 0;
+          if (sym.toUpperCase() == q.toUpperCase()) s -= 1000;
+          if (name.toLowerCase().contains(qLower)) s -= 100;
+          return s;
+        }
+
+        return score(a).compareTo(score(b));
+      });
+
       setState(() {
-        _rows = cast.take(30).toList();
+        _rows = dedup.take(30).toList();
         _loading = false;
+        _maybeIbkrOffline = _rows.isEmpty; // likely disconnected -> show hint
       });
       // best-effort sparks
-      for (final r in cast.take(12)) {
+      for (final r in _rows.take(12)) {
         // keep the cap (good!)
         final sym = (r['symbol'] ?? '').toString();
         final cid = (r['conId'] as num?)?.toInt();
@@ -76,6 +137,7 @@ class _AssetLookupSheetState extends State<AssetLookupSheet> {
     } catch (e) {
       if (mounted) {
         setState(() => _loading = false);
+        // Don't toggle the offline hint on exceptions; just show snackbar.
         ScaffoldMessenger.of(context).showSnackBar(
           SnackBar(content: Text('Lookup failed: $e')),
         );
@@ -150,6 +212,23 @@ class _AssetLookupSheetState extends State<AssetLookupSheet> {
                       'Search by ticker or name (e.g. AAPL, Microsoft, EURUSD)'),
               onSubmitted: (_) => _searchNow(),
             ),
+            if (_maybeIbkrOffline)
+              Padding(
+                padding: const EdgeInsets.only(top: 8),
+                child: Row(
+                  children: const [
+                    Icon(Icons.info_outline, size: 16, color: Colors.amber),
+                    SizedBox(width: 6),
+                    Expanded(
+                      child: Text(
+                        'No matches. If you searched by company name, ensure IBKR is connected. '
+                        'Ticker lookups (e.g., TSLA) work even when offline.',
+                        style: TextStyle(color: Colors.amber),
+                      ),
+                    ),
+                  ],
+                ),
+              ),
             const SizedBox(height: 12),
             Expanded(
               child: _loading

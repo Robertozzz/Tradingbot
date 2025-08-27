@@ -3,6 +3,8 @@ from __future__ import annotations
 import os, math, logging, json, time
 from pathlib import Path
 from fastapi import APIRouter, HTTPException, Body, Query
+import subprocess, shlex
+from pathlib import Path
 import re
 from fastapi.responses import StreamingResponse
 from ib_insync import IB, util, Stock, Forex, Future, Contract, Order, MarketOrder, LimitOrder, BarData
@@ -28,6 +30,33 @@ ib = IB()
 RUNTIME = Path(os.getenv("TB_RUNTIME_DIR", Path(__file__).resolve().parent.parent / "runtime"))
 RUNTIME.mkdir(parents=True, exist_ok=True)
 ORDERS_LOG = RUNTIME / "orders.log"
+CACHE_DIR = RUNTIME / "cache"
+CACHE_DIR.mkdir(parents=True, exist_ok=True)
+
+def _safe_name(s: str) -> str:
+    return re.sub(r"[^A-Za-z0-9_.-]+", "_", s)[:180]
+
+def _cache_path(name: str) -> Path:
+    return CACHE_DIR / name
+
+def _cache_write(name: str, data: Any) -> None:
+    try:
+        p = _cache_path(name)
+        tmp = p.with_suffix(p.suffix + ".tmp")
+        tmp.write_text(json.dumps(data, separators=(",", ":")), encoding="utf-8")
+        tmp.replace(p)
+    except Exception:
+        pass
+
+def _cache_read(name: str, default: Any) -> Any:
+    try:
+        p = _cache_path(name)
+        if not p.exists():
+            return default
+        return json.loads(p.read_text(encoding="utf-8"))
+    except Exception:
+        return default
+IBC_ENV = RUNTIME / "ibc.env"
 
 # ---------- order streaming state ----------
 ORD_QUEUE: "asyncio.Queue[dict]" = asyncio.Queue(maxsize=1000)
@@ -126,12 +155,108 @@ async def _ensure_connected():
 def _safe_get(obj, attr, fallback=""):
     return getattr(obj, attr, None) or fallback
 
+def _read_ibc_env() -> dict:
+    env = {}
+    if IBC_ENV.exists():
+        for line in IBC_ENV.read_text(encoding="utf-8").splitlines():
+            line = line.strip()
+            if not line or line.startswith("#") or "=" not in line:
+                continue
+            k, v = line.split("=", 1)
+            env[k.strip()] = v.strip()
+    return env
+
+def _write_ibc_env(env: dict):
+    lines = []
+    for k in ("IB_USER","IB_PASSWORD","IB_TOTP_SECRET","IB_MODE","IB_PORT","DISPLAY"):
+        if k in env:
+            lines.append(f"{k}={env[k]}")
+    IBC_ENV.write_text("\n".join(lines) + "\n", encoding="utf-8")
+    try:
+        IBC_ENV.chmod(0o600)
+    except Exception:
+        pass
+
+def _sudo(cmd: str) -> subprocess.CompletedProcess:
+    # uses sudoers rules from installer
+    return subprocess.run(shlex.split(f"sudo {cmd}"),
+                          stdout=subprocess.PIPE,
+                          stderr=subprocess.PIPE,
+                          text=True)
+
+# -------- IBC config (credentials/mode) -------------------------------------
+@router.get("/ibc/config")
+async def ibc_config_get():
+    env = _read_ibc_env()
+    return {
+        "IB_USER": env.get("IB_USER",""),
+        "IB_MODE": env.get("IB_MODE","paper"),
+        "IB_PORT": env.get("IB_PORT","4002"),
+        "IB_TOTP_SECRET_SET": bool(env.get("IB_TOTP_SECRET","")),
+    }
+
+@router.post("/ibc/config")
+async def ibc_config_set(payload: dict = Body(...)):
+    """
+    Body: { user, password, totp, mode('paper'|'live'), restart: bool }
+    - Empty password/totp fields do NOT overwrite existing values.
+    """
+    env = _read_ibc_env()
+    user = (payload.get("user") or "").strip()
+    pwd  = payload.get("password") or ""
+    totp = (payload.get("totp") or "").strip()
+    mode = (payload.get("mode") or env.get("IB_MODE","paper")).lower()
+    if user:
+        env["IB_USER"] = user
+    if pwd != "":
+        env["IB_PASSWORD"] = pwd
+    if totp != "":
+        env["IB_TOTP_SECRET"] = totp
+    env["IB_MODE"] = "live" if mode == "live" else "paper"
+    # pick common ports unless already set
+    if "IB_PORT" not in env or not str(env["IB_PORT"]).strip():
+        env["IB_PORT"] = "4001" if env["IB_MODE"] == "live" else "4002"
+    env.setdefault("DISPLAY", ":2")
+    _write_ibc_env(env)
+    if payload.get("restart"):
+        r = _sudo("systemctl restart ibgateway-ibc.service")
+        if r.returncode != 0:
+            raise HTTPException(500, f"restart failed: {r.stderr.strip() or r.stdout.strip()}")
+    return {"ok": True, "port": env.get("IB_PORT")}
+
+# -------- Debug viewer toggle (xpra shadow) ---------------------------------
+@router.get("/ibc/debugviewer/status")
+async def debugviewer_status():
+    r = _sudo("systemctl status xpra-ibc-shadow.service")
+    active = ("Active: active (running)" in r.stdout) or ("active (running)" in r.stdout)
+    return {"active": active, "url": "/xpra-ibc/"}
+
+@router.post("/ibc/debugviewer")
+async def debugviewer_set(payload: dict = Body(...)):
+    enable = bool(payload.get("enabled"))
+    cmd = "systemctl start xpra-ibc-shadow.service" if enable else "systemctl stop xpra-ibc-shadow.service"
+    r = _sudo(cmd)
+    if r.returncode != 0:
+        raise HTTPException(500, f"{'start' if enable else 'stop'} failed: {r.stderr.strip() or r.stdout.strip()}")
+    # re-check
+    s = await debugviewer_status()
+    return s
+
 @router.get("/ping")
 async def ping():
-    await _ensure_connected()
-    # server time proves the API session is alive
-    dt = await ib.reqCurrentTimeAsync()
-    return {"connected": ib.isConnected(), "server_time": dt.isoformat()}
+    """
+    Health probe that never throws. Returns connected: true/false.
+    """
+    try:
+        if not ib.isConnected():
+            await ib.connectAsync(IB_HOST, IB_PORT, clientId=IB_CLIENT_ID, timeout=3)
+        dt = await ib.reqCurrentTimeAsync()
+        out = {"connected": True, "server_time": dt.isoformat()}
+        _cache_write("ping.json", out)
+        return out
+    except Exception as e:
+        cached = _cache_read("ping.json", None)
+        return {"connected": False, "error": str(e), "last_ok": cached.get("server_time") if isinstance(cached, dict) else None}
     
 def _num_or_none(x):
     """Cast to float and drop NaN/Inf to None so JSON stays valid."""
@@ -145,14 +270,20 @@ def _num_or_none(x):
 
 @router.get("/accounts")
 async def accounts():
-    await _ensure_connected()
-    # account summary (NetLiq, Cash, BuyingPower, etc.)
-    rows = await ib.accountSummaryAsync()
-    out = {}
-    for r in rows:
-        acct = r.account
-        out.setdefault(acct, {})[r.tag] = r.value
-    return out
+    try:
+        await _ensure_connected()
+        rows = await ib.accountSummaryAsync()
+        out = {}
+        for r in rows:
+            acct = r.account
+            out.setdefault(acct, {})[r.tag] = r.value
+        _cache_write("accounts.json", out)
+        return out
+    except Exception as e:
+        cached = _cache_read("accounts.json", None)
+        if cached is not None:
+            return cached
+        raise HTTPException(503, f"IBKR offline and no account cache: {e}")
     
 # ---------- NEWS: providers, subscribe, SSE ---------------------------------
 @router.get("/news/providers")
@@ -379,47 +510,45 @@ async def news_stream():
 
 @router.get("/positions")
 async def positions():
-    await _ensure_connected()
-
-    # Prefer modern coroutine API; fall back to legacy stream API.
     try:
-        if hasattr(ib, "reqPositionsAsync"):
-            pos = await ib.reqPositionsAsync()
-        else:
-            ib.reqPositions()
-            await asyncio.sleep(1.0)  # brief window to collect snapshots
-            pos = list(ib.positions())
+        await _ensure_connected()
+        try:
+            if hasattr(ib, "reqPositionsAsync"):
+                pos = await ib.reqPositionsAsync()
+            else:
+                ib.reqPositions()
+                await asyncio.sleep(1.0)
+                pos = list(ib.positions())
+        finally:
+            try: ib.cancelPositions()
+            except Exception: pass
+        out = []
+        for p in (pos or []):
+            try:
+                c = p.contract
+                symbol   = getattr(c, "localSymbol", None) or getattr(c, "symbol", None) or str(getattr(c, "conId", ""))
+                secType  = getattr(c, "secType", None)
+                currency = getattr(c, "currency", None)
+                exchange = getattr(c, "primaryExchange", None) or getattr(c, "exchange", None)
+                out.append({
+                    "account": p.account,
+                    "symbol": symbol,
+                    "secType": secType,
+                    "currency": currency,
+                    "exchange": exchange,
+                    "conId": _safe_get(c, "conId"),
+                    "position": _num_or_none(p.position),
+                    "avgCost": _num_or_none(p.avgCost),
+                })
+            except Exception:
+                continue
+        _cache_write("positions.json", out)
+        return out
     except Exception as e:
-        raise HTTPException(status_code=502, detail=f"reqPositions failed: {e!s}")
-    finally:
-        try:
-            ib.cancelPositions()
-        except Exception:
-            pass
-
-    out = []
-    for p in (pos or []):
-        try:
-            c = p.contract
-            symbol   = getattr(c, "localSymbol", None) or getattr(c, "symbol", None) or str(getattr(c, "conId", ""))
-            secType  = getattr(c, "secType", None)
-            currency = getattr(c, "currency", None)
-            exchange = getattr(c, "primaryExchange", None) or getattr(c, "exchange", None)
-            out.append({
-                "account": p.account,
-                "symbol": symbol,
-                "secType": secType,
-                "currency": currency,
-                "exchange": exchange,
-                "conId": _safe_get(c, "conId"),
-                "position": _num_or_none(p.position),
-                "avgCost": _num_or_none(p.avgCost),
-            })
-        except Exception:
-            # Skip malformed rows instead of failing the whole endpoint
-            import logging; logging.getLogger("ibkr").exception("normalize position row")
-            continue
-    return out
+        cached = _cache_read("positions.json", None)
+        if cached is not None:
+            return cached
+        raise HTTPException(503, f"IBKR offline and no positions cache: {e}")
     
 # ---------- helpers ----------
 async def _resolve_contract(
@@ -472,29 +601,36 @@ def _log_order(event: str, payload: dict):
 # ---------- orders ----------
 @router.get("/orders/open")
 async def orders_open():
-    await _ensure_connected()
-    openTrades = ib.openTrades()
-    out = []
-    for t in openTrades:
-        c = t.contract
-        o = t.order
-        st = t.orderStatus
-        out.append({
-            "orderId": o.orderId,
-            "permId": o.permId,
-            "symbol": getattr(c, "localSymbol", None) or c.symbol,
-            "conId": getattr(c, "conId", None),
-            "secType": c.secType,
-            "action": o.action,
-            "type": o.orderType,
-            "lmt": getattr(o, "lmtPrice", None),
-            "tif": o.tif,
-            "qty": o.totalQuantity,
-            "status": st.status,
-            "filled": st.filled,
-            "remaining": st.remaining,
-        })
-    return out
+    try:
+        await _ensure_connected()
+        openTrades = ib.openTrades()
+        out = []
+        for t in openTrades:
+            c = t.contract
+            o = t.order
+            st = t.orderStatus
+            out.append({
+                "orderId": o.orderId,
+                "permId": o.permId,
+                "symbol": getattr(c, "localSymbol", None) or c.symbol,
+                "conId": getattr(c, "conId", None),
+                "secType": c.secType,
+                "action": o.action,
+                "type": o.orderType,
+                "lmt": getattr(o, "lmtPrice", None),
+                "tif": o.tif,
+                "qty": o.totalQuantity,
+                "status": st.status,
+                "filled": st.filled,
+                "remaining": st.remaining,
+            })
+        _cache_write("orders_open.json", out)
+        return out
+    except Exception as e:
+        cached = _cache_read("orders_open.json", None)
+        if cached is not None:
+            return cached
+        raise HTTPException(503, f"IBKR offline and no open orders cache: {e}")
 
 @router.get("/orders/stream")
 async def orders_stream():
@@ -582,7 +718,38 @@ async def _await_status(trade, beats: int = 12, delay: float = 0.10):
 # --- search/contracts (find tradables by text) -----------------------------
 @router.get("/search")
 async def search(q: str | None = Query(None), query: str | None = Query(None)):
-    await _ensure_connected()
+    # Online-first; fall back to cached matching if offline
+    try:
+        await _ensure_connected()
+    except Exception:
+        term = (q or query or "").strip()
+        if not term:
+            return []
+        cache = _cache_read("search_cache.json", {})
+        if not isinstance(cache, dict):
+            return []
+        tl = term.lower()
+        # soft match across cached keys and values
+        merged: list[dict] = []
+        seen = set()
+        for k, vals in cache.items():
+            if tl in k.lower():
+                for m in (vals or []):
+                    cid = (m.get("conId") or 0)
+                    if cid and cid in seen: continue
+                    seen.add(cid)
+                    merged.append(m)
+        # also scan values' 'name' for contains
+        if len(merged) < 5:
+            for vals in cache.values():
+                for m in (vals or []):
+                    name = (m.get("name") or m.get("description") or "")
+                    if tl in str(name).lower():
+                        cid = (m.get("conId") or 0)
+                        if cid and cid in seen: continue
+                        seen.add(cid)
+                        merged.append(m)
+        return merged[:50]
     term = (q or query or "").strip()
     if not term:
         return []
@@ -686,6 +853,15 @@ async def search(q: str | None = Query(None), query: str | None = Query(None)):
             except Exception:
                 pass
 
+    # cache successful results under the normalized key (plus variants)
+    try:
+        cache = _cache_read("search_cache.json", {})
+        if not isinstance(cache, dict): cache = {}
+        norm = term.strip()
+        cache[norm] = uniq[:50]
+        _cache_write("search_cache.json", cache)
+    except Exception:
+        pass
     return uniq[:50]
 
 # --- quotes (last/bid/ask/high/low/close) ----------------------------------
@@ -697,7 +873,14 @@ async def quote(
     exchange: str | None = None,
     currency: str | None = None,
 ):
-    await _ensure_connected()
+    cache_key = f"quote-{_safe_name(str(conId or 'sym-'+str(symbol or '')))}.json"
+    try:
+        await _ensure_connected()
+    except Exception as e:
+        cached = _cache_read(cache_key, None)
+        if cached is not None:
+            return cached
+        # fall through to return an empty-like structure
     c = _mk_contract(symbol, conId, exchange, secType, currency)
     # qualify conId-only contracts so exchange/currency are present
     if conId and (not getattr(c, "exchange", None) or not getattr(c, "currency", None)):
@@ -716,14 +899,16 @@ async def quote(
             t = next((x for x in ib.tickers() if x.contract.conId == getattr(c, "conId", None)), None)
     except Exception as e:
         raise HTTPException(502, detail=f"quote failed: {e!s}")
-    if not t:
-        return {
+    out = {
             "conId": getattr(c, "conId", None),
             "symbol": getattr(c, "localSymbol", None) or getattr(c, "symbol", None),
             "last": None, "close": None, "bid": None, "ask": None,
             "high": None, "low": None, "time": None,
         }
-    return {
+    if not t:
+        _cache_write(cache_key, out)
+        return out
+    out = {
         "conId": getattr(t.contract, "conId", None),
         "symbol": getattr(t.contract, "localSymbol", None) or t.contract.symbol,
         "last": _num_or_none(t.last),
@@ -734,6 +919,8 @@ async def quote(
         "low": _num_or_none(t.low),
         "time": util.formatIBDatetime(t.time) if getattr(t, "time", None) else None,
     }
+    _cache_write(cache_key, out)
+    return out
 
 # --- intraday/period history (bars) ----------------------------------------
 @router.get("/history")
@@ -748,7 +935,14 @@ async def history(
     what: str = "TRADES",
     useRTH: bool = True,
 ):
-    await _ensure_connected()
+    cache_key = "hist-" + _safe_name(f"{conId or symbol}-{secType or 'STK'}-{duration}-{barSize}-{what}-{int(useRTH)}") + ".json"
+    try:
+        await _ensure_connected()
+    except Exception as e:
+        cached = _cache_read(cache_key, None)
+        if cached is not None:
+            return cached
+        raise HTTPException(503, f"IBKR offline and no history cache: {e}")
     c = _mk_contract(symbol, conId, exchange, secType, currency)
     if conId and (not getattr(c, "exchange", None) or not getattr(c, "currency", None)):
         try:
@@ -768,7 +962,7 @@ async def history(
         )
     except Exception as e:
         raise HTTPException(502, detail=f"history failed: {e!s}")
-    return {
+    out = {
         "contract": {
             "conId": getattr(c, "conId", None),
             "symbol": getattr(c, "localSymbol", None) or getattr(c, "symbol", None),
@@ -777,19 +971,32 @@ async def history(
         },
         "bars": [{"t": b.date, "o": b.open, "h": b.high, "l": b.low, "c": b.close, "v": b.volume} for b in bars],
     }
+    _cache_write(cache_key, out)
+    return out
 
 # --- PnL for a single contract --------------------------------------------
 @router.get("/pnl/single")
 async def pnl_single(conId: int):
-    await _ensure_connected()
-    account = await _account_code()
-    pnl = await ib.reqPnLSingleAsync(account, "", conId)
-    # immediate snapshot; ib_insync returns a PnLSingle object
-    return {
+    cache_key = f"pnl-{int(conId)}.json"
+    try:
+        await _ensure_connected()
+        account = await _account_code()
+        pnl = await ib.reqPnLSingleAsync(account, "", conId)
+        out = {
+            "conId": conId,
+            "daily": getattr(pnl, "dailyPnL", 0) or 0,
+            "unrealized": getattr(pnl, "unrealizedPnL", 0) or 0,
+            "realized": getattr(pnl, "realizedPnL", 0) or 0,
+        }
+        _cache_write(cache_key, out)
+        return out
+    except Exception as e:
+        cached = _cache_read(cache_key, None)
+        if cached is not None:
+            return cached
+        return {
         "conId": conId,
-        "daily": getattr(pnl, "dailyPnL", 0) or 0,
-        "unrealized": getattr(pnl, "unrealizedPnL", 0) or 0,
-        "realized": getattr(pnl, "realizedPnL", 0) or 0,
+        "daily": 0, "unrealized": 0, "realized": 0
     }
 
 # --- Portfolio spark by summing USD positions ------------------------------
@@ -799,7 +1006,14 @@ async def portfolio_spark(duration: str = "1 D", barSize: str = "5 mins"):
     Build a quick equity series by summing close*position for USD positions.
     (FX/derivatives multipliers, non-USD CCY are skipped for brevity.)
     """
-    await _ensure_connected()
+    cache_key = f"portfolio_spark-{_safe_name(duration)}-{_safe_name(barSize)}.json"
+    try:
+        await _ensure_connected()
+    except Exception as e:
+        cached = _cache_read(cache_key, None)
+        if cached is not None:
+            return cached
+        return {"points": [], "note": "offline and no cache"}
     # mirror /positions robustness
     try:
         if hasattr(ib, "reqPositionsAsync"):
@@ -831,34 +1045,44 @@ async def portfolio_spark(duration: str = "1 D", barSize: str = "5 mins"):
         ts = series[0][i][0]
         total = sum(s[i][1] for s in series if len(s) > i)
         points.append([ts, float(total)])
-    return {"points": points}
+    out = {"points": points}
+    _cache_write(cache_key, out)
+    return out
     
 # --- PnL summary (aggregate across all current positions) -------------------
 @router.get("/pnl/summary")
 async def pnl_summary():
-    await _ensure_connected()
-    account = await _account_code()
-    # get positions similar to /positions for robustness
+    cache_key = "pnl_summary.json"
     try:
-        if hasattr(ib, "reqPositionsAsync"):
-            pos = await ib.reqPositionsAsync()
-        else:
-            ib.reqPositions()
-            await asyncio.sleep(1.0)
-            pos = list(ib.positions())
-    finally:
-        try: ib.cancelPositions()
-        except Exception: pass
-    total_realized = 0.0
-    total_unrealized = 0.0
-    for p in pos or []:
+        await _ensure_connected()
+        account = await _account_code()
         try:
-            pnl = await ib.reqPnLSingleAsync(account, "", int(p.contract.conId))
-            total_realized += float(getattr(pnl, "realizedPnL", 0) or 0)
-            total_unrealized += float(getattr(pnl, "unrealizedPnL", 0) or 0)
-        except Exception:
-            continue
-    return {"realized": total_realized, "unrealized": total_unrealized}
+            if hasattr(ib, "reqPositionsAsync"):
+                pos = await ib.reqPositionsAsync()
+            else:
+                ib.reqPositions()
+                await asyncio.sleep(1.0)
+                pos = list(ib.positions())
+        finally:
+            try: ib.cancelPositions()
+            except Exception: pass
+        total_realized = 0.0
+        total_unrealized = 0.0
+        for p in pos or []:
+            try:
+                pnl = await ib.reqPnLSingleAsync(account, "", int(p.contract.conId))
+                total_realized += float(getattr(pnl, "realizedPnL", 0) or 0)
+                total_unrealized += float(getattr(pnl, "unrealizedPnL", 0) or 0)
+            except Exception:
+                continue
+        out = {"realized": total_realized, "unrealized": total_unrealized}
+        _cache_write(cache_key, out)
+        return out
+    except Exception as e:
+        cached = _cache_read(cache_key, None)
+        if cached is not None:
+            return cached
+        return {"realized": 0.0, "unrealized": 0.0}
     
 # --- place / cancel ---------------------------------------------------------
 @router.post("/orders/place")

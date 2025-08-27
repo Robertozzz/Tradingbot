@@ -132,6 +132,7 @@ class Api {
       _getList('/ibkr/orders/history?${Uri(queryParameters: {
             'limit': '$limit'
           }).query}');
+  static Future<Map<String, dynamic>> ibkrPing() => _getObj('/ibkr/ping');
   static Future<Map<String, dynamic>> ibkrPnlSingle(int conId) => _getObj(
       '/ibkr/pnl/single?${Uri(queryParameters: {'conId': '$conId'}).query}');
 
