@@ -16,12 +16,50 @@ class _TradesPageState extends State<TradesPage> {
   final f = NumberFormat.decimalPattern();
   StreamSubscription<Map<String, dynamic>>? _orderBusSub;
 
+  Timer? _poll;
+
+  bool _isTerminal(String? s) {
+    final st = (s ?? '').toUpperCase();
+    return st == 'FILLED' ||
+        st == 'CANCELLED' ||
+        st == 'INACTIVE' ||
+        st.startsWith('APICANCEL');
+  }
+
+  void _ensurePoll() {
+    final hasActive = _open.any((o) => !_isTerminal(o['status']?.toString()));
+    if (hasActive && _poll == null) {
+      _poll = Timer.periodic(const Duration(seconds: 3), (_) => _load());
+    } else if (!hasActive && _poll != null) {
+      _poll!.cancel();
+      _poll = null;
+    }
+  }
+
   @override
   void initState() {
     super.initState();
     _load();
     // Live refresh when any order status changes (from global SSE bus).
-    _orderBusSub = OrderEvents.instance.stream.listen((_) {
+    _orderBusSub = OrderEvents.instance.stream.listen((m) {
+      // Patch in place so UI updates instantly; still call _ensurePoll().
+      final oid = (m['orderId'] as num?)?.toInt();
+      if (oid != null) {
+        final i =
+            _open.indexWhere((o) => (o['orderId'] as num?)?.toInt() == oid);
+        if (i >= 0) {
+          final merged = {..._open[i], ...m};
+          setState(() {
+            _open = [
+              ..._open.take(i),
+              merged,
+              ..._open.skip(i + 1),
+            ];
+          });
+        }
+      }
+      _ensurePoll();
+      // Also kick a best-effort resync; it’s cheap and ensures we converge.
       _load();
     }, onError: (_) {});
   }
@@ -38,6 +76,7 @@ class _TradesPageState extends State<TradesPage> {
           .toList()
           .reversed
           .toList());
+      _ensurePoll();
     } catch (_) {}
   }
 
@@ -54,6 +93,9 @@ class _TradesPageState extends State<TradesPage> {
   void dispose() {
     try {
       _orderBusSub?.cancel();
+    } catch (_) {}
+    try {
+      _poll?.cancel();
     } catch (_) {}
     super.dispose();
   }

@@ -362,6 +362,26 @@ class _AssetPanelState extends State<_AssetPanel> {
   bool get advanced => widget.advancedVN.value;
   VoidCallback? _advListener;
   StreamSubscription<Map<String, dynamic>>? _orderBusSub;
+  Timer? _ordersPoll;
+
+  bool _isTerminal(String? s) {
+    final st = (s ?? '').toUpperCase();
+    return st == 'FILLED' ||
+        st == 'CANCELLED' ||
+        st == 'INACTIVE' ||
+        st.startsWith('APICANCEL');
+  }
+
+  void _ensureOrdersPoll() {
+    final hasActive = _orders.any((o) => !_isTerminal(o['status']?.toString()));
+    if (hasActive && _ordersPoll == null) {
+      _ordersPoll =
+          Timer.periodic(const Duration(seconds: 3), (_) => _refreshLive());
+    } else if (!hasActive && _ordersPoll != null) {
+      _ordersPoll!.cancel();
+      _ordersPoll = null;
+    }
+  }
 
   // --- Account / Buying Power state ---
   Map<String, dynamic>? _acctSummary; // raw /ibkr/accounts (first account)
@@ -490,6 +510,7 @@ class _AssetPanelState extends State<_AssetPanel> {
           _orders = [..._orders, m];
         }
       });
+      _ensureOrdersPoll();
       final st = (m['status'] ?? m['parentStatus'] ?? '').toString();
       if (st.isNotEmpty) {
         ScaffoldMessenger.of(context).showSnackBar(
@@ -529,6 +550,9 @@ class _AssetPanelState extends State<_AssetPanel> {
     _quoteTimer?.cancel();
     try {
       _orderBusSub?.cancel();
+    } catch (_) {}
+    try {
+      _ordersPoll?.cancel();
     } catch (_) {}
     super.dispose();
   }
@@ -609,6 +633,7 @@ class _AssetPanelState extends State<_AssetPanel> {
         _orders = filtered;
         _pnl = pnl;
       });
+      _ensureOrdersPoll();
     } finally {
       if (mounted) setState(() => _busy = false);
     }
@@ -1339,6 +1364,7 @@ class _AssetPanelState extends State<_AssetPanel> {
         SnackBar(content: Text(st == null ? 'Order sent' : 'Order $st')),
       );
       _refreshLive();
+      _ensureOrdersPoll();
     } catch (e) {
       if (!mounted) return;
       ScaffoldMessenger.of(context)
