@@ -213,8 +213,13 @@ async def ibc_config_set(payload: dict = Body(...)):
     if totp != "":
         env["IB_TOTP_SECRET"] = totp
     env["IB_MODE"] = "live" if mode == "live" else "paper"
-    # pick common ports unless already set
-    if "IB_PORT" not in env or not str(env["IB_PORT"]).strip():
+    # Port strategy:
+    # - If payload specifies 'port', use it.
+    # - Else, track the mode: live->4001, paper->4002 (sane defaults).
+    port_override = (payload.get("port") or "").strip()
+    if port_override:
+        env["IB_PORT"] = port_override
+    else:
         env["IB_PORT"] = "4001" if env["IB_MODE"] == "live" else "4002"
     env.setdefault("DISPLAY", ":2")
     _write_ibc_env(env)
@@ -227,14 +232,15 @@ async def ibc_config_set(payload: dict = Body(...)):
 # -------- Debug viewer toggle (xpra shadow) ---------------------------------
 @router.get("/ibc/debugviewer/status")
 async def debugviewer_status():
-    r = _sudo("systemctl status xpra-ibc-shadow.service")
-    active = ("Active: active (running)" in r.stdout) or ("active (running)" in r.stdout)
+    r = _sudo("systemctl is-active xpra-ibc-shadow.service")
+    active = (r.stdout.strip() == "active")
     return {"active": active, "url": "/xpra-ibc/"}
 
 @router.post("/ibc/debugviewer")
 async def debugviewer_set(payload: dict = Body(...)):
     enable = bool(payload.get("enabled"))
-    cmd = "systemctl start xpra-ibc-shadow.service" if enable else "systemctl stop xpra-ibc-shadow.service"
+    cmd = ("systemctl enable --now xpra-ibc-shadow.service"
+           if enable else "systemctl disable --now xpra-ibc-shadow.service")
     r = _sudo(cmd)
     if r.returncode != 0:
         raise HTTPException(500, f"{'start' if enable else 'stop'} failed: {r.stderr.strip() or r.stdout.strip()}")

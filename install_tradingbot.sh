@@ -241,13 +241,16 @@ IBC_HOME="/opt/ibc"
 IBC_CFG_DIR="$IBC_HOME/config"
 INI="$IBC_CFG_DIR/IBC.ini"
 mkdir -p "$IBC_CFG_DIR"
+twofa_block="TwoFactorMethod=none"
+if [[ -n "${IB_TOTP_SECRET:-}" ]]; then
+  twofa_block=$'TwoFactorMethod=totp\nTwoFactorSecret='"${IB_TOTP_SECRET}"
+fi
 cat >"$INI" <<INI
 [Login]
 IbLoginId=${IB_USER}
 IbPassword=${IB_PASSWORD}
 TradingMode=${IB_MODE}
-TwoFactorMethod=totp
-TwoFactorSecret=${IB_TOTP_SECRET}
+${twofa_block}
 
 [Settings]
 ReadOnlyLogin=no
@@ -292,6 +295,9 @@ www-data ALL=(root) NOPASSWD: /bin/systemctl restart ibgateway-ibc.service
 www-data ALL=(root) NOPASSWD: /bin/systemctl start xpra-ibc-shadow.service
 www-data ALL=(root) NOPASSWD: /bin/systemctl stop xpra-ibc-shadow.service
 www-data ALL=(root) NOPASSWD: /bin/systemctl status xpra-ibc-shadow.service
+www-data ALL=(root) NOPASSWD: /bin/systemctl is-active xpra-ibc-shadow.service
+www-data ALL=(root) NOPASSWD: /bin/systemctl enable xpra-ibc-shadow.service
+www-data ALL=(root) NOPASSWD: /bin/systemctl disable xpra-ibc-shadow.service
 SUDOERS
 chmod 0440 /etc/sudoers.d/tradingbot-ibc
 
@@ -374,6 +380,7 @@ After=ibgateway-ibc.service
 
 [Service]
 User=ibkr
+ExecStartPre=/bin/bash -lc 'for i in {1..30}; do xdpyinfo -display :2 >/dev/null 2>&1 && exit 0 || sleep 0.2; done; exit 1'
 ExecStart=/usr/bin/xpra shadow :2 \
   --daemon=no --html=on \
   --speaker=off --microphone=off --pulseaudio=no --bell=off \
@@ -699,6 +706,20 @@ server {
         rewrite ^/xpra-main/(.*)$ /\$1 break;
         # and rewrite any absolute redirect back under /xpra-main/ for the browser
         proxy_redirect ~^(/.*)$ /xpra-main\$1;
+        proxy_pass http://127.0.0.1:14500;
+    }
+
+    # TEMP: Xpra WebSocket for MAIN (absolute /connect used by the HTML5 client)
+    location = /connect {
+        auth_request off;
+        proxy_http_version 1.1;
+        proxy_set_header Upgrade $http_upgrade;
+        proxy_set_header Connection "upgrade";
+        proxy_set_header Host $host;
+        proxy_read_timeout 86400;
+        proxy_buffering off;
+        proxy_hide_header X-Frame-Options;
+        proxy_hide_header Content-Security-Policy;
         proxy_pass http://127.0.0.1:14500;
     }
 
