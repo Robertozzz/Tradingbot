@@ -239,11 +239,24 @@ async def debugviewer_status():
 @router.post("/ibc/debugviewer")
 async def debugviewer_set(payload: dict = Body(...)):
     enable = bool(payload.get("enabled"))
-    cmd = ("systemctl enable --now xpra-ibc-shadow.service"
-           if enable else "systemctl disable --now xpra-ibc-shadow.service")
-    r = _sudo(cmd)
-    if r.returncode != 0:
-        raise HTTPException(500, f"{'start' if enable else 'stop'} failed: {r.stderr.strip() or r.stdout.strip()}")
+    if enable:
+        # try enable --now, then fall back to enable + start
+        r = _sudo("systemctl enable --now xpra-ibc-shadow.service")
+        if r.returncode != 0:
+            r1 = _sudo("systemctl enable xpra-ibc-shadow.service")
+            r2 = _sudo("systemctl start xpra-ibc-shadow.service")
+            if r1.returncode != 0 or r2.returncode != 0:
+                err = r.stderr.strip() or r1.stderr.strip() or r2.stderr.strip() or r.stdout.strip()
+                raise HTTPException(500, f"start failed: {err}")
+    else:
+        # try disable --now, then fall back to stop + disable
+        r = _sudo("systemctl disable --now xpra-ibc-shadow.service")
+        if r.returncode != 0:
+            r1 = _sudo("systemctl stop xpra-ibc-shadow.service")
+            r2 = _sudo("systemctl disable xpra-ibc-shadow.service")
+            if r1.returncode != 0 or r2.returncode != 0:
+                err = r.stderr.strip() or r1.stderr.strip() or r2.stderr.strip() or r.stdout.strip()
+                raise HTTPException(500, f"stop failed: {err}")
     # re-check
     s = await debugviewer_status()
     return s

@@ -291,13 +291,17 @@ chown root:root /usr/local/bin/ibc-run.sh
 
 # Sudo for web to control services (for settings toggle & restarts)
 cat >/etc/sudoers.d/tradingbot-ibc <<'SUDOERS'
-www-data ALL=(root) NOPASSWD: /bin/systemctl restart ibgateway-ibc.service
-www-data ALL=(root) NOPASSWD: /bin/systemctl start xpra-ibc-shadow.service
-www-data ALL=(root) NOPASSWD: /bin/systemctl stop xpra-ibc-shadow.service
-www-data ALL=(root) NOPASSWD: /bin/systemctl status xpra-ibc-shadow.service
-www-data ALL=(root) NOPASSWD: /bin/systemctl is-active xpra-ibc-shadow.service
-www-data ALL=(root) NOPASSWD: /bin/systemctl enable xpra-ibc-shadow.service
-www-data ALL=(root) NOPASSWD: /bin/systemctl disable xpra-ibc-shadow.service
+Defaults:www-data !requiretty
+# accept both /usr/bin and /bin (usrmerge-safe) and allow --now
+www-data ALL=(root) NOPASSWD: /usr/bin/systemctl restart ibgateway-ibc.service, /bin/systemctl restart ibgateway-ibc.service
+www-data ALL=(root) NOPASSWD: /usr/bin/systemctl start xpra-ibc-shadow.service,   /bin/systemctl start xpra-ibc-shadow.service
+www-data ALL=(root) NOPASSWD: /usr/bin/systemctl stop xpra-ibc-shadow.service,    /bin/systemctl stop xpra-ibc-shadow.service
+www-data ALL=(root) NOPASSWD: /usr/bin/systemctl status xpra-ibc-shadow.service,  /bin/systemctl status xpra-ibc-shadow.service
+www-data ALL=(root) NOPASSWD: /usr/bin/systemctl is-active xpra-ibc-shadow.service, /bin/systemctl is-active xpra-ibc-shadow.service
+www-data ALL=(root) NOPASSWD: /usr/bin/systemctl enable xpra-ibc-shadow.service,  /bin/systemctl enable xpra-ibc-shadow.service
+www-data ALL=(root) NOPASSWD: /usr/bin/systemctl enable --now xpra-ibc-shadow.service, /bin/systemctl enable --now xpra-ibc-shadow.service
+www-data ALL=(root) NOPASSWD: /usr/bin/systemctl disable xpra-ibc-shadow.service, /bin/systemctl disable xpra-ibc-shadow.service
+www-data ALL=(root) NOPASSWD: /usr/bin/systemctl disable --now xpra-ibc-shadow.service, /bin/systemctl disable --now xpra-ibc-shadow.service
 SUDOERS
 chmod 0440 /etc/sudoers.d/tradingbot-ibc
 
