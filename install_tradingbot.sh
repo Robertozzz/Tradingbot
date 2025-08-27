@@ -2,7 +2,7 @@
 # install_tradingbot.sh
 # One-shot installer for Debian 12/13 (no GUI).
 # Sets up: FastAPI (uvicorn), auth (password + TOTP), Nginx (+TLS optional),
-# noVNC + websockify, and IBKR Gateway (Xvfb + openbox + x11vnc).
+# # Xpra HTML5, and IBKR Gateway (Xvfb + IBC).
 #
 # Usage (pick ONE source method):
 #   sudo bash install_tradingbot.sh --domain bot.example.com --email you@example.com \
@@ -163,19 +163,8 @@ if [[ -f /opt/tradingbot/requirements.txt ]]; then
   USE_VENV=1
 fi
 
-# ---- Remove legacy standalone xpra runner if present (prevents port clashes) ----
-rm -f /opt/ibkr/run-ibgateway-xpra.sh 2>/dev/null || true
-
-# ---- Helper: pin IBKR window to top-left without resizing ----
-install -D -m 0755 /dev/stdin /usr/local/bin/pin-ibgw.sh <<'PINSH'
-#!/usr/bin/env bash
-set -euo pipefail
-
-done
-exit 0
-PINSH
-
-chown root:root /usr/local/bin/pin-ibgw.sh
+# remove any legacy runners (avoids port/display clashes)
+rm -f /opt/ibkr/run-ibgateway-xpra.sh /usr/local/bin/pin-ibgw.sh 2>/dev/null || true
 
 # Install Gateway under ibkr (idempotent)
 # We use the same path as the runner script: $HOME/Jts/ibgateway/1037
@@ -199,12 +188,9 @@ sudo -u ibkr bash -lc '
   fi
 '
   
-# (Openbox/Xvfb/noVNC not needed with xpra)
-
 # ---- IBC (IB Controller) headless setup ------------------------------------
-# /opt/ibc holds IBC; /opt/tradingbot/runtime/ibc.env holds secrets/mode/port.
+# /opt/ibc holds IBC; /opt/tradingbot/runtime/ibc.env holds UI state (port/mode etc).
 install -d -o ibkr -g ibkr -m 0755 /opt/ibc
-install -d -o ibkr -g ibkr -m 0755 /opt/ibc/config
 install -o ibkr -g ibkr -m 0600 /dev/null /opt/tradingbot/runtime/ibc.env || true
 cat >/opt/tradingbot/runtime/ibc.env <<'ENVV'
 IB_USER=
@@ -231,62 +217,54 @@ else
   echo "[WARN] Could not auto-fetch IBC. You can copy it to /opt/ibc later."
 fi
 
-# IBC launcher: renders IBC.ini from env and starts headless gateway on :2
-install -D -m 0755 /dev/stdin /usr/local/bin/ibc-run.sh <<'RUNIBC'
+# ---- IBC runtime config (used by ibcstart.sh) ------------------------------
+# Create /opt/ibc/config.ini with TwsPath, TradingMode and (optionally) creds.
+install -o ibkr -g ibkr -m 0644 /dev/null /opt/ibc/config.ini || true
+TWSPATH="$(bash -lc 'ls -1d /home/ibkr/Jts/ibgateway/* 2>/dev/null | egrep -o "[0-9]+" | sort -n | tail -1')"
+if [[ -n "$TWSPATH" && -d "/home/ibkr/Jts/ibgateway/$TWSPATH" ]]; then
+  sed -i "s|^TwsPath=.*$||" /opt/ibc/config.ini 2>/dev/null || true
+  grep -q '^TwsPath=' /opt/ibc/config.ini || echo "TwsPath=/home/ibkr/Jts/ibgateway/$TWSPATH" >>/opt/ibc/config.ini
+fi
+# Set TradingMode default (app API can flip it later)
+grep -q '^TradingMode=' /opt/ibc/config.ini || echo "TradingMode=paper" >>/opt/ibc/config.ini
+chown ibkr:ibkr /opt/ibc/config.ini
+
+# ---- Dedicated Xvfb for :2 (systemd) ---------------------------------------
+cat >/etc/systemd/system/xvfb-ibg.service <<'UNIT'
+[Unit]
+Description=Virtual X11 (Xvfb) for IB Gateway on :2
+After=network.target
+StartLimitIntervalSec=0
+
+[Service]
+User=ibkr
+Restart=always
+RestartSec=2
+ExecStart=/usr/bin/Xvfb :2 -screen 0 1920x1080x24 -dpi 96
+
+[Install]
+WantedBy=multi-user.target
+UNIT
+
+# ---- IBC runner: call ibcstart.sh with correct args ------------------------
+install -D -m 0755 /dev/stdin /usr/local/bin/ibc-run.sh <<'RUNIBC2'
 #!/usr/bin/env bash
 set -euo pipefail
-[[ -r /opt/tradingbot/runtime/ibc.env ]] && . /opt/tradingbot/runtime/ibc.env
-IB_DIR="${IB_DIR:-/home/ibkr/Jts/ibgateway/1037}"
-IBC_HOME="/opt/ibc"
-IBC_CFG_DIR="$IBC_HOME/config"
-INI="$IBC_CFG_DIR/IBC.ini"
-mkdir -p "$IBC_CFG_DIR"
-twofa_block="TwoFactorMethod=none"
-if [[ -n "${IB_TOTP_SECRET:-}" ]]; then
-  twofa_block=$'TwoFactorMethod=totp\nTwoFactorSecret='"${IB_TOTP_SECRET}"
+export DISPLAY=:2
+export LIBGL_ALWAYS_SOFTWARE=1
+
+TWS_BASE="/home/ibkr/Jts"
+if [[ ! -d "$TWS_BASE/ibgateway" ]]; then
+  echo "ERROR: expected $TWS_BASE/ibgateway"; exit 1
 fi
-cat >"$INI" <<INI
-[Login]
-IbLoginId=${IB_USER}
-IbPassword=${IB_PASSWORD}
-TradingMode=${IB_MODE}
-${twofa_block}
+VER="$(ls -1d "$TWS_BASE"/ibgateway/* 2>/dev/null | awk -F/ '{print $NF}' | grep -E '^[0-9]+$' | sort -n | tail -1)"
+[[ -n "$VER" ]] || { echo "ERROR: could not detect ibgateway version under $TWS_BASE/ibgateway"; exit 1; }
 
-[Settings]
-ReadOnlyLogin=no
-StoreSettingsOnServer=yes
-IbApiPort=${IB_PORT}
-
-[Gateway]
-GatewayPath=${IB_DIR}/ibgateway
-FIX=no
-AcceptNonBrokerageAccountWarning=yes
-INI
-chown ibkr:ibkr "$INI"; chmod 600 "$INI"
-
-# ensure headless X
-if ! xdpyinfo -display "${DISPLAY:-:2}" >/dev/null 2>&1; then
-  /usr/bin/Xvfb "${DISPLAY:-:2}" -screen 0 1920x1080x24 -dpi 96 &
-  sleep 0.4
-fi
-
-if [[ -x "$IBC_HOME/bin/ibgateway" ]]; then
-  exec "$IBC_HOME/bin/ibgateway" \
-    --gateway --mode="${IB_MODE:-paper}" \
-    --ibdir="$IB_DIR" \
-    --tws-path "$IB_DIR/ibgateway" \
-    --settings-path "$IBC_CFG_DIR"
-elif [[ -x "$IBC_HOME/scripts/ibcstart.sh" ]]; then
-  exec "$IBC_HOME/scripts/ibcstart.sh" \
-    --gateway --mode "${IB_MODE:-paper}" \
-    --ibdir "$IB_DIR" \
-    --tws-path "$IB_DIR/ibgateway" \
-    --settings-path "$IBC_CFG_DIR"
-else
-  echo "IBC launcher not found in $IBC_HOME" >&2
-  exit 1
-fi
-RUNIBC
+exec /opt/ibc/scripts/ibcstart.sh "$VER" --gateway \
+  --tws-path="$TWS_BASE" \
+  --ibc-ini=/opt/ibc/config.ini \
+  --mode=paper
+RUNIBC2
 chown root:root /usr/local/bin/ibc-run.sh
 
 # Sudo for web to control services (for settings toggle & restarts)
@@ -356,17 +334,21 @@ WantedBy=multi-user.target
 UNIT
 fi
 
-# Headless IB Gateway via IBC
+# Headless IB Gateway via IBC (depends on Xvfb :2)
 cat > /etc/systemd/system/ibgateway-ibc.service <<'UNIT'
 [Unit]
 Description=IBKR Gateway (headless) via IBC
-After=network-online.target
-Wants=network-online.target
++After=network-online.target xvfb-ibg.service
++Wants=network-online.target xvfb-ibg.service
++Requires=xvfb-ibg.service
 
 [Service]
 Type=simple
 User=ibkr
 EnvironmentFile=-/opt/tradingbot/runtime/ibc.env
+Environment=DISPLAY=:2
+Environment=HOME=/home/ibkr
+WorkingDirectory=/home/ibkr
 ExecStart=/usr/local/bin/ibc-run.sh
 Restart=always
 RestartSec=3
@@ -380,28 +362,31 @@ UNIT
 cat > /etc/systemd/system/xpra-ibc-shadow.service <<'UNIT'
 [Unit]
 Description=Xpra HTML5 debug viewer (shadow) for IB Gateway on :2
-After=ibgateway-ibc.service
+After=network.target xvfb-ibg.service
+Requires=xvfb-ibg.service
 
 [Service]
 User=ibkr
-ExecStartPre=/bin/bash -lc 'for i in {1..30}; do xdpyinfo -display :2 >/dev/null 2>&1 && exit 0 || sleep 0.2; done; exit 1'
-ExecStart=/usr/bin/xpra shadow :2 \
+Restart=always
+RestartSec=2
+Environment=XDG_RUNTIME_DIR=/tmp/xpra-ibkr
+ExecStartPre=/bin/mkdir -p /tmp/xpra-ibkr
+ExecStart=/usr/bin/xpra shadow :2 --daemon=no --html=on \
   --daemon=no --html=on \
   --speaker=off --microphone=off --pulseaudio=no --bell=off \
-  --bind-tcp=127.0.0.1:14500 \
-  --dpi=96 --opengl=no --compositor=off \
-  --exit-with-children=yes \
-  --log-file=/home/ibkr/xpra-shadow.log
-Restart=always
-RestartSec=1
+  --bind-tcp=127.0.0.1:14500 --tcp-auth=none \
+  --dpi=96 --opengl=no --compositor=off --notifications=no --printing=no
 
 [Install]
 WantedBy=multi-user.target
 UNIT
 
 systemctl daemon-reload
+systemctl enable --now xvfb-ibg.service
 systemctl enable --now ibgateway-ibc.service
 systemctl enable --now uvicorn.service
+# xpra viewer is optional; keep disabled by default
+# systemctl enable --now xpra-ibc-shadow.service
 
 # ---- Nginx site (HTTP dev vs HTTPS prod) ----
 if [[ $NO_TLS -eq 1 ]]; then

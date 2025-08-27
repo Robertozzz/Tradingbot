@@ -19,6 +19,7 @@ log = logging.getLogger("ibkr")
 IB_HOST = os.getenv("IB_HOST", "127.0.0.1")
 IB_PORT = int(os.getenv("IB_PORT", "4002"))
 IB_CLIENT_ID = int(os.getenv("IB_CLIENT_ID", "11"))
+IBC_INI_PATH = Path("/opt/ibc/config.ini")
 
 # Make ib_insync safe under ASGI/Jupyter nested loops
 try:
@@ -177,6 +178,38 @@ def _write_ibc_env(env: dict):
     except Exception:
         pass
 
+def _update_ibc_config_ini_from_env(env: dict) -> None:
+    """
+    Keep /opt/ibc/config.ini in sync with UI-provided creds/mode so IBC can
+    log in headlessly after a restart. We only touch a small set of keys.
+    """
+    try:
+        # read existing lines (ini format is simple key=value, no sections)
+        lines = []
+        if IBC_INI_PATH.exists():
+            lines = [ln.rstrip("\n") for ln in IBC_INI_PATH.read_text(encoding="utf-8").splitlines()]
+        d = {k.split("=",1)[0]: k.split("=",1)[1] for k in lines if "=" in k}
+        # update keys
+        if env.get("IB_USER"):
+            d["IbLoginId"] = env["IB_USER"]
+        if env.get("IB_PASSWORD") is not None and env.get("IB_PASSWORD") != "":
+            d["IbPassword"] = env["IB_PASSWORD"]
+        mode = (env.get("IB_MODE","paper") or "paper").lower()
+        d["TradingMode"] = "live" if mode == "live" else "paper"
+        # 2FA
+        totp = env.get("IB_TOTP_SECRET","")
+        if totp:
+            d["TwoFactorMethod"] = "totp"
+            d["TwoFactorSecret"] = totp
+        else:
+            d["TwoFactorMethod"] = "none"
+            d.pop("TwoFactorSecret", None)
+        # write back
+        body = "\n".join(f"{k}={v}" for k,v in d.items()) + "\n"
+        IBC_INI_PATH.write_text(body, encoding="utf-8")
+    except Exception:
+        pass
+
 def _sudo(cmd: str) -> subprocess.CompletedProcess:
     # uses sudoers rules from installer
     return subprocess.run(shlex.split(f"sudo {cmd}"),
@@ -223,6 +256,7 @@ async def ibc_config_set(payload: dict = Body(...)):
         env["IB_PORT"] = "4001" if env["IB_MODE"] == "live" else "4002"
     env.setdefault("DISPLAY", ":2")
     _write_ibc_env(env)
+    _update_ibc_config_ini_from_env(env)
     if payload.get("restart"):
         r = _sudo("systemctl restart ibgateway-ibc.service")
         if r.returncode != 0:
