@@ -132,9 +132,12 @@ class _ShellState extends State<Shell> {
     return Scaffold(
       appBar: AppBar(title: const Text('Tradingbot')),
       body: Column(
+        mainAxisSize: MainAxisSize.max,
+        mainAxisAlignment: MainAxisAlignment.start,
         children: [
           Expanded(
             child: Row(
+              crossAxisAlignment: CrossAxisAlignment.start,
               children: [
                 if (wide)
                   _SidePanel(
@@ -144,7 +147,18 @@ class _ShellState extends State<Shell> {
                         setState(() => railExpanded = !railExpanded),
                     onSelect: (i) => setState(() => index = i),
                   ),
-                Expanded(child: pages[index]),
+                // Use a loose fit so the page takes its natural height
+                // and stays pinned to the top (with a nice max width).
+                Flexible(
+                  fit: FlexFit.loose,
+                  child: Align(
+                    alignment: Alignment.topCenter,
+                    child: ConstrainedBox(
+                      constraints: const BoxConstraints(maxWidth: 1400),
+                      child: pages[index],
+                    ),
+                  ),
+                ),
               ],
             ),
           ),
