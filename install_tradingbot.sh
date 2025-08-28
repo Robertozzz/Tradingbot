@@ -171,15 +171,7 @@ install -D -m 0755 /dev/stdin /usr/local/bin/pin-ibgw.sh <<'PINSH'
 #!/usr/bin/env bash
 set -euo pipefail
 
-+# Best-effort: wait for the first IBGW window and move it to (0,0); never fail.
-for i in {1..60}; do
-  if wmctrl -l | egrep -q 'IB Gateway|IBKR Gateway|Login'; then break; fi
-  sleep 0.5
 done
-WIN_ID="$(wmctrl -l | awk '/IB Gateway|IBKR Gateway|Login/{print $1; exit}')"
-if [[ -n "${WIN_ID:-}" ]]; then
-  wmctrl -i -r "$WIN_ID" -e 0,0,0,-1,-1 || true
-fi
 exit 0
 PINSH
 
@@ -208,80 +200,6 @@ sudo -u ibkr bash -lc '
 '
   
 # (Openbox/Xvfb/noVNC not needed with xpra)
-
-# ---- IBC (install only; not used yet) ---------------------------------------
-install -d -o ibkr -g ibkr -m 0755 /opt/ibc
-# Runtime env used by your API and (later) the IBC unit:
-install -o ibkr -g ibkr -m 0600 /opt/tradingbot/runtime/ibc.env || true
-cat >/opt/tradingbot/runtime/ibc.env <<'ENVV'
-IB_USER=
-IB_PASSWORD=
-IB_TOTP_SECRET=
-IB_MODE=paper
-IB_PORT=4002
-DISPLAY=:100
-ENVV
-chown ibkr:ibkr /opt/tradingbot/runtime/ibc.env
-chmod 0600 /opt/tradingbot/runtime/ibc.env
-
-# Fetch latest IBC release (linux) best-effort:
-TMP_IBC="$(mktemp -d)"
-IBC_ZIP_URL="$(curl -fsSL https://api.github.com/repos/IbcAlpha/IBC/releases/latest \
-  | jq -r '.assets[] | select(.name|test("(?i)linux.*\\.(zip|tgz|tar\\.gz)$")) | .browser_download_url' | head -n1)"
-if [[ -n "$IBC_ZIP_URL" ]]; then
-  echo "[IBC] Downloading: $IBC_ZIP_URL"
-  curl -fL "$IBC_ZIP_URL" -o "$TMP_IBC/ibc.zip" || true
-  unzip -q "$TMP_IBC/ibc.zip" -d "$TMP_IBC/unpack" || true
-  rsync -a "$TMP_IBC/unpack"/ /opt/ibc/ || true
-  chown -R ibkr:ibkr /opt/ibc
-  # Normalize line endings & ensure exec bits on scripts
-  find /opt/ibc -type f -name "*.sh" -exec sed -i "s/\r$//" {} + || true
-  find /opt/ibc -type f -name "*.sh" -exec chmod 0755 {} + || true
-else
-  echo "[WARN] Could not auto-fetch IBC. You can copy it to /opt/ibc later."
-fi
-
-# Minimal /opt/ibc/config.ini (point TwsPath at installed Gateway; default paper)
-install -o ibkr -g ibkr -m 0644 /dev/null /opt/ibc/config.ini || true
-TWSPATH="$(bash -lc 'ls -1d /home/ibkr/Jts/ibgateway/* 2>/dev/null | egrep -o "[0-9]+" | sort -n | tail -1')"
-if [[ -n "$TWSPATH" && -d "/home/ibkr/Jts/ibgateway/$TWSPATH" ]]; then
-  grep -q '^TwsPath=' /opt/ibc/config.ini || echo "TwsPath=/home/ibkr/Jts/ibgateway/$TWSPATH" >>/opt/ibc/config.ini
-fi
-grep -q '^TradingMode=' /opt/ibc/config.ini || echo "TradingMode=paper" >>/opt/ibc/config.ini
-chown ibkr:ibkr /opt/ibc/config.ini
-
-# Wrapper to launch IBC later (kept idle for now)
-install -D -m 0755 /dev/stdin /usr/local/bin/ibc-run.sh <<'RUNIBC'
-#!/usr/bin/env bash
-set -euo pipefail
-export DISPLAY=${DISPLAY:-:100}
-export LIBGL_ALWAYS_SOFTWARE=1
-TWS_BASE="/home/ibkr/Jts"
-if [[ ! -d "$TWS_BASE/ibgateway" ]]; then
-  echo "ERROR: expected $TWS_BASE/ibgateway"; exit 1
-fi
-VER="$(ls -1d "$TWS_BASE"/ibgateway/* 2>/dev/null | awk -F/ '{print $NF}' | grep -E '^[0-9]+$' | sort -n | tail -1)"
-[[ -n "$VER" ]] || { echo "ERROR: could not detect ibgateway version under $TWS_BASE/ibgateway"; exit 1; }
-INI="/opt/ibc/config.ini"
-exec /opt/ibc/scripts/ibcstart.sh "$VER" --gateway \
-  --tws-path="$TWS_BASE" \
-  --ibc-ini="$INI" \
-  --mode=paper
-RUNIBC
-chown root:root /usr/local/bin/ibc-run.sh
-
-# Sudoers so the web/API can manage ibc + optional viewer later
-cat >/etc/sudoers.d/tradingbot-ibc <<'SUDOERS'
-Defaults:www-data !requiretty
-www-data ALL=(root) NOPASSWD: /usr/bin/systemctl restart ibgateway-ibc.service, /bin/systemctl restart ibgateway-ibc.service
-www-data ALL=(root) NOPASSWD: /usr/bin/systemctl start xpra-ibc-shadow.service,   /bin/systemctl start xpra-ibc-shadow.service
-www-data ALL=(root) NOPASSWD: /usr/bin/systemctl stop xpra-ibc-shadow.service,    /bin/systemctl stop xpra-ibc-shadow.service
-www-data ALL=(root) NOPASSWD: /usr/bin/systemctl status xpra-ibc-shadow.service,  /bin/systemctl status xpra-ibc-shadow.service
-www-data ALL=(root) NOPASSWD: /usr/bin/systemctl is-active xpra-ibc-shadow.service, /bin/systemctl is-active xpra-ibc-shadow.service
-www-data ALL=(root) NOPASSWD: /usr/bin/systemctl enable xpra-ibc-shadow.service,  /bin/systemctl enable xpra-ibc-shadow.service
-www-data ALL=(root) NOPASSWD: /usr/bin/systemctl disable xpra-ibc-shadow.service, /bin/systemctl disable xpra-ibc-shadow.service
-SUDOERS
-chmod 0440 /etc/sudoers.d/tradingbot-ibc
 
 # ---- Systemd: uvicorn + ibgateway ----
 PYBIN="/usr/bin/python3"
@@ -362,30 +280,6 @@ ExecStart=/usr/bin/xpra start :100 \
   --start-child=/usr/local/bin/pin-ibgw.sh
 Restart=always
 RestartSec=1
-
-[Install]
-WantedBy=multi-user.target
-UNIT
-
-# (Optional, disabled) IBC unit for later switch-over; uses same :100 XPRA X server
-cat > /etc/systemd/system/ibgateway-ibc.service <<'UNIT'
-[Unit]
-Description=IBKR Gateway via IBC (disabled by default; using xpra-main for now)
-After=network-online.target xpra-ibgateway-main.service
-Wants=network-online.target
-Requires=xpra-ibgateway-main.service
-
-[Service]
-Type=simple
-User=ibkr
-EnvironmentFile=-/opt/tradingbot/runtime/ibc.env
-Environment=DISPLAY=:100
-Environment=HOME=/home/ibkr
-WorkingDirectory=/home/ibkr
-ExecStart=/usr/local/bin/ibc-run.sh
-Restart=always
-RestartSec=3
-TimeoutStopSec=20
 
 [Install]
 WantedBy=multi-user.target
@@ -491,33 +385,6 @@ server {
         rewrite ^/xpra-main/(.*)$ /\$1 break;
         # and rewrite any absolute redirect back under /xpra-main/ for the browser
         proxy_redirect ~^(/.*)$ /xpra-main\$1;
-        proxy_pass http://127.0.0.1:14500;
-    }
-
-    # Alias for future IBC viewer (currently same XPRA server)
-    location /xpra-ibc/ {
-        auth_request off;
-        proxy_http_version 1.1;
-        proxy_set_header Upgrade \$http_upgrade;
-        proxy_set_header Connection "upgrade";
-        proxy_set_header Host \$host;
-        proxy_read_timeout 86400;
-        proxy_buffering off;
-        proxy_hide_header X-Frame-Options;
-        proxy_hide_header Content-Security-Policy;
-        add_header X-Frame-Options "SAMEORIGIN" always;
-        add_header Content-Security-Policy "frame-ancestors 'self' http://\$host https://\$host" always;
-        proxy_set_header Accept-Encoding "";
-        sub_filter_types text/html;
-        sub_filter_once off;
-        sub_filter '<meta http-equiv="Content-Security-Policy"' '<meta http-equiv="x-removed-CSP">';
-        sub_filter '</head>' '<style id="xpra-embed">
-          #toolbar,#menubar,#footer,#taskbar,#sidepanel,#notifications{display:none!important}
-          html,body,#workspace{margin:0;padding:0;width:100%;height:100%;background:transparent}
-          .window{box-shadow:none!important;border:none!important}
-        </style></head>';
-        rewrite ^/xpra-ibc/(.*)\$ /\$1 break;
-        proxy_redirect ~^(/.*)\$ /xpra-ibc\$1;
         proxy_pass http://127.0.0.1:14500;
     }
 	
@@ -686,33 +553,6 @@ server {
         rewrite ^/xpra-main/(.*)$ /\$1 break;
         # and rewrite any absolute redirect back under /xpra-main/ for the browser
         proxy_redirect ~^(/.*)$ /xpra-main\$1;
-        proxy_pass http://127.0.0.1:14500;
-    }
-
-    # Alias for future IBC viewer (currently same XPRA server)
-    location /xpra-ibc/ {
-        auth_request off;
-        proxy_http_version 1.1;
-        proxy_set_header Upgrade \$http_upgrade;
-        proxy_set_header Connection "upgrade";
-        proxy_set_header Host \$host;
-        proxy_read_timeout 86400;
-        proxy_buffering off;
-        proxy_hide_header X-Frame-Options;
-        proxy_hide_header Content-Security-Policy;
-        add_header X-Frame-Options "SAMEORIGIN" always;
-        add_header Content-Security-Policy "frame-ancestors 'self' http://\$host https://\$host" always;
-        proxy_set_header Accept-Encoding "";
-        sub_filter_types text/html;
-        sub_filter_once off;
-        sub_filter '<meta http-equiv="Content-Security-Policy"' '<meta http-equiv="x-removed-CSP">';
-        sub_filter '</head>' '<style id="xpra-embed">
-          #toolbar,#menubar,#footer,#taskbar,#sidepanel,#notifications{display:none!important}
-          html,body,#workspace{margin:0;padding:0;width:100%;height:100%;background:transparent}
-          .window{box-shadow:none!important;border:none!important}
-        </style></head>';
-        rewrite ^/xpra-ibc/(.*)\$ /\$1 break;
-        proxy_redirect ~^(/.*)\$ /xpra-ibc\$1;
         proxy_pass http://127.0.0.1:14500;
     }
 
