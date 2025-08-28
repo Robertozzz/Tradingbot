@@ -2,7 +2,7 @@
 # install_tradingbot.sh
 # One-shot installer for Debian 12/13 (no GUI).
 # Sets up: FastAPI (uvicorn), auth (password + TOTP), Nginx (+TLS optional),
-# # Xpra HTML5, and IBKR Gateway (Xvfb + IBC).
+# noVNC + websockify, and IBKR Gateway (Xvfb + openbox + x11vnc).
 #
 # Usage (pick ONE source method):
 #   sudo bash install_tradingbot.sh --domain bot.example.com --email you@example.com \
@@ -76,7 +76,7 @@ apt-get install -y \
   python3 python3-venv python3-pip python3-uvicorn python3-fastapi \
   python3-passlib python3-pyotp python3-qrcode \
   unzip curl ca-certificates git rsync openbox \
-  xpra xvfb wmctrl xdotool x11-utils \
+  xpra xvfb wmctrl xdotool \
   nginx certbot python3-certbot-nginx \
   libgtk-3-0 libglib2.0-0 libpango-1.0-0 libcairo2 libgdk-pixbuf-2.0-0 \
   libxcomposite1 libxdamage1 libxfixes3 libxss1 libxtst6 libxi6 libxrandr2 \
@@ -163,8 +163,27 @@ if [[ -f /opt/tradingbot/requirements.txt ]]; then
   USE_VENV=1
 fi
 
-# remove any legacy runners (avoids port/display clashes)
-rm -f /opt/ibkr/run-ibgateway-xpra.sh /usr/local/bin/pin-ibgw.sh 2>/dev/null || true
+# ---- Remove legacy standalone xpra runner if present (prevents port clashes) ----
+rm -f /opt/ibkr/run-ibgateway-xpra.sh 2>/dev/null || true
+
+# ---- Helper: pin IBKR window to top-left without resizing ----
+install -D -m 0755 /dev/stdin /usr/local/bin/pin-ibgw.sh <<'PINSH'
+#!/usr/bin/env bash
+set -euo pipefail
+
++# Best-effort: wait for the first IBGW window and move it to (0,0); never fail.
+for i in {1..60}; do
+  if wmctrl -l | egrep -q 'IB Gateway|IBKR Gateway|Login'; then break; fi
+  sleep 0.5
+done
+WIN_ID="$(wmctrl -l | awk '/IB Gateway|IBKR Gateway|Login/{print $1; exit}')"
+if [[ -n "${WIN_ID:-}" ]]; then
+  wmctrl -i -r "$WIN_ID" -e 0,0,0,-1,-1 || true
+fi
+exit 0
+PINSH
+
+chown root:root /usr/local/bin/pin-ibgw.sh
 
 # Install Gateway under ibkr (idempotent)
 # We use the same path as the runner script: $HOME/Jts/ibgateway/1037
@@ -188,17 +207,19 @@ sudo -u ibkr bash -lc '
   fi
 '
   
-# ---- IBC (IB Controller) headless setup ------------------------------------
-# /opt/ibc holds IBC; /opt/tradingbot/runtime/ibc.env holds UI state (port/mode etc).
+# (Openbox/Xvfb/noVNC not needed with xpra)
+
+# ---- IBC (install only; not used yet) ---------------------------------------
 install -d -o ibkr -g ibkr -m 0755 /opt/ibc
-install -o ibkr -g ibkr -m 0600 /dev/null /opt/tradingbot/runtime/ibc.env || true
+# Runtime env used by your API and (later) the IBC unit:
+install -o ibkr -g ibkr -m 0600 /opt/tradingbot/runtime/ibc.env || true
 cat >/opt/tradingbot/runtime/ibc.env <<'ENVV'
 IB_USER=
 IB_PASSWORD=
 IB_TOTP_SECRET=
 IB_MODE=paper
 IB_PORT=4002
-DISPLAY=:2
+DISPLAY=:100
 ENVV
 chown ibkr:ibkr /opt/tradingbot/runtime/ibc.env
 chmod 0600 /opt/tradingbot/runtime/ibc.env
@@ -213,77 +234,56 @@ if [[ -n "$IBC_ZIP_URL" ]]; then
   unzip -q "$TMP_IBC/ibc.zip" -d "$TMP_IBC/unpack" || true
   rsync -a "$TMP_IBC/unpack"/ /opt/ibc/ || true
   chown -R ibkr:ibkr /opt/ibc
+  # Normalize line endings & ensure exec bits on scripts
+  find /opt/ibc -type f -name "*.sh" -exec sed -i "s/\r$//" {} + || true
+  find /opt/ibc -type f -name "*.sh" -exec chmod 0755 {} + || true
 else
   echo "[WARN] Could not auto-fetch IBC. You can copy it to /opt/ibc later."
 fi
 
-# ---- IBC runtime config (used by ibcstart.sh) ------------------------------
-# Create /opt/ibc/config.ini with TwsPath, TradingMode and (optionally) creds.
+# Minimal /opt/ibc/config.ini (point TwsPath at installed Gateway; default paper)
 install -o ibkr -g ibkr -m 0644 /dev/null /opt/ibc/config.ini || true
 TWSPATH="$(bash -lc 'ls -1d /home/ibkr/Jts/ibgateway/* 2>/dev/null | egrep -o "[0-9]+" | sort -n | tail -1')"
 if [[ -n "$TWSPATH" && -d "/home/ibkr/Jts/ibgateway/$TWSPATH" ]]; then
-  sed -i "s|^TwsPath=.*$||" /opt/ibc/config.ini 2>/dev/null || true
   grep -q '^TwsPath=' /opt/ibc/config.ini || echo "TwsPath=/home/ibkr/Jts/ibgateway/$TWSPATH" >>/opt/ibc/config.ini
 fi
-# Set TradingMode default (app API can flip it later)
 grep -q '^TradingMode=' /opt/ibc/config.ini || echo "TradingMode=paper" >>/opt/ibc/config.ini
 chown ibkr:ibkr /opt/ibc/config.ini
 
-# ---- Dedicated Xvfb for :2 (systemd) ---------------------------------------
-cat >/etc/systemd/system/xvfb-ibg.service <<'UNIT'
-[Unit]
-Description=Virtual X11 (Xvfb) for IB Gateway on :2
-After=network.target
-StartLimitIntervalSec=0
-
-[Service]
-User=ibkr
-Restart=always
-RestartSec=2
-ExecStart=/usr/bin/Xvfb :2 -screen 0 1920x1080x24 -dpi 96
-
-[Install]
-WantedBy=multi-user.target
-UNIT
-
-# ---- IBC runner: call ibcstart.sh with correct args ------------------------
-install -D -m 0755 /dev/stdin /usr/local/bin/ibc-run.sh <<'RUNIBC2'
+# Wrapper to launch IBC later (kept idle for now)
+install -D -m 0755 /dev/stdin /usr/local/bin/ibc-run.sh <<'RUNIBC'
 #!/usr/bin/env bash
 set -euo pipefail
-export DISPLAY=:2
+export DISPLAY=${DISPLAY:-:100}
 export LIBGL_ALWAYS_SOFTWARE=1
-
 TWS_BASE="/home/ibkr/Jts"
 if [[ ! -d "$TWS_BASE/ibgateway" ]]; then
   echo "ERROR: expected $TWS_BASE/ibgateway"; exit 1
 fi
 VER="$(ls -1d "$TWS_BASE"/ibgateway/* 2>/dev/null | awk -F/ '{print $NF}' | grep -E '^[0-9]+$' | sort -n | tail -1)"
 [[ -n "$VER" ]] || { echo "ERROR: could not detect ibgateway version under $TWS_BASE/ibgateway"; exit 1; }
-
+INI="/opt/ibc/config.ini"
 exec /opt/ibc/scripts/ibcstart.sh "$VER" --gateway \
   --tws-path="$TWS_BASE" \
-  --ibc-ini=/opt/ibc/config.ini \
+  --ibc-ini="$INI" \
   --mode=paper
-RUNIBC2
+RUNIBC
 chown root:root /usr/local/bin/ibc-run.sh
 
-# Sudo for web to control services (for settings toggle & restarts)
+# Sudoers so the web/API can manage ibc + optional viewer later
 cat >/etc/sudoers.d/tradingbot-ibc <<'SUDOERS'
 Defaults:www-data !requiretty
-# accept both /usr/bin and /bin (usrmerge-safe) and allow --now
 www-data ALL=(root) NOPASSWD: /usr/bin/systemctl restart ibgateway-ibc.service, /bin/systemctl restart ibgateway-ibc.service
 www-data ALL=(root) NOPASSWD: /usr/bin/systemctl start xpra-ibc-shadow.service,   /bin/systemctl start xpra-ibc-shadow.service
 www-data ALL=(root) NOPASSWD: /usr/bin/systemctl stop xpra-ibc-shadow.service,    /bin/systemctl stop xpra-ibc-shadow.service
 www-data ALL=(root) NOPASSWD: /usr/bin/systemctl status xpra-ibc-shadow.service,  /bin/systemctl status xpra-ibc-shadow.service
 www-data ALL=(root) NOPASSWD: /usr/bin/systemctl is-active xpra-ibc-shadow.service, /bin/systemctl is-active xpra-ibc-shadow.service
 www-data ALL=(root) NOPASSWD: /usr/bin/systemctl enable xpra-ibc-shadow.service,  /bin/systemctl enable xpra-ibc-shadow.service
-www-data ALL=(root) NOPASSWD: /usr/bin/systemctl enable --now xpra-ibc-shadow.service, /bin/systemctl enable --now xpra-ibc-shadow.service
 www-data ALL=(root) NOPASSWD: /usr/bin/systemctl disable xpra-ibc-shadow.service, /bin/systemctl disable xpra-ibc-shadow.service
-www-data ALL=(root) NOPASSWD: /usr/bin/systemctl disable --now xpra-ibc-shadow.service, /bin/systemctl disable --now xpra-ibc-shadow.service
 SUDOERS
 chmod 0440 /etc/sudoers.d/tradingbot-ibc
 
-# ---- Systemd: uvicorn + ibgateway (via IBC) ----
+# ---- Systemd: uvicorn + ibgateway ----
 PYBIN="/usr/bin/python3"
 if [[ $USE_VENV -eq 1 && -x /opt/tradingbot/.venv/bin/python ]]; then
   PYBIN="/opt/tradingbot/.venv/bin/python"
@@ -299,9 +299,9 @@ After=network-online.target
 Type=simple
 User=www-data
 WorkingDirectory=/opt/tradingbot
-EnvironmentFile=-/opt/tradingbot/runtime/ibc.env
 Environment=TB_RUNTIME_DIR=/opt/tradingbot/runtime
 Environment=IB_HOST=127.0.0.1
+Environment=IB_PORT=4002
 Environment=IB_CLIENT_ID=11
 Environment=TB_INSECURE_COOKIES=1
 ExecStart=$PYBIN -m uvicorn app.web:app --host 127.0.0.1 --port 8000
@@ -321,9 +321,9 @@ After=network-online.target
 Type=simple
 User=www-data
 WorkingDirectory=/opt/tradingbot
-EnvironmentFile=-/opt/tradingbot/runtime/ibc.env
 Environment=TB_RUNTIME_DIR=/opt/tradingbot/runtime
 Environment=IB_HOST=127.0.0.1
+Environment=IB_PORT=4001
 Environment=IB_CLIENT_ID=11
 ExecStart=$PYBIN -m uvicorn app.web:app --host 127.0.0.1 --port 8000
 Restart=always
@@ -334,19 +334,52 @@ WantedBy=multi-user.target
 UNIT
 fi
 
-# Headless IB Gateway via IBC (depends on Xvfb :2)
+# Stop/disable any legacy single xpra unit if present
+systemctl disable --now ibgateway.service 2>/dev/null || true
+
+# /etc/systemd/system/xpra-ibgateway-main.service
+cat > /etc/systemd/system/xpra-ibgateway-main.service <<'UNIT'
+[Unit]
+Description=Xpra session for IB Gateway main
+After=network-online.target
+
+[Service]
+User=ibkr
+RuntimeDirectory=xpra-main
+Environment=XDG_RUNTIME_DIR=/run/xpra-main
+ExecStart=/usr/bin/xpra start :100 \
+  --daemon=no --html=on \
+  --speaker=off \
+  --microphone=off \
+  --pulseaudio=no \
+  --bell=off \
+  --bind-tcp=127.0.0.1:14500 \
+  --dpi=96 \
+  --exit-with-children=yes \
+  --log-file=/home/ibkr/xpra-main.log \
+  --start-child=/usr/bin/openbox \
+  --start-child=/home/ibkr/Jts/ibgateway/1037/ibgateway \
+  --start-child=/usr/local/bin/pin-ibgw.sh
+Restart=always
+RestartSec=1
+
+[Install]
+WantedBy=multi-user.target
+UNIT
+
+# (Optional, disabled) IBC unit for later switch-over; uses same :100 XPRA X server
 cat > /etc/systemd/system/ibgateway-ibc.service <<'UNIT'
 [Unit]
-Description=IBKR Gateway (headless) via IBC
-+After=network-online.target xvfb-ibg.service
-+Wants=network-online.target xvfb-ibg.service
-+Requires=xvfb-ibg.service
+Description=IBKR Gateway via IBC (disabled by default; using xpra-main for now)
+After=network-online.target xpra-ibgateway-main.service
+Wants=network-online.target
+Requires=xpra-ibgateway-main.service
 
 [Service]
 Type=simple
 User=ibkr
 EnvironmentFile=-/opt/tradingbot/runtime/ibc.env
-Environment=DISPLAY=:2
+Environment=DISPLAY=:100
 Environment=HOME=/home/ibkr
 WorkingDirectory=/home/ibkr
 ExecStart=/usr/local/bin/ibc-run.sh
@@ -358,35 +391,11 @@ TimeoutStopSec=20
 WantedBy=multi-user.target
 UNIT
 
-# Optional debug viewer: Xpra shadows DISPLAY=:2 and serves it on 127.0.0.1:14500
-cat > /etc/systemd/system/xpra-ibc-shadow.service <<'UNIT'
-[Unit]
-Description=Xpra HTML5 debug viewer (shadow) for IB Gateway on :2
-After=network.target xvfb-ibg.service
-Requires=xvfb-ibg.service
-
-[Service]
-User=ibkr
-Restart=always
-RestartSec=2
-Environment=XDG_RUNTIME_DIR=/tmp/xpra-ibkr
-ExecStartPre=/bin/mkdir -p /tmp/xpra-ibkr
-ExecStart=/usr/bin/xpra shadow :2 --daemon=no --html=on \
-  --daemon=no --html=on \
-  --speaker=off --microphone=off --pulseaudio=no --bell=off \
-  --bind-tcp=127.0.0.1:14500 --tcp-auth=none \
-  --dpi=96 --opengl=no --compositor=off --notifications=no --printing=no
-
-[Install]
-WantedBy=multi-user.target
-UNIT
-
 systemctl daemon-reload
-systemctl enable --now xvfb-ibg.service
-systemctl enable --now ibgateway-ibc.service
+systemctl enable --now xpra-ibgateway-main.service
+systemctl restart xpra-ibgateway-main.service || true
+sleep 1
 systemctl enable --now uvicorn.service
-# xpra viewer is optional; keep disabled by default
-# systemctl enable --now xpra-ibc-shadow.service
 
 # ---- Nginx site (HTTP dev vs HTTPS prod) ----
 if [[ $NO_TLS -eq 1 ]]; then
@@ -397,8 +406,6 @@ server {
 
     # convenience redirects without trailing slash
     location = /xpra-main { return 301 /xpra-main/; }
-    # IBC-specific alias (stable link for the debug viewer)
-    location = /xpra-ibc  { return 301 /xpra-ibc/; }
 
     # Auth gate
     location = /auth/validate {
@@ -487,7 +494,7 @@ server {
         proxy_pass http://127.0.0.1:14500;
     }
 
-    # Alias: /xpra-ibc/ -> same viewer (kept separate so the app can link to IBC explicitly)
+    # Alias for future IBC viewer (currently same XPRA server)
     location /xpra-ibc/ {
         auth_request off;
         proxy_http_version 1.1;
@@ -509,20 +516,6 @@ server {
           html,body,#workspace{margin:0;padding:0;width:100%;height:100%;background:transparent}
           .window{box-shadow:none!important;border:none!important}
         </style></head>';
-        sub_filter '</body>' '<script>
-          (function(){
-            try{ if(!/scaling=/.test(location.search)) history.replaceState(null,"",location.pathname+"?scaling=off"); }catch(e){}
-            function findTarget(){ return document.querySelector(".window") || document.querySelector("#screen canvas"); }
-            function pulse(){
-              const el = findTarget(); if(!el) return;
-              const r = el.getBoundingClientRect();
-              const msg = { xpraWindowSize: { w: Math.round(r.width), h: Math.round(r.height) } };
-              try { parent.postMessage(msg, location.origin); } catch(e) {}
-            }
-            new MutationObserver(pulse).observe(document.documentElement,{subtree:true,childList:true,attributes:true});
-            addEventListener("resize",pulse); setInterval(pulse,500); setTimeout(pulse,200);
-          })();
-        </script></body>';
         rewrite ^/xpra-ibc/(.*)\$ /\$1 break;
         proxy_redirect ~^(/.*)\$ /xpra-ibc\$1;
         proxy_pass http://127.0.0.1:14500;
@@ -607,8 +600,6 @@ server {
 
     # convenience redirects without trailing slash
     location = /xpra-main { return 301 /xpra-main/; }
-    # IBC-specific alias (stable link for the debug viewer)
-    location = /xpra-ibc  { return 301 /xpra-ibc/; }
 
     # Filled by Certbot later
     ssl_certificate     /etc/letsencrypt/live/$DOMAIN/fullchain.pem;
@@ -698,21 +689,7 @@ server {
         proxy_pass http://127.0.0.1:14500;
     }
 
-    # TEMP: Xpra WebSocket for MAIN (absolute /connect used by the HTML5 client)
-    location = /connect {
-        auth_request off;
-        proxy_http_version 1.1;
-        proxy_set_header Upgrade $http_upgrade;
-        proxy_set_header Connection "upgrade";
-        proxy_set_header Host $host;
-        proxy_read_timeout 86400;
-        proxy_buffering off;
-        proxy_hide_header X-Frame-Options;
-        proxy_hide_header Content-Security-Policy;
-        proxy_pass http://127.0.0.1:14500;
-    }
-
-    # Alias: /xpra-ibc/ -> same viewer (kept separate so the app can link to IBC explicitly)
+    # Alias for future IBC viewer (currently same XPRA server)
     location /xpra-ibc/ {
         auth_request off;
         proxy_http_version 1.1;
@@ -734,20 +711,6 @@ server {
           html,body,#workspace{margin:0;padding:0;width:100%;height:100%;background:transparent}
           .window{box-shadow:none!important;border:none!important}
         </style></head>';
-        sub_filter '</body>' '<script>
-          (function(){
-            try{ if(!/scaling=/.test(location.search)) history.replaceState(null,"",location.pathname+"?scaling=off"); }catch(e){}
-            function findTarget(){ return document.querySelector(".window") || document.querySelector("#screen canvas"); }
-            function pulse(){
-              const el = findTarget(); if(!el) return;
-              const r = el.getBoundingClientRect();
-              const msg = { xpraWindowSize: { w: Math.round(r.width), h: Math.round(r.height) } };
-              try { parent.postMessage(msg, location.origin); } catch(e) {}
-            }
-            new MutationObserver(pulse).observe(document.documentElement,{subtree:true,childList:true,attributes:true});
-            addEventListener("resize",pulse); setInterval(pulse,500); setTimeout(pulse,200);
-          })();
-        </script></body>';
         rewrite ^/xpra-ibc/(.*)\$ /\$1 break;
         proxy_redirect ~^(/.*)\$ /xpra-ibc\$1;
         proxy_pass http://127.0.0.1:14500;
@@ -816,7 +779,7 @@ fi
 echo "[DAEMONS] Restarting TradingBot services so changes take effect..."
 systemctl daemon-reexec || true
 systemctl restart uvicorn.service || true
-# Debug viewer is optional; start it later via systemctl or from Settings toggle.
+systemctl restart xpra-ibgateway-main.service || true
 systemctl reload nginx || true
 
 echo "[DAEMONS] All core services restarted."
@@ -828,5 +791,3 @@ else
   echo "Install complete (PROD, HTTPS). Open: https://$DOMAIN"
 fi
 
-echo "To enable the Xpra debug viewer manually: sudo systemctl start xpra-ibc-shadow.service"
-echo "When enabled, open: http(s)://$DOMAIN/xpra-ibc/"
