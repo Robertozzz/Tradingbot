@@ -33,6 +33,7 @@ RUNTIME.mkdir(parents=True, exist_ok=True)
 ORDERS_LOG = RUNTIME / "orders.log"
 CACHE_DIR = RUNTIME / "cache"
 CACHE_DIR.mkdir(parents=True, exist_ok=True)
+XPRA_TOGGLE = RUNTIME / "xpra_main_enabled.conf"
 
 def _safe_name(s: str) -> str:
     return re.sub(r"[^A-Za-z0-9_.-]+", "_", s)[:180]
@@ -254,46 +255,39 @@ async def ibc_config_set(payload: dict = Body(...)):
         env["IB_PORT"] = port_override
     else:
         env["IB_PORT"] = "4001" if env["IB_MODE"] == "live" else "4002"
-    env.setdefault("DISPLAY", ":2")
+    env.setdefault("DISPLAY", ":100")
     _write_ibc_env(env)
     _update_ibc_config_ini_from_env(env)
     if payload.get("restart"):
-        r = _sudo("systemctl restart ibgateway-ibc.service")
+        r = _sudo("systemctl restart xpra-ibgateway-main.service")
         if r.returncode != 0:
             raise HTTPException(500, f"restart failed: {r.stderr.strip() or r.stdout.strip()}")
     return {"ok": True, "port": env.get("IB_PORT")}
 
-# -------- Debug viewer toggle (xpra shadow) ---------------------------------
+# -------- Debug viewer toggle (Nginx-gated /xpra-main/) ----------------------
 @router.get("/ibc/debugviewer/status")
 async def debugviewer_status():
-    r = _sudo("systemctl is-active xpra-ibc-shadow.service")
-    active = (r.stdout.strip() == "active")
-    return {"active": active, "url": "/xpra-ibc/"}
+    try:
+        s = XPRA_TOGGLE.read_text(encoding="utf-8")
+    except Exception:
+        s = ""
+    active = " 1" in (" " + s.strip()) or "set $xpra_main_enabled 1" in s
+    return {"active": active, "url": "/xpra-main/"}
 
 @router.post("/ibc/debugviewer")
 async def debugviewer_set(payload: dict = Body(...)):
     enable = bool(payload.get("enabled"))
-    if enable:
-        # try enable --now, then fall back to enable + start
-        r = _sudo("systemctl enable --now xpra-ibc-shadow.service")
-        if r.returncode != 0:
-            r1 = _sudo("systemctl enable xpra-ibc-shadow.service")
-            r2 = _sudo("systemctl start xpra-ibc-shadow.service")
-            if r1.returncode != 0 or r2.returncode != 0:
-                err = r.stderr.strip() or r1.stderr.strip() or r2.stderr.strip() or r.stdout.strip()
-                raise HTTPException(500, f"start failed: {err}")
-    else:
-        # try disable --now, then fall back to stop + disable
-        r = _sudo("systemctl disable --now xpra-ibc-shadow.service")
-        if r.returncode != 0:
-            r1 = _sudo("systemctl stop xpra-ibc-shadow.service")
-            r2 = _sudo("systemctl disable xpra-ibc-shadow.service")
-            if r1.returncode != 0 or r2.returncode != 0:
-                err = r.stderr.strip() or r1.stderr.strip() or r2.stderr.strip() or r.stdout.strip()
-                raise HTTPException(500, f"stop failed: {err}")
-    # re-check
-    s = await debugviewer_status()
-    return s
+    try:
+        XPRA_TOGGLE.write_text(f"set $xpra_main_enabled {1 if enable else 0};\n", encoding="utf-8")
+    except Exception as e:
+        raise HTTPException(500, f"toggle write failed: {e!s}")
+    r = _sudo("nginx -t")
+    if r.returncode != 0:
+        raise HTTPException(500, f"nginx conf test failed: {r.stderr.strip() or r.stdout.strip()}")
+    r = _sudo("systemctl reload nginx")
+    if r.returncode != 0:
+        raise HTTPException(500, f"nginx reload failed: {r.stderr.strip() or r.stdout.strip()}")
+    return await debugviewer_status()
 
 @router.get("/ping")
 async def ping():

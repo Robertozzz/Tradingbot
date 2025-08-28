@@ -2,7 +2,7 @@
 # install_tradingbot.sh
 # One-shot installer for Debian 12/13 (no GUI).
 # Sets up: FastAPI (uvicorn), auth (password + TOTP), Nginx (+TLS optional),
-# noVNC + websockify, and IBKR Gateway (Xvfb + openbox + x11vnc).
+# Xpra (HTML5) and IBKR Gateway via IBC (auto-login).
 #
 # Usage (pick ONE source method):
 #   sudo bash install_tradingbot.sh --domain bot.example.com --email you@example.com \
@@ -101,6 +101,10 @@ install -d -o www-data -g www-data -m 0755 /opt/tradingbot/runtime
 install -d -o www-data -g www-data -m 0755 /opt/tradingbot/logs
 install -d -o www-data -g www-data -m 0755 /opt/tradingbot/app
 install -d -o www-data -g www-data -m 0755 /opt/tradingbot/static/xpra
+install -d -o root -g root -m 0755 /opt/ibc
+# ibkr should be able to write logs shared with www-data
+usermod -aG www-data ibkr || true
+chmod 0775 /opt/tradingbot/logs
 
 # Reuse heavy dirs on re-runs (don’t delete these during rsync)
 RSYNC_EXCLUDES=(--exclude='.venv/' --exclude='runtime/' --exclude='logs/')
@@ -199,7 +203,62 @@ sudo -u ibkr bash -lc '
   fi
 '
   
-# (Openbox/Xvfb/noVNC not needed with xpra)
+# ---- Install IBC (IBController) ------------------------------------------------
+if [[ ! -x /opt/ibc/gatewaystart.sh ]]; then
+  echo "[IBC] Installing IBC to /opt/ibc ..."
+  TMPIB="$(mktemp -d)"
+  set +e
+  curl -fL https://github.com/IbcAlpha/IBC/releases/latest/download/IBCLinux.zip -o "$TMPIB/IBC.zip" || \
+  curl -fL https://github.com/IbcAlpha/IBC/releases/download/3.19.0/IBCLinux-3.19.0.zip -o "$TMPIB/IBC.zip"
+  set -e
+  unzip -q "$TMPIB/IBC.zip" -d "$TMPIB/ibc"
+  rsync -a "$TMPIB/ibc"/ /opt/ibc/
+  chmod -R a+rx /opt/ibc
+fi
+
+# Minimal IBC config (backend can keep in sync)
+if [[ ! -f /opt/ibc/config.ini ]]; then
+  cat > /opt/ibc/config.ini <<'IBCINI'
+IbLoginId=
+IbPassword=
+TradingMode=
+TwoFactorMethod=none
+# TwoFactorSecret=
+AcceptNonBrokerageAccountWarning=yes
+MinimizeMainWindow=yes
+IbDir=
+IBCPath=/opt/ibc
+GatewayOrTws=gateway
+IBCLogs=/opt/tradingbot/logs
+IBCINI
+  chmod 600 /opt/ibc/config.ini || true
+  chown ibkr:ibkr /opt/ibc/config.ini || true
+fi
+
+# Runtime env used by API/UI to update creds/mode without editing units
+install -d -o www-data -g www-data -m 0755 /opt/tradingbot/runtime
+if [[ ! -f /opt/tradingbot/runtime/ibc.env ]]; then
+  cat > /opt/tradingbot/runtime/ibc.env <<'ENVV'
+# Filled/maintained by API (e.g., /ibkr/ibc/config)
+IB_USER=
+IB_PASSWORD=
+IB_TOTP_SECRET=
+# 'paper' or 'live'
+IB_MODE=paper
+# default ports: live=4001, paper=4002
+IB_PORT=4002
+# single-session display
+DISPLAY=:100
+ENVV
+  chown www-data:www-data /opt/tradingbot/runtime/ibc.env
+  chmod 600 /opt/tradingbot/runtime/ibc.env || true
+fi
+
+# Nginx toggle for /xpra-main/ visibility (0=hidden, 1=visible)
+if [[ ! -f /opt/tradingbot/runtime/xpra_main_enabled.conf ]]; then
+  echo 'set $xpra_main_enabled 0;' > /opt/tradingbot/runtime/xpra_main_enabled.conf
+  chown www-data:www-data /opt/tradingbot/runtime/xpra_main_enabled.conf
+fi
 
 # ---- Systemd: uvicorn + ibgateway ----
 PYBIN="/usr/bin/python3"
@@ -217,9 +276,9 @@ After=network-online.target
 Type=simple
 User=www-data
 WorkingDirectory=/opt/tradingbot
+EnvironmentFile=/opt/tradingbot/runtime/ibc.env
 Environment=TB_RUNTIME_DIR=/opt/tradingbot/runtime
 Environment=IB_HOST=127.0.0.1
-Environment=IB_PORT=4002
 Environment=IB_CLIENT_ID=11
 Environment=TB_INSECURE_COOKIES=1
 ExecStart=$PYBIN -m uvicorn app.web:app --host 127.0.0.1 --port 8000
@@ -239,9 +298,9 @@ After=network-online.target
 Type=simple
 User=www-data
 WorkingDirectory=/opt/tradingbot
+EnvironmentFile=/opt/tradingbot/runtime/ibc.env
 Environment=TB_RUNTIME_DIR=/opt/tradingbot/runtime
 Environment=IB_HOST=127.0.0.1
-Environment=IB_PORT=4001
 Environment=IB_CLIENT_ID=11
 ExecStart=$PYBIN -m uvicorn app.web:app --host 127.0.0.1 --port 8000
 Restart=always
@@ -258,13 +317,14 @@ systemctl disable --now ibgateway.service 2>/dev/null || true
 # /etc/systemd/system/xpra-ibgateway-main.service
 cat > /etc/systemd/system/xpra-ibgateway-main.service <<'UNIT'
 [Unit]
-Description=Xpra session for IB Gateway main
+Description=Xpra session for IB Gateway main (via IBC)
 After=network-online.target
 
 [Service]
 User=ibkr
 RuntimeDirectory=xpra-main
 Environment=XDG_RUNTIME_DIR=/run/xpra-main
+EnvironmentFile=/opt/tradingbot/runtime/ibc.env
 ExecStart=/usr/bin/xpra start :100 \
   --daemon=no --html=on \
   --speaker=off \
@@ -276,14 +336,21 @@ ExecStart=/usr/bin/xpra start :100 \
   --exit-with-children=yes \
   --log-file=/home/ibkr/xpra-main.log \
   --start-child=/usr/bin/openbox \
-  --start-child=/home/ibkr/Jts/ibgateway/1037/ibgateway \
-  --start-child=/usr/local/bin/pin-ibgw.sh
+  --start-child=/usr/bin/bash -lc "cd /opt/ibc && ./gatewaystart.sh --ib-dir='/home/ibkr/Jts/ibgateway/1037' --mode='${IB_MODE:-paper}'"
 Restart=always
 RestartSec=1
 
 [Install]
 WantedBy=multi-user.target
 UNIT
+
+# Allow backend (www-data) to toggle visibility and restart xpra safely
+cat >/etc/sudoers.d/tradingbot-ibc <<'SUD'
+www-data ALL=(ALL) NOPASSWD: /bin/systemctl restart xpra-ibgateway-main.service
+www-data ALL=(ALL) NOPASSWD: /usr/sbin/nginx -t
+www-data ALL=(ALL) NOPASSWD: /bin/systemctl reload nginx
+SUD
+chmod 440 /etc/sudoers.d/tradingbot-ibc
 
 systemctl daemon-reload
 systemctl enable --now xpra-ibgateway-main.service
@@ -332,6 +399,12 @@ server {
     # XPRA HTML5 MAIN (no auth gate; iframe+WS)
     location /xpra-main/ {
         auth_request off;
+        # Viewer toggle (0=hidden => 404; 1=visible)
+        set $xpra_main_enabled 0;
+        include /opt/tradingbot/runtime/xpra_main_enabled.conf;
+        if ($xpra_main_enabled = 0) {
+            return 404;
+        }
         proxy_http_version 1.1;
         proxy_set_header Upgrade \$http_upgrade;
         proxy_set_header Connection "upgrade";
@@ -502,6 +575,12 @@ server {
     # XPRA HTML5 MAIN (no auth gate; iframe+WS)
     location /xpra-main/ {
         auth_request off;
+        # Viewer toggle (0=hidden => 404; 1=visible)
+        set $xpra_main_enabled 0;
+        include /opt/tradingbot/runtime/xpra_main_enabled.conf;
+        if ($xpra_main_enabled = 0) {
+            return 404;
+        }
         proxy_http_version 1.1;
         proxy_set_header Upgrade \$http_upgrade;
         proxy_set_header Connection "upgrade";
