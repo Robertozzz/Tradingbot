@@ -17,7 +17,6 @@ router = APIRouter(prefix="/ibkr", tags=["ibkr"])
 log = logging.getLogger("ibkr")
 
 IB_HOST = os.getenv("IB_HOST", "127.0.0.1")
-IB_PORT = int(os.getenv("IB_PORT", "4002"))
 IB_CLIENT_ID = int(os.getenv("IB_CLIENT_ID", "11"))
 IBC_INI_PATH = Path("/opt/ibc/config.ini")
 
@@ -150,7 +149,7 @@ async def _ensure_connected():
     if ib.isConnected():
         return
     try:
-        await ib.connectAsync(IB_HOST, IB_PORT, clientId=IB_CLIENT_ID, timeout=4)
+        await ib.connectAsync(IB_HOST, _current_port(), clientId=IB_CLIENT_ID, timeout=4)
     except Exception as e:
         raise HTTPException(status_code=502, detail=f"IBKR connect failed: {e!s}")
 
@@ -167,6 +166,16 @@ def _read_ibc_env() -> dict:
             k, v = line.split("=", 1)
             env[k.strip()] = v.strip()
     return env
+
+def _current_port() -> int:
+    """
+    Resolve IB API port dynamically:
+      - prefer runtime ibc.env if present,
+      - else fall back to process env,
+      - else 4002.
+    """
+    env = _read_ibc_env()
+    return int(env.get("IB_PORT") or os.getenv("IB_PORT", "4002"))
 
 def _write_ibc_env(env: dict):
     lines = []

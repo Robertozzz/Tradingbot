@@ -174,8 +174,6 @@ rm -f /opt/ibkr/run-ibgateway-xpra.sh 2>/dev/null || true
 install -D -m 0755 /dev/stdin /usr/local/bin/pin-ibgw.sh <<'PINSH'
 #!/usr/bin/env bash
 set -euo pipefail
-
-done
 exit 0
 PINSH
 
@@ -231,8 +229,9 @@ IBCPath=/opt/ibc
 GatewayOrTws=gateway
 IBCLogs=/opt/tradingbot/logs
 IBCINI
-  chmod 600 /opt/ibc/config.ini || true
-  chown ibkr:ibkr /opt/ibc/config.ini || true
+  # Backend (www-data) must be able to update creds/TOTP; IBC (user ibkr) must read it.
+  chown www-data:ibkr /opt/ibc/config.ini
+  chmod 640 /opt/ibc/config.ini
 fi
 
 # Runtime env used by API/UI to update creds/mode without editing units
@@ -325,6 +324,7 @@ User=ibkr
 RuntimeDirectory=xpra-main
 Environment=XDG_RUNTIME_DIR=/run/xpra-main
 EnvironmentFile=/opt/tradingbot/runtime/ibc.env
+ExecStartPre=/usr/bin/bash -lc "xpra stop :100 || true"
 ExecStart=/usr/bin/xpra start :100 \
   --daemon=no --html=on \
   --speaker=off \
@@ -349,6 +349,8 @@ cat >/etc/sudoers.d/tradingbot-ibc <<'SUD'
 www-data ALL=(ALL) NOPASSWD: /bin/systemctl restart xpra-ibgateway-main.service
 www-data ALL=(ALL) NOPASSWD: /usr/sbin/nginx -t
 www-data ALL=(ALL) NOPASSWD: /bin/systemctl reload nginx
+# Allow switching paper/live (port) by restarting the app when /ibkr/ibc/config changes it
+www-data ALL=(ALL) NOPASSWD: /bin/systemctl restart uvicorn.service
 SUD
 chmod 440 /etc/sudoers.d/tradingbot-ibc
 
@@ -400,9 +402,9 @@ server {
     location /xpra-main/ {
         auth_request off;
         # Viewer toggle (0=hidden => 404; 1=visible)
-        set $xpra_main_enabled 0;
+        set \$xpra_main_enabled 0;
         include /opt/tradingbot/runtime/xpra_main_enabled.conf;
-        if ($xpra_main_enabled = 0) {
+        if (\$xpra_main_enabled = 0) {
             return 404;
         }
         proxy_http_version 1.1;
@@ -576,9 +578,9 @@ server {
     location /xpra-main/ {
         auth_request off;
         # Viewer toggle (0=hidden => 404; 1=visible)
-        set $xpra_main_enabled 0;
+        set \$xpra_main_enabled 0;
         include /opt/tradingbot/runtime/xpra_main_enabled.conf;
-        if ($xpra_main_enabled = 0) {
+        if (\$xpra_main_enabled = 0) {
             return 404;
         }
         proxy_http_version 1.1;
