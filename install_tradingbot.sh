@@ -214,6 +214,17 @@ if [[ ! -x /opt/ibc/gatewaystart.sh ]]; then
   chmod -R a+rx /opt/ibc
 fi
 
+# ---- IBC start wrapper (avoid quoting/arg-splitting issues) ----
+install -D -m 0755 /dev/stdin /opt/ibc/start-ibc.sh <<'IBWRAP'
+#!/usr/bin/env bash
+set -euo pipefail
+# IB_MODE comes from EnvironmentFile=/opt/tradingbot/runtime/ibc.env
+exec /opt/ibc/gatewaystart.sh \
+  --ib-dir="$HOME/Jts/ibgateway/1037" \
+  --mode="${IB_MODE:-paper}"
+IBWRAP
+chown ibkr:ibkr /opt/ibc/start-ibc.sh
+
 # Minimal IBC config (backend can keep in sync)
 if [[ ! -f /opt/ibc/config.ini ]]; then
   cat > /opt/ibc/config.ini <<'IBCINI'
@@ -333,10 +344,10 @@ ExecStart=/usr/bin/xpra start :100 \
   --bell=off \
   --bind-tcp=127.0.0.1:14500 \
   --dpi=96 \
-  --exit-with-children=no \
+  --exit-with-children=yes \
   --log-file=/home/ibkr/xpra-main.log \
   --start-child=/usr/bin/openbox \
-  --start-child=/usr/bin/bash -lc "cd /opt/ibc && ./gatewaystart.sh --ib-dir='/home/ibkr/Jts/ibgateway/1037' --mode='${IB_MODE:-paper}'"
+  --start-child=/opt/ibc/start-ibc.sh
 Restart=always
 RestartSec=1
 
@@ -511,15 +522,6 @@ server {
         proxy_pass http://127.0.0.1:14500;
     }
 
-    # noVNC static
-    location /novnc/ {
-        auth_request /auth/validate;
-        alias /usr/share/novnc/;
-        autoindex off;
-    }
-
-# (legacy noVNC websocket removed; xpra handles HTML+WS itself)
-
     # ACME (not used in --no-tls, but harmless)
     location ^~ /.well-known/acme-challenge/ {
         root /var/www/html;
@@ -673,6 +675,7 @@ server {
         proxy_hide_header Content-Security-Policy;
         proxy_pass http://127.0.0.1:14500;
     }
+
     location ^~ /resources/ {
         auth_request off;
         proxy_http_version 1.1;
@@ -682,14 +685,6 @@ server {
         proxy_hide_header X-Frame-Options;
         proxy_hide_header Content-Security-Policy;
         proxy_pass http://127.0.0.1:14500;
-    }
-
-    # (legacy noVNC websocket removed; xpra handles HTML+WS itself)
-
-    location /novnc/ {
-        auth_request /auth/validate;
-        alias /usr/share/novnc/;
-        autoindex off;
     }
 
     location ^~ /.well-known/acme-challenge/ {
