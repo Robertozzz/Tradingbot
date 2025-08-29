@@ -361,6 +361,8 @@ UNIT
 # Allow backend (www-data) to toggle visibility and restart xpra safely
 cat >/etc/sudoers.d/tradingbot-ibc <<'SUD'
 www-data ALL=(ALL) NOPASSWD: /bin/systemctl restart xpra-ibgateway-main.service
+www-data ALL=(ALL) NOPASSWD: /bin/systemctl start xpra-ibgateway-main.service
+www-data ALL=(ALL) NOPASSWD: /bin/systemctl stop xpra-ibgateway-main.service
 www-data ALL=(ALL) NOPASSWD: /usr/sbin/nginx -t
 www-data ALL=(ALL) NOPASSWD: /bin/systemctl reload nginx
 # Allow switching paper/live (port) by restarting the app when /ibkr/ibc/config changes it

@@ -4,7 +4,6 @@ import os, math, logging, json, time
 from pathlib import Path
 from fastapi import APIRouter, HTTPException, Body, Query
 import subprocess, shlex
-from pathlib import Path
 import re
 from fastapi.responses import StreamingResponse
 from ib_insync import IB, util, Stock, Forex, Future, Contract, Order, MarketOrder, LimitOrder, BarData
@@ -15,6 +14,10 @@ from datetime import datetime, timezone
 
 router = APIRouter(prefix="/ibkr", tags=["ibkr"])
 log = logging.getLogger("ibkr")
+
+# systemd unit names from installer (split model: Xpra session + IBC runner)
+IBC_XPRA_SERVICE = "xpra-ibgateway-main.service"
+IBC_RUNNER_SERVICE = IBC_XPRA_SERVICE  # single-unit model
 
 IB_HOST = os.getenv("IB_HOST", "127.0.0.1")
 IB_CLIENT_ID = int(os.getenv("IB_CLIENT_ID", "11"))
@@ -227,6 +230,16 @@ def _sudo(cmd: str) -> subprocess.CompletedProcess:
                           stderr=subprocess.PIPE,
                           text=True)
 
+def _restart_ibc_stack(with_xpra: bool = False):
+    """
+    Restart IBC launcher (and optionally the Xpra session).
+    Returns CompletedProcess; raises HTTPException on failure.
+    """
+    r = _sudo(f"systemctl restart {IBC_RUNNER_SERVICE}")
+    if r.returncode != 0:
+        raise HTTPException(500, f"restart failed: {r.stderr.strip() or r.stdout.strip()}")
+    # single unit already covers Xpra+IBC
+
 # -------- IBC config (credentials/mode) -------------------------------------
 @router.get("/ibc/config")
 async def ibc_config_get():
@@ -268,9 +281,8 @@ async def ibc_config_set(payload: dict = Body(...)):
     _write_ibc_env(env)
     _update_ibc_config_ini_from_env(env)
     if payload.get("restart"):
-        r = _sudo("systemctl restart xpra-ibgateway-main.service")
-        if r.returncode != 0:
-            raise HTTPException(500, f"restart failed: {r.stderr.strip() or r.stdout.strip()}")
+        # Restart the IBC runner so new creds/mode take effect (Xpra can stay up)
+        _restart_ibc_stack(with_xpra=False)
     return {"ok": True, "port": env.get("IB_PORT")}
 
 # -------- Debug viewer toggle (Nginx-gated /xpra-main/) ----------------------
@@ -305,7 +317,7 @@ async def ping():
     """
     try:
         if not ib.isConnected():
-            await ib.connectAsync(IB_HOST, IB_PORT, clientId=IB_CLIENT_ID, timeout=3)
+            await ib.connectAsync(IB_HOST, _current_port(), clientId=IB_CLIENT_ID, timeout=3)
         dt = await ib.reqCurrentTimeAsync()
         out = {"connected": True, "server_time": dt.isoformat()}
         _cache_write("ping.json", out)

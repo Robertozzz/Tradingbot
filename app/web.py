@@ -7,6 +7,8 @@ from fastapi.middleware.cors import CORSMiddleware
 from fastapi.staticfiles import StaticFiles
 from fastapi.responses import FileResponse, JSONResponse, StreamingResponse
 from fastapi import Body
+from app import system_control
+app.include_router(system_control.router)
 
 mimetypes.init()
 mimetypes.add_type("text/javascript", ".mjs")
