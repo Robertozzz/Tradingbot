@@ -327,13 +327,15 @@ systemctl disable --now ibgateway.service 2>/dev/null || true
 # /etc/systemd/system/xpra-ibgateway-main.service
 cat > /etc/systemd/system/xpra-ibgateway-main.service <<'UNIT'
 [Unit]
-Description=Xpra session for IB Gateway main
+Description=Xpra session for IB Gateway main (via IBC)
 After=network-online.target
 
 [Service]
 User=ibkr
 RuntimeDirectory=xpra-main
 Environment=XDG_RUNTIME_DIR=/run/xpra-main
+EnvironmentFile=/opt/tradingbot/runtime/ibc.env
+ExecStartPre=/usr/bin/bash -lc "xpra stop :100 || true"
 ExecStart=/usr/bin/xpra start :100 \
   --daemon=no --html=on \
   --speaker=off \
@@ -345,7 +347,9 @@ ExecStart=/usr/bin/xpra start :100 \
   --exit-with-children=yes \
   --log-file=/home/ibkr/xpra-main.log \
   --start-child=/usr/bin/openbox \
-  --start-child=/home/ibkr/Jts/ibgateway/1037/ibgateway \
+  # Start IBC (which in turn launches IB Gateway)
+  --start-child=/opt/ibc/start-ibc.sh \
+  # (optional) position helper (no-op OK)
   --start-child=/usr/local/bin/pin-ibgw.sh
 Restart=always
 RestartSec=1
@@ -353,8 +357,6 @@ RestartSec=1
 [Install]
 WantedBy=multi-user.target
 UNIT
-
-# (IBC is installed & configured but not auto-started; Xpra launches ibgateway directly as before)
 
 # Allow backend (www-data) to toggle visibility and restart xpra safely
 cat >/etc/sudoers.d/tradingbot-ibc <<'SUD'
