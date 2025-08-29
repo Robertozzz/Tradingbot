@@ -333,7 +333,7 @@ ExecStart=/usr/bin/xpra start :100 \
   --bell=off \
   --bind-tcp=127.0.0.1:14500 \
   --dpi=96 \
-  --exit-with-children=yes \
+  --exit-with-children=no \
   --log-file=/home/ibkr/xpra-main.log \
   --start-child=/usr/bin/openbox \
   --start-child=/usr/bin/bash -lc "cd /opt/ibc && ./gatewaystart.sh --ib-dir='/home/ibkr/Jts/ibgateway/1037' --mode='${IB_MODE:-paper}'"
@@ -648,6 +648,21 @@ server {
         proxy_hide_header Content-Security-Policy;
         proxy_pass http://127.0.0.1:14500;
     }
+
+    # TEMP: Xpra WebSocket for MAIN (absolute /connect used by the HTML5 client)
+    location = /connect {
+        auth_request off;
+        proxy_http_version 1.1;
+        proxy_set_header Upgrade \$http_upgrade;
+        proxy_set_header Connection "upgrade";
+        proxy_set_header Host \$host;
+        proxy_read_timeout 86400;
+        proxy_buffering off;
+        proxy_hide_header X-Frame-Options;
+        proxy_hide_header Content-Security-Policy;
+        proxy_pass http://127.0.0.1:14500;
+    }
+
     location ^~ /client/ {
         auth_request off;
         proxy_http_version 1.1;
