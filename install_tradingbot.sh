@@ -212,16 +212,19 @@ if [[ ! -x /opt/ibc/gatewaystart.sh ]]; then
   chmod -R a+rx /opt/ibc
 fi
 
-# ---- IBC start wrapper (delegate to official gatewaystart.sh) ----
+# ---- IBC start wrapper (bypass gatewaystart.sh; pass env directly) ----
 install -D -m 0755 /dev/stdin /opt/ibc/start-ibc.sh <<'IBWRAP'
 #!/usr/bin/env bash
 set -euo pipefail
 
-# Auto-detect the newest installed IB Gateway major version for IBC:
+cd "${HOME:-/home/ibkr}"
+
+# Auto-detect newest installed IB Gateway major version (fallback 1037):
 IB_ROOT="$HOME/Jts/ibgateway"
-LATEST_DIR="$(ls -1d "${IB_ROOT}"/* 2>/dev/null | sort -V | tail -n1 || true)"
-if [[ -n "$LATEST_DIR" ]]; then
-  export TWS_MAJOR_VRSN="$(basename "$LATEST_DIR")"
+if LATEST_DIR="$(ls -1d "${IB_ROOT}"/* 2>/dev/null | sort -V | tail -n1)"; then
+  export TWS_MAJOR_VRSN="${LATEST_DIR##*/}"
+else
+  export TWS_MAJOR_VRSN=1037
 fi
 
 # Standard IBC env (config + logs + paths)
@@ -233,8 +236,9 @@ export LOG_PATH=/opt/tradingbot/logs
 # Map our mode variable into what IBC expects:
 export TRADING_MODE="${IB_MODE:-paper}"
 
-# Use the official launcher inline (no extra xterm process to manage):
-exec /opt/ibc/gatewaystart.sh -inline
+# Call the low-level launcher directly so our env is honored
+# (gatewaystart.sh hard-sets defaults like TWS_MAJOR_VRSN=1019).
+exec /opt/ibc/scripts/displaybannerandlaunch.sh
 IBWRAP
 chown ibkr:ibkr /opt/ibc/start-ibc.sh
 
