@@ -14,7 +14,6 @@ class IbcConfigCard extends StatefulWidget {
 class _IbcConfigCardState extends State<IbcConfigCard> {
   final _user = TextEditingController();
   final _pass = TextEditingController();
-  final _totp = TextEditingController();
   String _mode = 'paper';
   bool _busy = false;
   String? _status;
@@ -36,8 +35,7 @@ class _IbcConfigCardState extends State<IbcConfigCard> {
         setState(() {
           _user.text = (j['IB_USER'] ?? '') as String;
           _mode = (j['IB_MODE'] ?? 'paper') as String;
-          _status =
-              'Using port ${j['IB_PORT'] ?? '4002'}${(j['IB_TOTP_SECRET_SET'] == true) ? ' • TOTP set' : ''}';
+          _status = "Using port ${j['IB_PORT'] ?? '4002'}";
         });
       }
     } catch (_) {}
@@ -65,7 +63,6 @@ class _IbcConfigCardState extends State<IbcConfigCard> {
         body: json.encode({
           'user': _user.text.trim(),
           'password': _pass.text,
-          'totp': _totp.text.trim(),
           'mode': _mode,
           'restart': true,
         }),
@@ -88,7 +85,6 @@ class _IbcConfigCardState extends State<IbcConfigCard> {
       setState(() {
         _busy = false;
         _pass.clear();
-        _totp.clear();
       });
     }
   }
@@ -170,16 +166,6 @@ class _IbcConfigCardState extends State<IbcConfigCard> {
                 obscureText: true,
               )),
             ]),
-            const SizedBox(height: 12),
-            TextField(
-              controller: _totp,
-              decoration: const InputDecoration(
-                labelText: 'TOTP Secret (Base32, optional)',
-                helperText: 'If set, IBC will auto-complete 2FA.',
-                border: OutlineInputBorder(),
-              ),
-              obscureText: true,
-            ),
             const SizedBox(height: 12),
             // --- Debug viewer toggle row ---
             Row(children: [

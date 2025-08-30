@@ -183,7 +183,7 @@ def _current_port() -> int:
 
 def _write_ibc_env(env: dict):
     lines = []
-    for k in ("IB_USER","IB_PASSWORD","IB_TOTP_SECRET","IB_MODE","IB_PORT","DISPLAY"):
+    for k in ("IB_USER","IB_PASSWORD","IB_MODE","IB_PORT","DISPLAY"):
         if k in env:
             lines.append(f"{k}={env[k]}")
     IBC_ENV.write_text("\n".join(lines) + "\n", encoding="utf-8")
@@ -195,7 +195,9 @@ def _write_ibc_env(env: dict):
 def _update_ibc_config_ini_from_env(env: dict) -> None:
     """
     Keep /opt/ibc/config.ini in sync with UI-provided creds/mode so IBC can
-    log in headlessly after a restart. We only touch a small set of keys.
+    log in headlessly after a restart. Only touch keys that exist in the
+    factory IBC config: IbLoginId, IbPassword, TradingMode,
+    AcceptNonBrokerageAccountWarning, ReadOnlyApi, ReadOnlyLogin.
     """
     try:
         # read existing lines (ini format is simple key=value, no sections)
@@ -210,17 +212,20 @@ def _update_ibc_config_ini_from_env(env: dict) -> None:
             d["IbPassword"] = env["IB_PASSWORD"]
         mode = (env.get("IB_MODE","paper") or "paper").lower()
         d["TradingMode"] = "live" if mode == "live" else "paper"
-        # 2FA
-        totp = env.get("IB_TOTP_SECRET","")
-        if totp:
-            d["TwoFactorMethod"] = "totp"
-            d["TwoFactorSecret"] = totp
-        else:
-            d["TwoFactorMethod"] = "none"
-            d.pop("TwoFactorSecret", None)
+        # Paper-account warning: only auto-accept in paper mode so the API is unblocked
+        d["AcceptNonBrokerageAccountWarning"] = "yes" if d.get("TradingMode","paper") == "paper" else "no"
+
+        # Ensure API and login are not read-only (valid factory keys)
+        d["ReadOnlyApi"] = "no"
+        d["ReadOnlyLogin"] = "no"
+        # Safe defaults to avoid blocking dialogs / keep logs & role consistent
         # write back
         body = "\n".join(f"{k}={v}" for k,v in d.items()) + "\n"
         IBC_INI_PATH.write_text(body, encoding="utf-8")
+        try:
+            IBC_INI_PATH.chmod(0o600)
+        except Exception:
+            pass
     except Exception:
         pass
 
@@ -249,26 +254,22 @@ async def ibc_config_get():
         "IB_USER": env.get("IB_USER",""),
         "IB_MODE": env.get("IB_MODE","paper"),
         "IB_PORT": env.get("IB_PORT","4002"),
-        "IB_TOTP_SECRET_SET": bool(env.get("IB_TOTP_SECRET","")),
     }
 
 @router.post("/ibc/config")
 async def ibc_config_set(payload: dict = Body(...)):
     """
-    Body: { user, password, totp, mode('paper'|'live'), restart: bool }
-    - Empty password/totp fields do NOT overwrite existing values.
+    Body: { user, password, mode('paper'|'live'), restart: bool }
+    - Empty password fields do NOT overwrite existing values.
     """
     env = _read_ibc_env()
     user = (payload.get("user") or "").strip()
     pwd  = payload.get("password") or ""
-    totp = (payload.get("totp") or "").strip()
     mode = (payload.get("mode") or env.get("IB_MODE","paper")).lower()
     if user:
         env["IB_USER"] = user
     if pwd != "":
         env["IB_PASSWORD"] = pwd
-    if totp != "":
-        env["IB_TOTP_SECRET"] = totp
     env["IB_MODE"] = "live" if mode == "live" else "paper"
     # Port strategy:
     # - If payload specifies 'port', use it.
