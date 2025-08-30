@@ -12,9 +12,11 @@ import asyncio
 from collections import defaultdict, deque
 from datetime import datetime, timezone
 
+# Router must be created before any @router.get/post decorators
+router = APIRouter(prefix="/ibkr", tags=["ibkr"])
 
 #-----------------------------------------------------------------------------------
-# add at top with the other imports
+# helpers: xpra smoke test
 import socket
 
 def _xpra_tcp_up(host: str = "127.0.0.1", port: int = 14500, timeout: float = 0.8) -> bool:
@@ -44,7 +46,6 @@ async def debugviewer_smoke():
         "note": None if (svc and tcp) else "If service is inactive or TCP is down, the /xpra-main/ panel will 502."
     }
 #-----------------------------------------------------------------------------------
-router = APIRouter(prefix="/ibkr", tags=["ibkr"])
 log = logging.getLogger("ibkr")
 
 # systemd unit names from installer (split model: Xpra session + IBC runner)
