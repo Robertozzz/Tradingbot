@@ -206,8 +206,7 @@ if [[ ! -x /opt/ibc/gatewaystart.sh ]]; then
   echo "[IBC] Installing IBC to /opt/ibc ..."
   TMPIB="$(mktemp -d)"
   set +e
-  curl -fL https://github.com/IbcAlpha/IBC/releases/latest/download/IBCLinux.zip -o "$TMPIB/IBC.zip" || \
-  curl -fL https://github.com/IbcAlpha/IBC/releases/download/3.19.0/IBCLinux-3.19.0.zip -o "$TMPIB/IBC.zip"
+  curl -fL https://github.com/IbcAlpha/IBC/releases/download/3.23.0/IBCLinux-3.23.0.zip -o "$TMPIB/IBC.zip"
   set -e
   unzip -q "$TMPIB/IBC.zip" -d "$TMPIB/ibc"
   rsync -a "$TMPIB/ibc"/ /opt/ibc/
@@ -225,44 +224,7 @@ exec /opt/ibc/gatewaystart.sh \
 IBWRAP
 chown ibkr:ibkr /opt/ibc/start-ibc.sh
 
-# Minimal IBC config (backend can keep in sync)
-if [[ ! -f /opt/ibc/config.ini ]]; then
-  cat > /opt/ibc/config.ini <<'IBCINI'
-IbLoginId=
-IbPassword=
-TradingMode=
-TwoFactorMethod=none
-# TwoFactorSecret=
-AcceptNonBrokerageAccountWarning=yes
-MinimizeMainWindow=yes
-IbDir=
-IBCPath=/opt/ibc
-GatewayOrTws=gateway
-IBCLogs=/opt/tradingbot/logs
-IBCINI
-  # Backend (www-data) must be able to update creds/TOTP; IBC (user ibkr) must read it.
-  chown www-data:ibkr /opt/ibc/config.ini
-  chmod 640 /opt/ibc/config.ini
-fi
 
-# Runtime env used by API/UI to update creds/mode without editing units
-install -d -o www-data -g www-data -m 0755 /opt/tradingbot/runtime
-if [[ ! -f /opt/tradingbot/runtime/ibc.env ]]; then
-  cat > /opt/tradingbot/runtime/ibc.env <<'ENVV'
-# Filled/maintained by API (e.g., /ibkr/ibc/config)
-IB_USER=
-IB_PASSWORD=
-IB_TOTP_SECRET=
-# 'paper' or 'live'
-IB_MODE=paper
-# default ports: live=4001, paper=4002
-IB_PORT=4002
-# single-session display
-DISPLAY=:100
-ENVV
-  chown www-data:www-data /opt/tradingbot/runtime/ibc.env
-  chmod 600 /opt/tradingbot/runtime/ibc.env || true
-fi
 
 # Nginx toggle for /xpra-main/ visibility (0=hidden, 1=visible)
 if [[ ! -f /opt/tradingbot/runtime/xpra_main_enabled.conf ]]; then
@@ -635,7 +597,7 @@ server {
 			// First attempt shortly after load
 			setTimeout(pulse,200);
 		  })();
-		</script></body>';
+		    </script></body>';
 
         # strip the /xpra-main/ prefix so Xpra’s absolute paths (/connect, /favicon.ico, etc) resolve
         rewrite ^/xpra-main/(.*)$ /\$1 break;

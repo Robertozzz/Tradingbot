@@ -14,38 +14,6 @@ from datetime import datetime, timezone
 
 # Router must be created before any @router.get/post decorators
 router = APIRouter(prefix="/ibkr", tags=["ibkr"])
-
-#-----------------------------------------------------------------------------------
-# helpers: xpra smoke test
-import socket
-
-def _xpra_tcp_up(host: str = "127.0.0.1", port: int = 14500, timeout: float = 0.8) -> bool:
-    try:
-        with socket.create_connection((host, port), timeout=timeout):
-            return True
-    except OSError:
-        return False
-
-def _systemd_active(unit: str) -> bool:
-    r = _sudo(f"systemctl is-active {unit}")
-    # "active" on stdout and returncode==0 is the happy path
-    return r.returncode == 0 and (r.stdout.strip() == "active")
-
-@router.get("/debugviewer/smoke")
-async def debugviewer_smoke():
-    """
-    Quick health for the Xpra Debug Viewer path used by /xpra-main/:
-      - systemd service active?
-      - TCP 127.0.0.1:14500 accepting?
-    """
-    svc = _systemd_active(IBC_XPRA_SERVICE)
-    tcp = _xpra_tcp_up()
-    return {
-        "xpraServiceActive": svc,
-        "tcp14500": tcp,
-        "note": None if (svc and tcp) else "If service is inactive or TCP is down, the /xpra-main/ panel will 502."
-    }
-#-----------------------------------------------------------------------------------
 log = logging.getLogger("ibkr")
 
 # systemd unit names from installer (split model: Xpra session + IBC runner)
