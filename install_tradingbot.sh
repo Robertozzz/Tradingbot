@@ -180,15 +180,14 @@ PINSH
 chown root:root /usr/local/bin/pin-ibgw.sh
 
 # Install Gateway under ibkr (idempotent)
-# We use the same path as the runner script: $HOME/Jts/ibgateway/1037
+# Install into ~/Jts and let IB's installer create ibgateway/<version>/ automatically
 sudo -u ibkr bash -lc '
   set -euo pipefail
-  IB_DIR="$HOME/Jts/ibgateway/1037"
-  IB_BIN="$IB_DIR/ibgateway"
-  if [[ -x "$IB_BIN" ]]; then
-    echo "[IBKR] Found existing IB Gateway at $IB_BIN — skipping download/install."
+  JTS_DIR="$HOME/Jts"
+  if find "$JTS_DIR/ibgateway" -maxdepth 2 -type f -name ibgateway -print -quit >/dev/null 2>&1; then
+    echo "[IBKR] Found existing IB Gateway under $JTS_DIR/ibgateway — skipping download/install."
   else
-    echo "[IBKR] Installing IB Gateway into $IB_DIR ..."
+    echo "[IBKR] Installing IB Gateway into $JTS_DIR ..."
     mkdir -p ~/Downloads
     # Cache the installer to avoid re-downloading on failures/retries
     INST_SH=~/Downloads/ibgateway.sh
@@ -197,7 +196,7 @@ sudo -u ibkr bash -lc '
       curl -fL -o "$INST_SH" https://download2.interactivebrokers.com/installers/ibgateway/latest-standalone/ibgateway-latest-standalone-linux-x64.sh
       chmod +x "$INST_SH"
     fi
-    "$INST_SH" -q -dir "$IB_DIR" || true
+    "$INST_SH" -q -dir "$JTS_DIR" || true
   fi
 '
   
@@ -213,18 +212,70 @@ if [[ ! -x /opt/ibc/gatewaystart.sh ]]; then
   chmod -R a+rx /opt/ibc
 fi
 
-# ---- IBC start wrapper (avoid quoting/arg-splitting issues) ----
+# ---- IBC start wrapper (delegate to official gatewaystart.sh) ----
 install -D -m 0755 /dev/stdin /opt/ibc/start-ibc.sh <<'IBWRAP'
 #!/usr/bin/env bash
 set -euo pipefail
-# IB_MODE comes from EnvironmentFile=/opt/tradingbot/runtime/ibc.env
-exec /opt/ibc/gatewaystart.sh \
-  --ib-dir="$HOME/Jts/ibgateway/1037" \
-  --mode="${IB_MODE:-paper}"
+
+# Auto-detect the newest installed IB Gateway major version for IBC:
+IB_ROOT="$HOME/Jts/ibgateway"
+LATEST_DIR="$(ls -1d "${IB_ROOT}"/* 2>/dev/null | sort -V | tail -n1 || true)"
+if [[ -n "$LATEST_DIR" ]]; then
+  export TWS_MAJOR_VRSN="$(basename "$LATEST_DIR")"
+fi
+
+# Standard IBC env (config + logs + paths)
+export IBC_PATH=/opt/ibc
+export IBC_INI=/opt/ibc/config.ini
+export TWS_PATH="$HOME/Jts"
+export LOG_PATH=/opt/tradingbot/logs
+
+# Map our mode variable into what IBC expects:
+export TRADING_MODE="${IB_MODE:-paper}"
+
+# Use the official launcher inline (no extra xterm process to manage):
+exec /opt/ibc/gatewaystart.sh -inline
 IBWRAP
 chown ibkr:ibkr /opt/ibc/start-ibc.sh
 
+# Minimal IBC config (backend can keep in sync)
+if [[ ! -f /opt/ibc/config.ini ]]; then
+  cat > /opt/ibc/config.ini <<'IBCINI'
+IbLoginId=
+IbPassword=
+TradingMode=
+TwoFactorMethod=none
+# TwoFactorSecret=
+AcceptNonBrokerageAccountWarning=yes
+MinimizeMainWindow=yes
+IbDir=
+IBCPath=/opt/ibc
+GatewayOrTws=gateway
+IBCLogs=/opt/tradingbot/logs
+IBCINI
+  # Backend (www-data) must be able to update creds/TOTP; IBC (user ibkr) must read it.
+  chown www-data:ibkr /opt/ibc/config.ini
+  chmod 640 /opt/ibc/config.ini
+fi
 
+# Runtime env used by API/UI to update creds/mode without editing units
+install -d -o www-data -g www-data -m 0755 /opt/tradingbot/runtime
+if [[ ! -f /opt/tradingbot/runtime/ibc.env ]]; then
+  cat > /opt/tradingbot/runtime/ibc.env <<'ENVV'
+# Filled/maintained by API (e.g., /ibkr/ibc/config)
+IB_USER=
+IB_PASSWORD=
+IB_TOTP_SECRET=
+# 'paper' or 'live'
+IB_MODE=paper
+# default ports: live=4001, paper=4002
+IB_PORT=4002
+# single-session display
+DISPLAY=:100
+ENVV
+  chown www-data:www-data /opt/tradingbot/runtime/ibc.env
+  chmod 600 /opt/tradingbot/runtime/ibc.env || true
+fi
 
 # Nginx toggle for /xpra-main/ visibility (0=hidden, 1=visible)
 if [[ ! -f /opt/tradingbot/runtime/xpra_main_enabled.conf ]]; then
@@ -294,9 +345,12 @@ After=network-online.target
 
 [Service]
 User=ibkr
+WorkingDirectory=/home/ibkr
+Environment=HOME=/home/ibkr
 RuntimeDirectory=xpra-main
 Environment=XDG_RUNTIME_DIR=/run/xpra-main
 EnvironmentFile=/opt/tradingbot/runtime/ibc.env
+ExecStartPre=/usr/bin/install -d -o ibkr -g ibkr -m 700 /run/xpra-main/xpra
 ExecStartPre=/usr/bin/bash -lc "xpra stop :100 || true"
 ExecStart=/usr/bin/xpra start :100 \
   --daemon=no --html=on \
@@ -306,12 +360,10 @@ ExecStart=/usr/bin/xpra start :100 \
   --bell=off \
   --bind-tcp=127.0.0.1:14500 \
   --dpi=96 \
-  --exit-with-children=yes \
+  --exit-with-children=no \
   --log-file=/home/ibkr/xpra-main.log \
   --start-child=/usr/bin/openbox \
-  # Start IBC (which in turn launches IB Gateway)
   --start-child=/opt/ibc/start-ibc.sh \
-  # (optional) position helper (no-op OK)
   --start-child=/usr/local/bin/pin-ibgw.sh
 Restart=always
 RestartSec=1
