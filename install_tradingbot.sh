@@ -233,6 +233,8 @@ export IBC_PATH=/opt/ibc
 export IBC_INI=/opt/ibc/config.ini
 export TWS_PATH="$HOME/Jts"
 export LOG_PATH=/opt/tradingbot/logs
+export APP=GATEWAY
+export TRADING_MODE="${IB_MODE:-paper}"
 
 # Map our mode variable into what IBC expects:
 export TRADING_MODE="${IB_MODE:-paper}"
