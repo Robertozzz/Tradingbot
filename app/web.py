@@ -113,9 +113,20 @@ def _queue_len() -> int:
         return 0
     
 def _enqueue_control(module: str, action: str) -> dict:
+    """Enqueue a control command for the watchdog and return a status dict."""
     module = module.strip().lower()
     action = action.strip().lower()
-    return _enqueue_control(module, action)
+    rt = _runtime_dir()
+    cmd_dir = rt / "cmd"
+    cmd_dir.mkdir(parents=True, exist_ok=True)
+    ts = int(time.time())
+    payload = {"target": module, "action": action, "ts": ts}
+    (cmd_dir / f"{ts}_{module}_{action}.json").write_text(json.dumps(payload), encoding="utf-8")
+    # instant feedback for the watchdog/UI
+    (rt / "watchdog.signal").write_text(str(ts), encoding="utf-8")
+    queued = dict(payload); queued["state"] = "queued"
+    (rt / "last_cmd.json").write_text(json.dumps(queued), encoding="utf-8")
+    return {"ok": True, "module": module, "action": action, "ts": ts, "queue_len": _queue_len()}
 
 @app.get("/health")
 def health():
@@ -144,7 +155,7 @@ def system_status():
     return data
 
 @app.post("/system/control")
-async def system_control(request: Request):
+async def system_control_endpoint(request: Request):
     body = await request.json()
     module = (body.get("module") or "").strip().lower()
     action = (body.get("action") or "").strip().lower()
@@ -152,21 +163,7 @@ async def system_control(request: Request):
         raise HTTPException(400, "Unknown module")
     if action not in {"start","stop","restart","drain"}:
         raise HTTPException(400, "Unknown action")
-
-    rt = _runtime_dir()
-    cmd_dir = rt / "cmd"
-    cmd_dir.mkdir(parents=True, exist_ok=True)
-
-    ts = int(time.time())
-    payload = {"target": module, "action": action, "ts": ts}
-    (cmd_dir / f"{ts}_{module}_{action}.json").write_text(json.dumps(payload), encoding="utf-8")
-
-    # instant feedback
-    (rt / "watchdog.signal").write_text(str(ts), encoding="utf-8")
-    queued = dict(payload); queued["state"] = "queued"
-    (rt / "last_cmd.json").write_text(json.dumps(queued), encoding="utf-8")
-
-    return {"ok": True, "module": module, "action": action, "ts": ts, "queue_len": _queue_len()}
+    return _enqueue_control(module, action)
 
 # ---- log tail endpoint (used by Watchdog UI) ----
 @app.get("/system/logs/{name}")
