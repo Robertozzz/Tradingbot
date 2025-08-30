@@ -4,7 +4,6 @@ import os, math, logging, json, time
 from pathlib import Path
 from fastapi import APIRouter, HTTPException, Body, Query
 import subprocess, shlex
-from pathlib import Path
 import re
 from fastapi.responses import StreamingResponse
 from ib_insync import IB, util, Stock, Forex, Future, Contract, Order, MarketOrder, LimitOrder, BarData
@@ -16,9 +15,13 @@ from datetime import datetime, timezone
 router = APIRouter(prefix="/ibkr", tags=["ibkr"])
 log = logging.getLogger("ibkr")
 
+# systemd unit names from installer (split model: Xpra session + IBC runner)
+IBC_XPRA_SERVICE = "xpra-ibgateway-main.service"
+IBC_RUNNER_SERVICE = IBC_XPRA_SERVICE  # single-unit model
+
 IB_HOST = os.getenv("IB_HOST", "127.0.0.1")
-IB_PORT = int(os.getenv("IB_PORT", "4002"))
 IB_CLIENT_ID = int(os.getenv("IB_CLIENT_ID", "11"))
+IBC_INI_PATH = Path("/opt/ibc/config.ini")
 
 # Make ib_insync safe under ASGI/Jupyter nested loops
 try:
@@ -32,6 +35,7 @@ RUNTIME.mkdir(parents=True, exist_ok=True)
 ORDERS_LOG = RUNTIME / "orders.log"
 CACHE_DIR = RUNTIME / "cache"
 CACHE_DIR.mkdir(parents=True, exist_ok=True)
+XPRA_TOGGLE = RUNTIME / "xpra_main_enabled.conf"
 
 def _safe_name(s: str) -> str:
     return re.sub(r"[^A-Za-z0-9_.-]+", "_", s)[:180]
@@ -148,7 +152,7 @@ async def _ensure_connected():
     if ib.isConnected():
         return
     try:
-        await ib.connectAsync(IB_HOST, IB_PORT, clientId=IB_CLIENT_ID, timeout=4)
+        await ib.connectAsync(IB_HOST, _current_port(), clientId=IB_CLIENT_ID, timeout=4)
     except Exception as e:
         raise HTTPException(status_code=502, detail=f"IBKR connect failed: {e!s}")
 
@@ -166,6 +170,16 @@ def _read_ibc_env() -> dict:
             env[k.strip()] = v.strip()
     return env
 
+def _current_port() -> int:
+    """
+    Resolve IB API port dynamically:
+      - prefer runtime ibc.env if present,
+      - else fall back to process env,
+      - else 4002.
+    """
+    env = _read_ibc_env()
+    return int(env.get("IB_PORT") or os.getenv("IB_PORT", "4002"))
+
 def _write_ibc_env(env: dict):
     lines = []
     for k in ("IB_USER","IB_PASSWORD","IB_TOTP_SECRET","IB_MODE","IB_PORT","DISPLAY"):
@@ -177,12 +191,54 @@ def _write_ibc_env(env: dict):
     except Exception:
         pass
 
+def _update_ibc_config_ini_from_env(env: dict) -> None:
+    """
+    Keep /opt/ibc/config.ini in sync with UI-provided creds/mode so IBC can
+    log in headlessly after a restart. We only touch a small set of keys.
+    """
+    try:
+        # read existing lines (ini format is simple key=value, no sections)
+        lines = []
+        if IBC_INI_PATH.exists():
+            lines = [ln.rstrip("\n") for ln in IBC_INI_PATH.read_text(encoding="utf-8").splitlines()]
+        d = {k.split("=",1)[0]: k.split("=",1)[1] for k in lines if "=" in k}
+        # update keys
+        if env.get("IB_USER"):
+            d["IbLoginId"] = env["IB_USER"]
+        if env.get("IB_PASSWORD") is not None and env.get("IB_PASSWORD") != "":
+            d["IbPassword"] = env["IB_PASSWORD"]
+        mode = (env.get("IB_MODE","paper") or "paper").lower()
+        d["TradingMode"] = "live" if mode == "live" else "paper"
+        # 2FA
+        totp = env.get("IB_TOTP_SECRET","")
+        if totp:
+            d["TwoFactorMethod"] = "totp"
+            d["TwoFactorSecret"] = totp
+        else:
+            d["TwoFactorMethod"] = "none"
+            d.pop("TwoFactorSecret", None)
+        # write back
+        body = "\n".join(f"{k}={v}" for k,v in d.items()) + "\n"
+        IBC_INI_PATH.write_text(body, encoding="utf-8")
+    except Exception:
+        pass
+
 def _sudo(cmd: str) -> subprocess.CompletedProcess:
     # uses sudoers rules from installer
     return subprocess.run(shlex.split(f"sudo {cmd}"),
                           stdout=subprocess.PIPE,
                           stderr=subprocess.PIPE,
                           text=True)
+
+def _restart_ibc_stack(with_xpra: bool = False):
+    """
+    Restart IBC launcher (and optionally the Xpra session).
+    Returns CompletedProcess; raises HTTPException on failure.
+    """
+    r = _sudo(f"systemctl restart {IBC_RUNNER_SERVICE}")
+    if r.returncode != 0:
+        raise HTTPException(500, f"restart failed: {r.stderr.strip() or r.stdout.strip()}")
+    # single unit already covers Xpra+IBC
 
 # -------- IBC config (credentials/mode) -------------------------------------
 @router.get("/ibc/config")
@@ -213,34 +269,46 @@ async def ibc_config_set(payload: dict = Body(...)):
     if totp != "":
         env["IB_TOTP_SECRET"] = totp
     env["IB_MODE"] = "live" if mode == "live" else "paper"
-    # pick common ports unless already set
-    if "IB_PORT" not in env or not str(env["IB_PORT"]).strip():
+    # Port strategy:
+    # - If payload specifies 'port', use it.
+    # - Else, track the mode: live->4001, paper->4002 (sane defaults).
+    port_override = (payload.get("port") or "").strip()
+    if port_override:
+        env["IB_PORT"] = port_override
+    else:
         env["IB_PORT"] = "4001" if env["IB_MODE"] == "live" else "4002"
-    env.setdefault("DISPLAY", ":2")
+    env.setdefault("DISPLAY", ":100")
     _write_ibc_env(env)
+    _update_ibc_config_ini_from_env(env)
     if payload.get("restart"):
-        r = _sudo("systemctl restart ibgateway-ibc.service")
-        if r.returncode != 0:
-            raise HTTPException(500, f"restart failed: {r.stderr.strip() or r.stdout.strip()}")
+        # Restart the IBC runner so new creds/mode take effect (Xpra can stay up)
+        _restart_ibc_stack(with_xpra=False)
     return {"ok": True, "port": env.get("IB_PORT")}
 
-# -------- Debug viewer toggle (xpra shadow) ---------------------------------
+# -------- Debug viewer toggle (Nginx-gated /xpra-main/) ----------------------
 @router.get("/ibc/debugviewer/status")
 async def debugviewer_status():
-    r = _sudo("systemctl status xpra-ibc-shadow.service")
-    active = ("Active: active (running)" in r.stdout) or ("active (running)" in r.stdout)
-    return {"active": active, "url": "/xpra-ibc/"}
+    try:
+        s = XPRA_TOGGLE.read_text(encoding="utf-8")
+    except Exception:
+        s = ""
+    active = " 1" in (" " + s.strip()) or "set $xpra_main_enabled 1" in s
+    return {"active": active, "url": "/xpra-main/"}
 
 @router.post("/ibc/debugviewer")
 async def debugviewer_set(payload: dict = Body(...)):
     enable = bool(payload.get("enabled"))
-    cmd = "systemctl start xpra-ibc-shadow.service" if enable else "systemctl stop xpra-ibc-shadow.service"
-    r = _sudo(cmd)
+    try:
+        XPRA_TOGGLE.write_text(f"set $xpra_main_enabled {1 if enable else 0};\n", encoding="utf-8")
+    except Exception as e:
+        raise HTTPException(500, f"toggle write failed: {e!s}")
+    r = _sudo("nginx -t")
     if r.returncode != 0:
-        raise HTTPException(500, f"{'start' if enable else 'stop'} failed: {r.stderr.strip() or r.stdout.strip()}")
-    # re-check
-    s = await debugviewer_status()
-    return s
+        raise HTTPException(500, f"nginx conf test failed: {r.stderr.strip() or r.stdout.strip()}")
+    r = _sudo("systemctl reload nginx")
+    if r.returncode != 0:
+        raise HTTPException(500, f"nginx reload failed: {r.stderr.strip() or r.stdout.strip()}")
+    return await debugviewer_status()
 
 @router.get("/ping")
 async def ping():
@@ -249,7 +317,7 @@ async def ping():
     """
     try:
         if not ib.isConnected():
-            await ib.connectAsync(IB_HOST, IB_PORT, clientId=IB_CLIENT_ID, timeout=3)
+            await ib.connectAsync(IB_HOST, _current_port(), clientId=IB_CLIENT_ID, timeout=3)
         dt = await ib.reqCurrentTimeAsync()
         out = {"connected": True, "server_time": dt.isoformat()}
         _cache_write("ping.json", out)
