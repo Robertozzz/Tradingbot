@@ -180,14 +180,15 @@ PINSH
 chown root:root /usr/local/bin/pin-ibgw.sh
 
 # Install Gateway under ibkr (idempotent)
-# Install into ~/Jts and let IB's installer create ibgateway/<version>/ automatically
+# We use the same path as the runner script: $HOME/Jts/ibgateway/1037
 sudo -u ibkr bash -lc '
   set -euo pipefail
-  JTS_DIR="$HOME/Jts"
-  if find "$JTS_DIR/ibgateway" -maxdepth 2 -type f -name ibgateway -print -quit >/dev/null 2>&1; then
-    echo "[IBKR] Found existing IB Gateway under $JTS_DIR/ibgateway — skipping download/install."
+  IB_DIR="$HOME/Jts/ibgateway/1037"
+  IB_BIN="$IB_DIR/ibgateway"
+  if [[ -x "$IB_BIN" ]]; then
+    echo "[IBKR] Found existing IB Gateway at $IB_BIN — skipping download/install."
   else
-    echo "[IBKR] Installing IB Gateway into $JTS_DIR ..."
+    echo "[IBKR] Installing IB Gateway into $IB_DIR ..."
     mkdir -p ~/Downloads
     # Cache the installer to avoid re-downloading on failures/retries
     INST_SH=~/Downloads/ibgateway.sh
@@ -196,7 +197,7 @@ sudo -u ibkr bash -lc '
       curl -fL -o "$INST_SH" https://download2.interactivebrokers.com/installers/ibgateway/latest-standalone/ibgateway-latest-standalone-linux-x64.sh
       chmod +x "$INST_SH"
     fi
-    "$INST_SH" -q -dir "$JTS_DIR" || true
+    "$INST_SH" -q -dir "$IB_DIR" || true
   fi
 '
   
