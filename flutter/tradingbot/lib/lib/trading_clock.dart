@@ -1709,8 +1709,10 @@ class _CenteredTapePainter extends CustomPainter {
       final bandSpans = <({double leftX, double rightX, Color color})>[];
       final laneLabel = lanes[i].marketName.toUpperCase();
 
-      // Prepare ONE mini-info line: the next event across all bands
-      final String text = lanes[i].infoNext;
+      // Prefer the holiday closure message when present; else show the next event
+      final String text = lanes[i].miniInfo.startsWith('Market closed today')
+          ? lanes[i].miniInfo
+          : lanes[i].infoNext;
       final double colWidth = infoGutter - 16.0; // tiny extra padding
       final prepared = <({TextPainter tp, double dy})>[];
       if (text.isNotEmpty) {

@@ -63,6 +63,135 @@ def _cache_read(name: str, default: Any) -> Any:
         return default
 IBC_ENV = RUNTIME / "ibc.env"
 
+# ----- lookup helpers: aliases + local universe ------------------------------
+# Built-in name aliases that users type vs. official names.
+# You can extend/override by creating runtime/aliases.json as
+# { "google": ["alphabet","GOOGL","GOOG"], ... }
+ALIASES_DEFAULT: dict[str, list[str]] = {
+    "google": ["alphabet", "GOOGL", "GOOG"],
+    "alphabet": ["GOOGL", "GOOG"],
+    "facebook": ["meta", "META"],
+    "meta": ["META", "facebook"],
+    "berkshire": ["BRK.A", "BRK.B", "Berkshire Hathaway"],
+    "sq": ["block", "Square", "SQ"],
+    "square": ["block", "SQ"],
+    "block": ["SQ"],
+    "x": ["twitter", "TWTR"],  # legacy; harmless if not present
+}
+ALIASES_PATH = RUNTIME / "aliases.json"
+_ALIASES: dict[str, list[str]] | None = None
+
+def _aliases() -> dict[str, list[str]]:
+    global _ALIASES
+    if _ALIASES is not None:
+        return _ALIASES
+    data = ALIASES_DEFAULT.copy()
+    try:
+        if ALIASES_PATH.exists():
+            user = json.loads(ALIASES_PATH.read_text(encoding="utf-8"))
+            if isinstance(user, dict):
+                for k, v in user.items():
+                    if isinstance(k, str):
+                        vv = [str(x) for x in (v or [])] if isinstance(v, list) else []
+                        data[k.lower()] = vv
+    except Exception:
+        pass
+    _ALIASES = data
+    return data
+
+# Optional local universe file (list of dicts with symbol/name/secType/etc.)
+UNIVERSE_PATHS = [
+    RUNTIME / "universe.json",
+    Path("/opt/tradingbot/static/universe.json"),
+]
+_UNIVERSE: list[dict] | None = None
+
+def _universe() -> list[dict]:
+    global _UNIVERSE
+    if _UNIVERSE is not None:
+        return _UNIVERSE
+    # minimal seed so name searches work out-of-the-box offline
+    seed = [
+        {"symbol":"AAPL","name":"Apple Inc","secType":"STK","exchange":"SMART","currency":"USD"},
+        {"symbol":"MSFT","name":"Microsoft Corporation","secType":"STK","exchange":"SMART","currency":"USD"},
+        {"symbol":"AMZN","name":"Amazon.com, Inc.","secType":"STK","exchange":"SMART","currency":"USD"},
+        {"symbol":"NVDA","name":"NVIDIA Corporation","secType":"STK","exchange":"SMART","currency":"USD"},
+        {"symbol":"GOOGL","name":"Alphabet Inc. Class A","secType":"STK","exchange":"SMART","currency":"USD"},
+        {"symbol":"GOOG","name":"Alphabet Inc. Class C","secType":"STK","exchange":"SMART","currency":"USD"},
+        {"symbol":"META","name":"Meta Platforms, Inc.","secType":"STK","exchange":"SMART","currency":"USD"},
+        {"symbol":"TSLA","name":"Tesla, Inc.","secType":"STK","exchange":"SMART","currency":"USD"},
+        {"symbol":"BRK.B","name":"Berkshire Hathaway Inc. Class B","secType":"STK","exchange":"SMART","currency":"USD"},
+    ]
+    for p in UNIVERSE_PATHS:
+        try:
+            if p.exists():
+                arr = json.loads(p.read_text(encoding="utf-8"))
+                if isinstance(arr, list):
+                    seed.extend([x for x in arr if isinstance(x, dict)])
+                    break
+        except Exception:
+            pass
+    # de-dupe by (symbol, exchange)
+    seen = set()
+    uniq = []
+    for r in seed:
+        key = (str(r.get("symbol","")).upper(), str(r.get("exchange","SMART")).upper())
+        if key in seen: continue
+        seen.add(key); uniq.append(r)
+    _UNIVERSE = uniq
+    return _UNIVERSE
+
+def _alias_variants(term: str) -> list[str]:
+    t = (term or "").strip()
+    if not t:
+        return []
+    lower = t.lower()
+    out = [t]
+    al = _aliases()
+    if lower in al:
+        out.extend(al[lower])
+    # compact token (remove spaces/punct) helps “BerkshireHathaway”
+    compact = re.sub(r"[^A-Za-z0-9]+", "", t)
+    if compact and compact != t:
+        out.append(compact)
+    # tokens
+    toks = [x for x in re.split(r"[^A-Za-z0-9]+", t) if len(x) >= 3]
+    out.extend(toks)
+    # unique, preserve order
+    seen=set(); uniq=[x for x in out if not (x.lower() in seen or seen.add(x.lower()))]
+    return uniq
+
+def _local_match(term: str, limit: int = 50) -> list[dict]:
+    tl = (term or "").strip().lower()
+    if not tl:
+        return []
+    candidates = _universe()
+    vars = _alias_variants(term)
+    out: list[dict] = []
+    seen = set()
+    for v in vars:
+        vl = v.lower()
+        for r in candidates:
+            sym = (r.get("symbol") or "").upper()
+            name = (r.get("name") or r.get("description") or "")
+            key = (sym, r.get("exchange") or "SMART")
+            if key in seen: 
+                continue
+            if sym == v.upper() or vl in name.lower():
+                out.append({
+                    "symbol": sym,
+                    "name": name or sym,
+                    "secType": r.get("secType") or "STK",
+                    "conId": r.get("conId"),  # may be None offline
+                    "currency": r.get("currency") or "USD",
+                    "exchange": r.get("exchange") or "SMART",
+                    "primaryExchange": r.get("primaryExchange"),
+                })
+                seen.add(key)
+                if len(out) >= limit:
+                    return out
+    return out
+
 # ---------- order streaming state ----------
 ORD_QUEUE: "asyncio.Queue[dict]" = asyncio.Queue(maxsize=1000)
 
@@ -790,46 +919,20 @@ async def _await_status(trade, beats: int = 12, delay: float = 0.10):
 # --- search/contracts (find tradables by text) -----------------------------
 @router.get("/search")
 async def search(q: str | None = Query(None), query: str | None = Query(None)):
-    # Online-first; fall back to cached matching if offline
-    try:
-        await _ensure_connected()
-    except Exception:
-        term = (q or query or "").strip()
-        if not term:
-            return []
-        cache = _cache_read("search_cache.json", {})
-        if not isinstance(cache, dict):
-            return []
-        tl = term.lower()
-        # soft match across cached keys and values
-        merged: list[dict] = []
-        seen = set()
-        for k, vals in cache.items():
-            if tl in k.lower():
-                for m in (vals or []):
-                    cid = (m.get("conId") or 0)
-                    if cid and cid in seen: continue
-                    seen.add(cid)
-                    merged.append(m)
-        # also scan values' 'name' for contains
-        if len(merged) < 5:
-            for vals in cache.values():
-                for m in (vals or []):
-                    name = (m.get("name") or m.get("description") or "")
-                    if tl in str(name).lower():
-                        cid = (m.get("conId") or 0)
-                        if cid and cid in seen: continue
-                        seen.add(cid)
-                        merged.append(m)
-        return merged[:50]
     term = (q or query or "").strip()
     if not term:
         return []
 
+    # Try to connect, but don't block: if it fails we use local fallbacks.
+    online = True
+    try:
+        await _ensure_connected()
+    except Exception:
+        online = False
     async def _query_and_collect(qtext: str, out: list[dict]):
         """Run reqMatchingSymbols on qtext and append normalized rows into out."""
         try:
-            syms = await ib.reqMatchingSymbolsAsync(qtext)
+            syms = await asyncio.wait_for(ib.reqMatchingSymbolsAsync(qtext), timeout=2.5)
         except Exception as e:
             # return silently so other variants still try
             return
@@ -860,25 +963,21 @@ async def search(q: str | None = Query(None), query: str | None = Query(None)):
 
     # 1) Primary attempt
     out: list[dict] = []
-    await _query_and_collect(term, out)
+    if online:
+        await _query_and_collect(term, out)
 
-    # 2) If weak or empty, try robust variants (helps for "Tesla", "Micro Soft", etc.)
-    if len(out) < 5:
+    # 2) If weak or empty, try robust variants including aliases
+    if (online and len(out) < 5) or (not online):
         variants: list[str] = []
-        # case variants
+        variants += _alias_variants(term)
+        # also basic case variants
         variants += [term.upper(), term.lower(), term.title()]
-        # de-space & punctuation stripped
-        compact = re.sub(r"\s+", "", term)
-        if compact and compact != term:
-            variants.append(compact)
-        # tokenized words (length >= 3), e.g., ["Tesla", "Motors", "Inc"]
-        tokens = [t for t in re.split(r"[^A-Za-z0-9]+", term) if len(t) >= 3]
-        variants += tokens
         # unique order-preserving
         seen_v = set()
         variants = [v for v in variants if not (v in seen_v or seen_v.add(v))]
-        for v in variants[:8]:  # keep it sane
-            await _query_and_collect(v, out)
+        if online:
+            for v in variants[:8]:  # keep it sane
+                await _query_and_collect(v, out)
 
     # De-dup by conId (keep first)
     seen: set[int] = set()
@@ -897,8 +996,14 @@ async def search(q: str | None = Query(None), query: str | None = Query(None)):
     tl = term.lower()
     uniq.sort(key=lambda r: 0 if tl in (r.get("name","") or "").lower() else 1)
 
-    # Fallback: try direct resolve if nothing matched (e.g., “AAPL”, “EURUSD”)
+    # If still empty or offline, use local universe/aliases.
     if not uniq:
+        local = _local_match(term, limit=50)
+        if local:
+            uniq.extend(local)
+
+    # Fallback: try direct resolve if nothing matched online (AAPL/EURUSD)
+    if online and not uniq:
         # Try stock
         try:
             c = await _resolve_contract(term, "STK", "SMART", "USD")
@@ -925,12 +1030,24 @@ async def search(q: str | None = Query(None), query: str | None = Query(None)):
             except Exception:
                 pass
 
-    # cache successful results under the normalized key (plus variants)
+    # cache results under multiple keys (term, alias variants, and result tokens)
     try:
         cache = _cache_read("search_cache.json", {})
         if not isinstance(cache, dict): cache = {}
-        norm = term.strip()
-        cache[norm] = uniq[:50]
+        keys = set()
+        keys.add(term.strip())
+        for v in _alias_variants(term):
+            keys.add(v)
+        # index by symbol and name tokens to make offline contains() hit later
+        for r in uniq[:50]:
+            sym = (r.get("symbol") or "")
+            if sym: keys.add(sym)
+            name = (r.get("name") or r.get("description") or "")
+            for t in re.split(r"[^A-Za-z0-9]+", str(name)):
+                if len(t) >= 3:
+                    keys.add(t)
+        for k in keys:
+            cache[str(k)] = uniq[:50]
         _cache_write("search_cache.json", cache)
     except Exception:
         pass
