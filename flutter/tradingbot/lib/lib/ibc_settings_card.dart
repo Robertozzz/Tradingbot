@@ -177,7 +177,7 @@ class _IbcConfigCardState extends State<IbcConfigCard> {
                 onPressed: _dbg
                     ? () {
                         try {
-                          web.window.open('/xpra-ibc/', '_blank');
+                          web.window.open('/xpra-main/', '_blank');
                         } catch (_) {}
                       }
                     : null,

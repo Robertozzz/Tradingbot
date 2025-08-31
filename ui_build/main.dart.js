@@ -97819,7 +97819,7 @@ $0(){return this.a.f=this.b},
 $S:0}
 A.avX.prototype={
 $0(){var s
-try{v.G.window.open("/xpra-ibc/","_blank")}catch(s){}},
+try{v.G.window.open("/xpra-main/","_blank")}catch(s){}},
 $S:0}
 A.avY.prototype={
 $1(a){return this.a.zy(a)},

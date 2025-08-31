@@ -236,9 +236,6 @@ export LOG_PATH=/opt/tradingbot/logs
 export APP=GATEWAY
 export TRADING_MODE="${IB_MODE:-paper}"
 
-# Map our mode variable into what IBC expects:
-export TRADING_MODE="${IB_MODE:-paper}"
-
 # Call the low-level launcher directly so our env is honored
 # (gatewaystart.sh hard-sets defaults like TWS_MAJOR_VRSN=1019).
 exec /opt/ibc/scripts/displaybannerandlaunch.sh
@@ -250,15 +247,15 @@ if [[ ! -f /opt/ibc/config.ini ]]; then
   cat > /opt/ibc/config.ini <<'IBCINI'
 IbLoginId=
 IbPassword=
-TradingMode=
-TwoFactorMethod=none
-# TwoFactorSecret=
+TradingMode=paper
 AcceptNonBrokerageAccountWarning=yes
 MinimizeMainWindow=yes
 IbDir=
 IBCPath=/opt/ibc
 GatewayOrTws=gateway
 IBCLogs=/opt/tradingbot/logs
+ReadOnlyApi=no
+ReadOnlyLogin=no
 IBCINI
   # Backend (www-data) must be able to update creds/TOTP; IBC (user ibkr) must read it.
   chown www-data:ibkr /opt/ibc/config.ini
@@ -272,7 +269,6 @@ if [[ ! -f /opt/tradingbot/runtime/ibc.env ]]; then
 # Filled/maintained by API (e.g., /ibkr/ibc/config)
 IB_USER=
 IB_PASSWORD=
-IB_TOTP_SECRET=
 # 'paper' or 'live'
 IB_MODE=paper
 # default ports: live=4001, paper=4002
