@@ -146,6 +146,41 @@ class Api {
             'barSize': barSize
           }).query}');
 
+  // --- Generic JSON POST helper ---
+  static Future<Map<String, dynamic>> postJson(
+      String path, Map<String, dynamic> body) async {
+    final r = await http.post(
+      _uri(path),
+      headers: {'Content-Type': 'application/json'},
+      body: jsonEncode(body),
+    );
+    if (r.statusCode < 200 || r.statusCode >= 300) {
+      throw Exception(
+          'POST $path -> ${r.statusCode} ${r.reasonPhrase ?? ''} ${r.body}');
+    }
+    final d = jsonDecode(r.body);
+    if (d is! Map<String, dynamic>) throw Exception('Expected object');
+    return d;
+  }
+
+  static Future<List<Map<String, dynamic>>> ibkrVerifySymbols(
+      List<String> symbols,
+      {String secType = 'STK',
+      String currency = 'USD',
+      String? exchange}) async {
+    final body = {
+      'symbols': symbols,
+      'secType': secType,
+      'currency': currency,
+      if (exchange != null) 'exchange': exchange,
+    };
+    final r = await postJson('/ibkr/verify', body);
+    final list = (r['verified'] as List?) ?? const [];
+    return list
+        .map<Map<String, dynamic>>((e) => Map<String, dynamic>.from(e))
+        .toList();
+  }
+
   static Future<Map<String, dynamic>> ibkrPlaceOrder({
     String? symbol,
     int? conId,

@@ -11,6 +11,7 @@ from typing import Any, Callable
 import asyncio
 from collections import defaultdict, deque
 from datetime import datetime, timezone
+from contextlib import asynccontextmanager
 
 # Router must be created before any @router.get/post decorators
 router = APIRouter(prefix="/ibkr", tags=["ibkr"])
@@ -935,6 +936,54 @@ async def search(q: str | None = Query(None), query: str | None = Query(None)):
     except Exception:
         pass
     return uniq[:50]
+
+# --- bulk verify symbols (fast path to couple local search with IBKR) ------
+@router.post("/verify")
+async def verify_symbols(payload: dict = Body(...)):
+    """
+    Body: { "symbols": ["AAPL","MSFT","TSLA"], "secType": "STK", "currency": "USD" }
+    Returns only symbols IBKR can actually resolve to a tradable contract.
+    Used to pair a local/instant index (ticker_search) with broker reality.
+    """
+    syms = [s.strip().upper() for s in (payload.get("symbols") or []) if isinstance(s, str) and s.strip()]
+    if not syms:
+        return {"verified": []}
+    secType = (payload.get("secType") or "STK").upper()
+    currency = (payload.get("currency") or "USD").upper()
+    exchange = (payload.get("exchange") or "SMART").upper()
+
+    await _ensure_connected()
+
+    # light concurrency guard to be polite to TWS/Gateway
+    sem = asyncio.Semaphore(6)
+
+    async def _one(sym: str) -> dict | None:
+        async with sem:
+            try:
+                if secType == "STK":
+                    base = Stock(sym, exchange, currency)
+                elif secType in ("FX", "CASH"):
+                    base = Forex(sym)
+                else:
+                    base = Contract(secType=secType, symbol=sym, exchange=exchange, currency=currency)
+                cds = await ib.reqContractDetailsAsync(base)
+                if not cds:
+                    return None
+                c = cds[0].contract
+                return {
+                    "symbol": sym,
+                    "conId": int(getattr(c, "conId", 0)) or None,
+                    "secType": getattr(c, "secType", None) or secType,
+                    "exchange": getattr(c, "primaryExchange", None) or getattr(c, "exchange", None) or exchange,
+                    "currency": getattr(c, "currency", None) or currency,
+                    "localSymbol": getattr(c, "localSymbol", None),
+                }
+            except Exception:
+                return None
+
+    results = await asyncio.gather(*[_one(s) for s in syms])
+    verified = [r for r in results if r]
+    return {"verified": verified}
 
 # --- quotes (last/bid/ask/high/low/close) ----------------------------------
 @router.get("/quote")
