@@ -170,11 +170,56 @@ fi
 # ---- Remove legacy standalone xpra runner if present (prevents port clashes) ----
 rm -f /opt/ibkr/run-ibgateway-xpra.sh 2>/dev/null || true
 
-# ---- Helper: pin IBKR window to top-left without resizing ----
 install -D -m 0755 /dev/stdin /usr/local/bin/pin-ibgw.sh <<'PINSH'
 #!/usr/bin/env bash
+# Deterministically place IBKR/IBC windows so iframes can "viewport" them.
+# Login/start window -> top-left; Main window -> top-right.
+# Re-applies for a while to catch late dialogs.
 set -euo pipefail
-exit 0
+export DISPLAY="${DISPLAY:-:100}"
+
+# Wait for X to be ready
+for _ in $(seq 1 120); do
+  if xprop -root _NET_SUPPORTED >/dev/null 2>&1; then break; fi
+  sleep 0.5
+done
+
+# Screen width for right-hand placement (fallback if xdpyinfo fails)
+SCREEN_W="$(xdpyinfo 2>/dev/null | awk '/dimensions:/{print $2}' | cut -dx -f1)"
+: "${SCREEN_W:=1920}"
+
+move_and_size() {
+  local wid="$1" x="$2" y="$3" w="$4" h="$5"
+  wmctrl -ir "$wid" -b remove,maximized_vert,maximized_horz 2>/dev/null || true
+  xdotool windowmove "$wid" "$x" "$y" 2>/dev/null || true
+  xdotool windowsize "$wid" "$w" "$h" 2>/dev/null || true
+}
+
+# One pass of placement: login-ish -> TL; main-ish -> TR
+place_once() {
+  # Heuristics by title:
+  #  - Login/start/warnings: keep small and TL
+  #  - Main gateway: larger and TR
+  local login_pat='(Login|Interactive Brokers|IBController|IBC|Warning)'
+  local main_pat='(IB.?Gateway|Trader Workstation)'
+
+  # TL: login & dialogs
+  xdotool search --onlyvisible --name "$login_pat" 2>/dev/null | awk 'NF' | sort -u | while read -r wid; do
+    move_and_size "$wid" 0 0 960 720
+  done
+
+  # TR: main
+  local RIGHT_X=$(( SCREEN_W - 1100 ))
+  xdotool search --onlyvisible --name "$main_pat" 2>/dev/null | awk 'NF' | sort -u | while read -r wid; do
+    move_and_size "$wid" "$RIGHT_X" 0 1100 860
+  done
+}
+
+# Keep nudging during startup; also helps when new dialogs appear.
+for _ in $(seq 1 60); do
+  place_once
+  sleep 0.5
+done
 PINSH
 
 chown root:root /usr/local/bin/pin-ibgw.sh
@@ -467,6 +512,9 @@ server {
           .window{box-shadow:none!important;border:none!important}
         </style></head>';
 
+        # add a tiny bridge so the app can pin/crop windows per-iframe
+        sub_filter '</head>' '<script id="xpra-bridge">(function(){function wn(){return[].slice.call(document.querySelectorAll(".window"));}function title(w){var el=w.querySelector(".titlebar,.window-title,.title");var t=(el?el.textContent:"")||w.getAttribute("title")||"";return (t||"").trim();}function catalog(){try{var list=wn().map(function(w,i){var r=w.getBoundingClientRect();return{index:i,title:title(w),x:r.left,y:r.top,w:r.width,h:r.height};});parent.postMessage({xpraWindows:list}, location.origin);}catch(e){}}function pin(i){var a=wn();a.forEach(function(w,idx){if(idx===i){w.style.position="absolute";w.style.left="0";w.style.top="0";w.style.width="100%";w.style.height="100%";w.style.maxWidth="none";w.style.maxHeight="none";w.style.margin="0";w.style.transform="none";w.style.display="";}else{w.style.display="none";}});try{scrollTo(0,0)}catch(e){}}var CID="xpra-crop-wrap";function wrap(){var ws=document.querySelector("#workspace")||document.body;if(!ws)return null;var p=document.getElementById(CID);if(!p){p=document.createElement("div");p.id=CID;p.style.position="relative";p.style.width="100%";p.style.height="100%";p.style.overflow="hidden";ws.parentNode.insertBefore(p,ws);p.appendChild(ws);}return p;}function cropTo(i){var a=wn();if(!a[i])return;var p=wrap();if(!p)return;var ws=document.querySelector("#workspace")||document.body;var r=a[i].getBoundingClientRect();var pr=p.getBoundingClientRect();var dx=Math.round(r.left-pr.left),dy=Math.round(r.top-pr.top);ws.style.transform="translate("+(-dx)+"px,"+(-dy)+"px)";ws.style.transformOrigin="0 0";}function showAll(){var ws=document.querySelector("#workspace")||document.body;if(ws){ws.style.transform="";}wn().forEach(function(w){w.style.display="";w.style.position="";w.style.left="";w.style.top="";w.style.width="";w.style.height="";w.style.transform="";});}window.addEventListener("message",function(ev){var m=ev.data||{};if(m.cmd==="pin"&&Number.isInteger(m.index))pin(m.index);else if(m.cmd==="cropTo"&&Number.isInteger(m.index))cropTo(m.index);else if(m.cmd==="showAll")showAll();});new MutationObserver(catalog).observe(document.documentElement,{subtree:true,childList:true,attributes:true});setInterval(catalog,800);addEventListener("load",function(){setTimeout(catalog,200);});})();</script></head>';
+
         # emit size of first app window (or canvas) to parent, ensure native pixels (no scaling)
         sub_filter '</body>' '<script>
 		  (function(){
@@ -631,6 +679,9 @@ server {
           html,body,#workspace{margin:0;padding:0;width:100%;height:100%;background:transparent}
           .window{box-shadow:none!important;border:none!important}
         </style></head>';
+
+        # add a tiny bridge so the app can pin/crop windows per-iframe
+        sub_filter '</head>' '<script id="xpra-bridge">(function(){function wn(){return[].slice.call(document.querySelectorAll(".window"));}function title(w){var el=w.querySelector(".titlebar,.window-title,.title");var t=(el?el.textContent:"")||w.getAttribute("title")||"";return (t||"").trim();}function catalog(){try{var list=wn().map(function(w,i){var r=w.getBoundingClientRect();return{index:i,title:title(w),x:r.left,y:r.top,w:r.width,h:r.height};});parent.postMessage({xpraWindows:list}, location.origin);}catch(e){}}function pin(i){var a=wn();a.forEach(function(w,idx){if(idx===i){w.style.position="absolute";w.style.left="0";w.style.top="0";w.style.width="100%";w.style.height="100%";w.style.maxWidth="none";w.style.maxHeight="none";w.style.margin="0";w.style.transform="none";w.style.display="";}else{w.style.display="none";}});try{scrollTo(0,0)}catch(e){}}var CID="xpra-crop-wrap";function wrap(){var ws=document.querySelector("#workspace")||document.body;if(!ws)return null;var p=document.getElementById(CID);if(!p){p=document.createElement("div");p.id=CID;p.style.position="relative";p.style.width="100%";p.style.height="100%";p.style.overflow="hidden";ws.parentNode.insertBefore(p,ws);p.appendChild(ws);}return p;}function cropTo(i){var a=wn();if(!a[i])return;var p=wrap();if(!p)return;var ws=document.querySelector("#workspace")||document.body;var r=a[i].getBoundingClientRect();var pr=p.getBoundingClientRect();var dx=Math.round(r.left-pr.left),dy=Math.round(r.top-pr.top);ws.style.transform="translate("+(-dx)+"px,"+(-dy)+"px)";ws.style.transformOrigin="0 0";}function showAll(){var ws=document.querySelector("#workspace")||document.body;if(ws){ws.style.transform="";}wn().forEach(function(w){w.style.display="";w.style.position="";w.style.left="";w.style.top="";w.style.width="";w.style.height="";w.style.transform="";});}window.addEventListener("message",function(ev){var m=ev.data||{};if(m.cmd==="pin"&&Number.isInteger(m.index))pin(m.index);else if(m.cmd==="cropTo"&&Number.isInteger(m.index))cropTo(m.index);else if(m.cmd==="showAll")showAll();});new MutationObserver(catalog).observe(document.documentElement,{subtree:true,childList:true,attributes:true});setInterval(catalog,800);addEventListener("load",function(){setTimeout(catalog,200);});})();</script></head>';
 
         # emit size of first app window (or canvas) to parent, ensure native pixels (no scaling)
         sub_filter '</body>' '<script>
