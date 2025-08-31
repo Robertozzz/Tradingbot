@@ -230,7 +230,7 @@ fi
 
 # Standard IBC env (config + logs + paths)
 export IBC_PATH=/opt/ibc
-export IBC_INI=/opt/ibc/config.ini
+export IBC_INI=/opt/tradingbot/runtime/ibc.ini
 export TWS_PATH="$HOME/Jts"
 export LOG_PATH=/opt/tradingbot/logs
 export APP=GATEWAY
@@ -242,9 +242,10 @@ exec /opt/ibc/scripts/displaybannerandlaunch.sh
 IBWRAP
 chown ibkr:ibkr /opt/ibc/start-ibc.sh
 
-# Minimal IBC config (backend can keep in sync)
-if [[ ! -f /opt/ibc/config.ini ]]; then
-  cat > /opt/ibc/config.ini <<'IBCINI'
+# ---- Managed IBC ini lives under runtime (idempotent; never overwritten) ----
+install -d -o www-data -g www-data -m 0755 /opt/tradingbot/runtime
+if [[ ! -f /opt/tradingbot/runtime/ibc.ini ]]; then
+  cat > /opt/tradingbot/runtime/ibc.ini <<'IBCINI'
 IbLoginId=
 IbPassword=
 TradingMode=paper
@@ -257,9 +258,8 @@ IBCLogs=/opt/tradingbot/logs
 ReadOnlyApi=no
 ReadOnlyLogin=no
 IBCINI
-  # Backend (www-data) must be able to update creds/TOTP; IBC (user ibkr) must read it.
-  chown www-data:ibkr /opt/ibc/config.ini
-  chmod 640 /opt/ibc/config.ini
+  chown www-data:ibkr /opt/tradingbot/runtime/ibc.ini
+  chmod 640 /opt/tradingbot/runtime/ibc.ini
 fi
 
 # Runtime env used by API/UI to update creds/mode without editing units

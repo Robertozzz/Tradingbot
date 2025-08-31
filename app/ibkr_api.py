@@ -22,7 +22,7 @@ IBC_RUNNER_SERVICE = IBC_XPRA_SERVICE  # single-unit model
 
 IB_HOST = os.getenv("IB_HOST", "127.0.0.1")
 IB_CLIENT_ID = int(os.getenv("IB_CLIENT_ID", "11"))
-IBC_INI_PATH = Path("/opt/ibc/config.ini")
+IBC_INI_PATH = Path("/opt/tradingbot/runtime/ibc.ini")
 
 # Make ib_insync safe under ASGI/Jupyter nested loops
 try:
@@ -223,11 +223,13 @@ def _update_ibc_config_ini_from_env(env: dict) -> None:
         body = "\n".join(f"{k}={v}" for k,v in d.items()) + "\n"
         IBC_INI_PATH.write_text(body, encoding="utf-8")
         try:
-            IBC_INI_PATH.chmod(0o600)
+            # keep group-readable for ibkr user (installer sets www-data:ibkr)
+            IBC_INI_PATH.chmod(0o640)
         except Exception:
             pass
-    except Exception:
-        pass
+    except Exception as e:
+        log.exception("Failed updating %s", IBC_INI_PATH)
+        raise HTTPException(500, f"Failed to update {IBC_INI_PATH}: {e!s}")
 
 def _sudo(cmd: str) -> subprocess.CompletedProcess:
     # uses sudoers rules from installer

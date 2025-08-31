@@ -1,5 +1,4 @@
 import 'package:flutter/material.dart';
-import 'ibc_settings_card.dart';
 
 class SettingsPage extends StatelessWidget {
   final bool showMarketClock;
@@ -154,8 +153,6 @@ class SettingsPage extends StatelessWidget {
               ),
             ),
           ),
-          const SizedBox(height: 16),
-          const IbcConfigCard(),
         ],
       ),
     );
