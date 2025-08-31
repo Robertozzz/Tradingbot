@@ -555,7 +555,8 @@ tz.TZDateTime _displayMidnight(tz.Location displayLoc) {
 
 /// Compute the single next event text for a market (open/close of any band)
 
-String _nextEventText(Market m, tz.Location displayLoc) {
+String _nextEventText(Market m, tz.Location displayLoc,
+    {Map<String, String>? holidaysYMD}) {
   final marketLoc = tz.getLocation(m.tzName);
   final now = tz.TZDateTime.now(displayLoc);
 
@@ -573,13 +574,18 @@ String _nextEventText(Market m, tz.Location displayLoc) {
     }
   }
 
-  // Look ahead up to 7 days; add events only for trading weekdays
+  // Look ahead up to 7 days; add events only for trading weekdays and NOT holidays
   final todayM = tz.TZDateTime.now(marketLoc);
   for (int d = 0; d <= 7; d++) {
     final baseDay =
         tz.TZDateTime(marketLoc, todayM.year, todayM.month, todayM.day)
             .add(Duration(days: d));
     if (!m.tradingWeekdays.contains(baseDay.weekday)) continue; // skip weekends
+    if (holidaysYMD != null) {
+      String two(int v) => v.toString().padLeft(2, '0');
+      final ymd = '${baseDay.year}-${two(baseDay.month)}-${two(baseDay.day)}';
+      if (holidaysYMD.containsKey(ymd)) continue; // skip holiday
+    }
     for (final b in m.bands) {
       final h = _bandHoursInDisplay(
         band: b,
@@ -612,7 +618,8 @@ String _nextEventText(Market m, tz.Location displayLoc) {
 }
 
 /// Current band status per market with time to next boundary.
-String _currentBandInfo(Market m, tz.Location displayLoc) {
+String _currentBandInfo(Market m, tz.Location displayLoc,
+    [Map<String, String>? holidaysYMD]) {
   final marketLoc = tz.getLocation(m.tzName);
   final now = tz.TZDateTime.now(displayLoc);
 
@@ -636,6 +643,19 @@ String _currentBandInfo(Market m, tz.Location displayLoc) {
 
   String two(int v) => v.toString().padLeft(2, '0');
   String hhmm(tz.TZDateTime t) => '${two(t.hour)}:${two(t.minute)}';
+
+  // If today is a holiday (and would otherwise be a trading weekday), override with closure note.
+  if (holidaysYMD != null) {
+    final todayM = tz.TZDateTime.now(marketLoc);
+    if (m.tradingWeekdays.contains(todayM.weekday)) {
+      final ymd = '${todayM.year}-${two(todayM.month)}-${two(todayM.day)}';
+      final holidayName = holidaysYMD[ymd];
+      if (holidayName != null) {
+        final nextTxt = _nextEventText(m, displayLoc, holidaysYMD: holidaysYMD);
+        return 'Market closed today — $holidayName. $nextTxt';
+      }
+    }
+  }
 
   final pre = hoursFor(BandKind.pre);
   final reg = hoursFor(BandKind.regular);
@@ -662,8 +682,195 @@ String _currentBandInfo(Market m, tz.Location displayLoc) {
   }
 
   // Fallback if we're between bands: show the next event.
-  return _nextEventText(m, displayLoc);
+  return _nextEventText(m, displayLoc, holidaysYMD: holidaysYMD);
 }
+
+/// ============================================================================
+/// Holiday feed parser (for IBKR calendar-style text)
+///
+/// You can feed the raw text you pasted into:
+///   final holidays = parseIbCalendarText(rawText);
+///   TapeClockCentered(holidaysYMD: holidays, ...)
+///
+/// It maps tokens like "All US Exchanges Holiday", "London Stock Exchange Holiday",
+/// "XETRA Holiday", etc. onto the Market names used in `defaultMarkets`.
+/// Only items that include the word "Holiday" are treated as closures;
+/// expirations (SOFR, VIX, Crude, …) are ignored here.
+/// ============================================================================
+
+/// Map tokens from the dataset -> our market names (see `defaultMarkets`).
+/// You can expand/override this at call-site if you add more markets.
+const Map<String, List<String>> kHolidayTokenToMarkets = {
+  // US equities
+  'All US Exchanges Holiday': ['NYSE', 'NASDAQ'],
+  'United States Holiday': ['NYSE', 'NASDAQ'], // broader; lower priority
+  // UK
+  'London Stock Exchange Holiday': ['LONDON'],
+  'United Kingdom Holiday': ['LONDON'],
+  // Germany
+  'XETRA Holiday': ['FRANKFURT'],
+  'Germany Holiday': ['FRANKFURT'],
+  'EUREX Holiday': ['FRANKFURT'], // derivatives, usually aligns
+  // France
+  'France Holiday': ['PARIS'],
+  // Switzerland
+  'SIX Swiss Exchange Holiday': ['ZURICH'],
+  'Switzerland Holiday': ['ZURICH'],
+  // Spain
+  'MEFF Madrid Holiday': ['MADRID'], // derivatives, often aligns
+  // Canada
+  'Canada Holiday': ['TSX'],
+  'TSX Venture Holiday': ['TSX'],
+  'Montreal Exchange Holiday': ['TSX'],
+  // Australia
+  'Australia Securities Exchange Holiday': ['SYDNEY'],
+  'Australia Holiday': ['SYDNEY'],
+  // Hong Kong
+  'Hong Kong Stock Exchange Holiday': ['HONG KONG'],
+  'Hong Kong Holiday': ['HONG KONG'],
+  'Hong Kong Futures Holiday': ['HONG KONG'],
+  // China
+  'Shanghai Stock Exchange Holiday': ['SHANGHAI'],
+  // Japan
+  'Tokyo Stock Exchange Holiday': ['TOKYO'],
+  'Japan Holiday': ['TOKYO'],
+  // Singapore
+  'Singapore Holiday': ['SINGAPORE'],
+  // Not present in defaultMarkets -> intentionally ignored
+  'Borsa Italiana Holiday': [],
+  'Euronext Amsterdam Holiday': [],
+  'Korean Exchange Holiday': [],
+  'NSE India Holiday': [],
+  'Saudi Arabia Holiday': [],
+  'Israel Holiday': [],
+  'ICE Futures Exchange Holiday': [],
+  'Cboe Futures Exchange Holiday': [],
+  'CME Chicago Mercantile Exchange': [],
+  'Eurex Bonds Holiday': [],
+};
+
+/// Prefer specific exchange tokens over generic country tokens.
+const Map<String, int> kHolidayTokenPriority = {
+  // High
+  'London Stock Exchange Holiday': 10,
+  'XETRA Holiday': 10,
+  'SIX Swiss Exchange Holiday': 10,
+  'Hong Kong Stock Exchange Holiday': 10,
+  'Shanghai Stock Exchange Holiday': 10,
+  'Tokyo Stock Exchange Holiday': 10,
+  'Australia Securities Exchange Holiday': 10,
+  'TSX Venture Holiday': 10,
+  'Montreal Exchange Holiday': 10,
+  // Medium
+  'All US Exchanges Holiday': 7,
+  'Hong Kong Futures Holiday': 6,
+  'MEFF Madrid Holiday': 6,
+  // Low (country-level)
+  'United States Holiday': 3,
+  'United Kingdom Holiday': 3,
+  'France Holiday': 3,
+  'Germany Holiday': 3,
+  'Switzerland Holiday': 3,
+  'Canada Holiday': 3,
+  'Australia Holiday': 3,
+  'Hong Kong Holiday': 3,
+  'Japan Holiday': 3,
+  'Singapore Holiday': 3,
+};
+
+/// Parse a block of IBKR-style calendar text into holidays per market.
+/// Lines must contain English month names and a year, like "January 1, 2025".
+/// Any subsequent lines with the word "Holiday" are considered closures
+/// for those tokens on that date, mapped via [tokenToMarkets].
+Map<String, Map<String, String>> parseIbCalendarText(
+  String text, {
+  Map<String, List<String>> tokenToMarkets = kHolidayTokenToMarkets,
+  Map<String, int> tokenPriority = kHolidayTokenPriority,
+}) {
+  final Map<String, Map<String, String>> out = {};
+  final lines = text.split('\n');
+  final dateRe = RegExp(r'^([A-Za-z]+)\s+(\d{1,2}),\s+(\d{4})');
+  final months = const {
+    'january': 1,
+    'february': 2,
+    'march': 3,
+    'april': 4,
+    'may': 5,
+    'june': 6,
+    'july': 7,
+    'august': 8,
+    'september': 9,
+    'october': 10,
+    'november': 11,
+    'december': 12,
+  };
+
+  String two(int v) => v.toString().padLeft(2, '0');
+  String? currentYmd;
+
+  for (var raw in lines) {
+    final line = raw.trim();
+    if (line.isEmpty) continue;
+
+    final dm = dateRe.firstMatch(line);
+    if (dm != null) {
+      final mName = dm.group(1)!.toLowerCase();
+      final d = int.parse(dm.group(2)!);
+      final y = int.parse(dm.group(3)!);
+      final m = months[mName];
+      if (m != null) {
+        currentYmd = '$y-${two(m)}-${two(d)}';
+      } else {
+        currentYmd = null;
+      }
+      continue;
+    }
+
+    if (currentYmd == null) continue;
+    if (!line.toLowerCase().contains('holiday'))
+      continue; // ignore expiries/etc.
+
+    // Exact-token mapping first; if not found, try a relaxed contains() pass.
+    Iterable<MapEntry<String, List<String>>> matches;
+    if (tokenToMarkets.containsKey(line)) {
+      matches = [MapEntry(line, tokenToMarkets[line]!)];
+    } else {
+      matches = tokenToMarkets.entries.where((e) =>
+          e.key.isNotEmpty && line.toLowerCase().contains(e.key.toLowerCase()));
+      if (matches.isEmpty) continue;
+    }
+
+    for (final e in matches) {
+      final markets = e.value;
+      if (markets.isEmpty) continue; // intentionally ignored tokens
+      final pri = tokenPriority[e.key] ?? 5;
+      for (final mk in markets) {
+        out.putIfAbsent(mk, () => <String, String>{});
+        // If multiple tokens hit same market+date, keep the most specific by priority.
+        final prev = out[mk]![currentYmd];
+        final prevPri = (prev == null)
+            ? -999
+            : tokenPriority[prev] ??
+                (prev.toLowerCase().contains('exchange') ? 8 : 4);
+        if (pri >= prevPri) {
+          // Store the *label* we want to show in mini-info.
+          out[mk]![currentYmd] = e.key;
+        }
+      }
+    }
+  }
+  return out;
+}
+
+/// Example usage:
+///
+/// final holidays = parseIbCalendarText(rawFromIbSite);
+/// return TapeClockCentered(
+///   markets: defaultMarkets,
+///   enabled: seedEnabledFewImportant(defaultMarkets),
+///   displayTzName: 'Local',
+///   holidaysYMD: holidays,
+/// );
 
 /// =====================
 /// RADIAL CLOCK
@@ -1037,6 +1244,16 @@ class TapeClockCentered extends StatefulWidget {
   /// Smaller value -> larger scale (less compressed). 16 is a nice default.
   final double visibleHours;
 
+  /// Optional market-holidays map.
+  /// Keys: market name as used in `Market.name` (e.g. "NYSE").
+  /// Values: map of YYYY-MM-DD (in *market local time*) -> Holiday name.
+  /// Example:
+  /// {
+  ///   "NYSE": {"2025-09-01": "Labor Day", "2025-11-27": "Thanksgiving"},
+  ///   "LONDON": {"2025-12-25": "Christmas Day"}
+  /// }
+  final Map<String, Map<String, String>>? holidaysYMD;
+
   TapeClockCentered({
     super.key,
     List<Market>? markets,
@@ -1050,6 +1267,7 @@ class TapeClockCentered extends StatefulWidget {
     this.autoHeight = false,
     this.minHeight = 80,
     this.visibleHours = 24.0,
+    this.holidaysYMD,
   }) : markets = markets ?? defaultMarkets;
 
   @override
@@ -1096,7 +1314,12 @@ class _TapeClockCenteredState extends State<TapeClockCentered>
   void initState() {
     super.initState();
     _refreshDisplayLoc();
-    _lanes = _buildOrderedLanes(widget.markets, widget.enabled, _displayLoc);
+    _lanes = _buildOrderedLanes(
+      widget.markets,
+      widget.enabled,
+      _displayLoc,
+      holidaysYMD: widget.holidaysYMD,
+    );
 
     _anim = AnimationController(vsync: this, duration: widget.snapDuration);
     _anim.addStatusListener((status) {
@@ -1120,7 +1343,12 @@ class _TapeClockCenteredState extends State<TapeClockCentered>
       _refreshDisplayLoc();
     }
     if (tzChanged || enabledChanged || marketsChanged) {
-      _lanes = _buildOrderedLanes(widget.markets, widget.enabled, _displayLoc);
+      _lanes = _buildOrderedLanes(
+        widget.markets,
+        widget.enabled,
+        _displayLoc,
+        holidaysYMD: widget.holidaysYMD,
+      );
       _tickNow(); // NOW line reflects new tz immediately
       setState(() {}); // repaint
     }
@@ -1139,7 +1367,12 @@ class _TapeClockCenteredState extends State<TapeClockCentered>
       _weekdayDisplay = nd.weekday; // keep weekday in the same display tz
 
       // Also refresh lane mini-info so countdowns & times update as time passes
-      _lanes = _buildOrderedLanes(widget.markets, widget.enabled, _displayLoc);
+      _lanes = _buildOrderedLanes(
+        widget.markets,
+        widget.enabled,
+        _displayLoc,
+        holidaysYMD: widget.holidaysYMD,
+      );
     });
   }
 
@@ -1240,6 +1473,7 @@ class _TapeClockCenteredState extends State<TapeClockCentered>
             visibleHours: widget.visibleHours,
             weekdayToday: _weekdayDisplay,
             displayLoc: _displayLoc,
+            holidaysYMD: widget.holidaysYMD,
           ),
         ),
       );
@@ -1253,6 +1487,7 @@ class _Seg {
   double height;
   bool labelHere;
   final String label; // market name (used inside first regular band)
+  final String marketName; // exact Market.name to look up holidays
   // Control rounding so split-at-midnight halves meet without a gap
   bool roundLeft = true;
   bool roundRight = true;
@@ -1262,7 +1497,7 @@ class _Seg {
   final Set<int> tradingWeekdays; // which weekdays this market trades
   final tz.Location marketLoc; // <— needed to convert from display -> market
   _Seg(this.startH, this.endH, this.color, this.height, this.labelHere,
-      this.label,
+      this.label, this.marketName,
       {this.roundLeft = true,
       this.roundRight = true,
       required this.baseWeekday,
@@ -1272,10 +1507,8 @@ class _Seg {
 
 /// Build lanes + one mini-info per market
 List<_LaneData> _buildOrderedLanes(
-  List<Market> markets,
-  Map<String, bool>? enabled,
-  tz.Location displayLoc,
-) {
+    List<Market> markets, Map<String, bool>? enabled, tz.Location displayLoc,
+    {Map<String, Map<String, String>>? holidaysYMD}) {
   final enabledMap = enabled ?? const <String, bool>{};
 
   final perMarket = <String, List<_Seg>>{};
@@ -1320,6 +1553,7 @@ List<_LaneData> _buildOrderedLanes(
           b.thickness,
           b.showLabel,
           m.name,
+          m.name,
           roundRight: false,
           baseWeekday: baseWeekday,
           tradingWeekdays: m.tradingWeekdays,
@@ -1331,6 +1565,7 @@ List<_LaneData> _buildOrderedLanes(
           b.color,
           b.thickness,
           false,
+          m.name,
           m.name,
           roundLeft: false,
           baseWeekday: baseWeekday,
@@ -1345,6 +1580,7 @@ List<_LaneData> _buildOrderedLanes(
           b.thickness,
           b.showLabel,
           m.name,
+          m.name,
           baseWeekday: baseWeekday,
           tradingWeekdays: m.tradingWeekdays,
           marketLoc: marketLoc,
@@ -1356,7 +1592,11 @@ List<_LaneData> _buildOrderedLanes(
       perMarket[m.name] = segs;
       earliest[m.name] = firstStart ?? 24.0;
       // keep legacy single-line mini (unused now)
-      infos[m.name] = _currentBandInfo(m, displayLoc);
+      infos[m.name] = _currentBandInfo(
+        m,
+        displayLoc,
+        holidaysYMD?[m.name],
+      );
     }
   }
 
@@ -1367,7 +1607,8 @@ List<_LaneData> _buildOrderedLanes(
   for (final name in orderedNames) {
     final mkt = markets.firstWhere((m) => m.name == name);
     // Compute the single next event over ALL bands (open/close)
-    final nextOne = _nextEventText(mkt, displayLoc);
+    final nextOne =
+        _nextEventText(mkt, displayLoc, holidaysYMD: holidaysYMD?[name]);
 
     lanes.add(_LaneData(
       name,
@@ -1388,6 +1629,7 @@ class _CenteredTapePainter extends CustomPainter {
   final double visibleHours;
   final int weekdayToday; // 1=Mon..7=Sun in display tz
   final tz.Location displayLoc; // <— we need this to build display datetimes
+  final Map<String, Map<String, String>>? holidaysYMD;
 
   _CenteredTapePainter({
     required this.lanes,
@@ -1398,6 +1640,7 @@ class _CenteredTapePainter extends CustomPainter {
     required this.visibleHours,
     required this.weekdayToday,
     required this.displayLoc,
+    required this.holidaysYMD,
   });
 
   @override
@@ -1493,6 +1736,17 @@ class _CenteredTapePainter extends CustomPainter {
           final midMarket = tz.TZDateTime.from(midDisplay, seg.marketLoc);
           if (!seg.tradingWeekdays.contains(midMarket.weekday)) {
             return; // e.g., NZX Saturday gets filtered even if your local is Friday
+          }
+
+          // Also gate by explicit holidays
+          final Map<String, String>? hMap = holidaysYMD?[seg.marketName];
+          if (hMap != null) {
+            String two(int v) => v.toString().padLeft(2, '0');
+            final ymd =
+                '${midMarket.year}-${two(midMarket.month)}-${two(midMarket.day)}';
+            if (hMap.containsKey(ymd)) {
+              return; // market closed for holiday
+            }
           }
 
           // Screen x for this copy
@@ -1708,7 +1962,8 @@ class _CenteredTapePainter extends CustomPainter {
           (old.nowHour - nowHour).abs() > 1e-6 ||
           old.hourOffset != hourOffset ||
           old.padding != padding ||
-          old.infoGutter != infoGutter;
+          old.infoGutter != infoGutter ||
+          old.holidaysYMD != holidaysYMD;
       // visibleHours changes are handled via layout; weekdayToday affects labels only
     } catch (_) {
       return true;
