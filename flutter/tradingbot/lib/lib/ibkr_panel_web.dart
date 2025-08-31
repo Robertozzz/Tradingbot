@@ -1,10 +1,25 @@
 // lib/ibkr_panel_web.dart
 import 'dart:convert';
-import 'dart:js_interop'; // .toDart for JS Promises
+import 'dart:js_interop'; // .toDart for Promises, .toJS for JS values
 import 'dart:ui_web' as ui_web; // platformViewRegistry
 import 'package:flutter/material.dart';
 import 'package:http/http.dart' as http;
 import 'package:web/web.dart' as web; // JS interop DOM (instead of dart:html)
+
+// ---- JS interop payload we send to the iframe bridge: { cmd, index } ----
+@JS()
+@staticInterop
+@anonymous
+class _XpraMsg {
+  external factory _XpraMsg({String cmd, int index});
+}
+
+void _postPin(web.Window? win, int index) {
+  if (win == null) return;
+  final origin = web.window.location.origin.toJS;
+  win.postMessage(_XpraMsg(cmd: 'pin', index: index) as JSAny, origin);
+  win.postMessage(_XpraMsg(cmd: 'cropTo', index: index) as JSAny, origin);
+}
 
 class IbkrGatewayPanel extends StatefulWidget {
   const IbkrGatewayPanel({super.key});
@@ -44,15 +59,11 @@ class _IbkrGatewayPanelState extends State<IbkrGatewayPanel> {
     // load/error hooks affect shared overlay + send 'pin' command to each iframe
     _iframeA.onLoad.listen((_) {
       if (mounted) setState(() => _showOverlay = false);
-      final originJs = web.window.location.origin.toJS;
-      _iframeA.contentWindow
-          ?.postMessage(r'{"cmd":"pin","index":0}'.toJS, originJs);
+      _postPin(_iframeA.contentWindow, 0);
     });
     _iframeB.onLoad.listen((_) {
       if (mounted) setState(() => _showOverlay = false);
-      final originJs = web.window.location.origin.toJS;
-      _iframeB.contentWindow
-          ?.postMessage(r'{"cmd":"pin","index":1}'.toJS, originJs);
+      _postPin(_iframeB.contentWindow, 1);
     });
     _iframeA.onError.listen((_) {
       if (mounted) setState(() => _showOverlay = true);
@@ -68,6 +79,13 @@ class _IbkrGatewayPanelState extends State<IbkrGatewayPanel> {
           .registerViewFactory('ibkr-xpra-b', (int _) => _iframeB);
       _registered = true;
     }
+
+    // Re-pin on any message from the bridge (robust to window spawn timing).
+    // We don't inspect ev.data (it's a JS value, not a Dart Map).
+    web.window.onMessage.listen((_) {
+      _postPin(_iframeA.contentWindow, 0);
+      _postPin(_iframeB.contentWindow, 1);
+    });
 
     // initial loads
     _loadConfig();
@@ -410,9 +428,11 @@ class _IbkrGatewayPanelState extends State<IbkrGatewayPanel> {
 
       // ---- viewer (hidden until enabled + reachable) ----
       SizedBox(
-        height: 900, // allow two viewports; parent page can scroll further
-        child: _showXpra
-            ? ListView(
+        height: 900,
+        child: Stack(
+          children: [
+            if (_showXpra)
+              ListView(
                 children: [
                   // Viewport A (e.g., login/start window — pinned TL by bridge)
                   SizedBox(
@@ -448,15 +468,10 @@ class _IbkrGatewayPanelState extends State<IbkrGatewayPanel> {
                     height: 420,
                     child: const HtmlElementView(viewType: 'ibkr-xpra-b'),
                   ),
-
-                  // Overlay (covers both iframes)
-                  if (_showOverlay)
-                    Container(
-                      height: 0, // overlay is positioned below
-                    ),
                 ],
               )
-            : Center(
+            else
+              Center(
                 child: Text(
                   _dbg
                       ? 'Enabling viewer… waiting for Xpra to come online'
@@ -464,55 +479,52 @@ class _IbkrGatewayPanelState extends State<IbkrGatewayPanel> {
                   style: Theme.of(context).textTheme.bodyMedium,
                 ),
               ),
-      ),
-      // Global overlay floated over the two viewports
-      if (_showXpra && _showOverlay)
-        SizedBox(
-          height: 0,
-          child: Stack(children: [
-            Positioned.fill(
-              child: Container(
-                color: const Color(0xCC0E1526),
-                child: Center(
-                  child: Column(
-                    mainAxisSize: MainAxisSize.min,
-                    children: [
-                      const Text(
-                        'IBKR Gateway is not reachable',
-                        style: TextStyle(
-                            fontSize: 18, fontWeight: FontWeight.w700),
-                      ),
-                      const SizedBox(height: 8),
-                      const Text(
-                          'Start or restart the app, then this panel will load.',
-                          style: TextStyle(color: Colors.white70)),
-                      const SizedBox(height: 16),
-                      Row(mainAxisSize: MainAxisSize.min, children: [
-                        FilledButton.icon(
-                          onPressed: _starting ? null : _restartGateway,
-                          icon: _starting
-                              ? const SizedBox(
-                                  width: 16,
-                                  height: 16,
-                                  child:
-                                      CircularProgressIndicator(strokeWidth: 2))
-                              : const Icon(Icons.power_settings_new),
-                          label: const Text('Start / Restart Gateway'),
+            // Global overlay over both iframes
+            if (_showOverlay)
+              Positioned.fill(
+                child: Container(
+                  color: const Color(0xCC0E1526),
+                  child: Center(
+                    child: Column(
+                      mainAxisSize: MainAxisSize.min,
+                      children: [
+                        const Text(
+                          'IBKR Gateway is not reachable',
+                          style: TextStyle(
+                              fontSize: 18, fontWeight: FontWeight.w700),
                         ),
-                        const SizedBox(width: 12),
-                        OutlinedButton.icon(
-                          onPressed: _reload,
-                          icon: const Icon(Icons.refresh),
-                          label: const Text('Try Reload'),
-                        ),
-                      ]),
-                    ],
+                        const SizedBox(height: 8),
+                        const Text(
+                            'Start or restart the app, then this panel will load.',
+                            style: TextStyle(color: Colors.white70)),
+                        const SizedBox(height: 16),
+                        Row(mainAxisSize: MainAxisSize.min, children: [
+                          FilledButton.icon(
+                            onPressed: _starting ? null : _restartGateway,
+                            icon: _starting
+                                ? const SizedBox(
+                                    width: 16,
+                                    height: 16,
+                                    child: CircularProgressIndicator(
+                                        strokeWidth: 2))
+                                : const Icon(Icons.power_settings_new),
+                            label: const Text('Start / Restart Gateway'),
+                          ),
+                          const SizedBox(width: 12),
+                          OutlinedButton.icon(
+                            onPressed: _reload,
+                            icon: const Icon(Icons.refresh),
+                            label: const Text('Try Reload'),
+                          ),
+                        ]),
+                      ],
+                    ),
                   ),
                 ),
               ),
-            ),
-          ]),
+          ],
         ),
+      ),
     ]);
   }
 }
