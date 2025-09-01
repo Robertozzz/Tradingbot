@@ -78,6 +78,12 @@ ALIASES_DEFAULT: dict[str, list[str]] = {
     "square": ["block", "SQ"],
     "block": ["SQ"],
     "x": ["twitter", "TWTR"],  # legacy; harmless if not present
+    "apple": ["AAPL", "Apple Inc"],
+    "microsoft": ["MSFT", "Microsoft Corporation"],
+    "amazon": ["AMZN", "Amazon.com"],
+    "nvidia": ["NVDA", "NVIDIA"],
+    "tesla": ["TSLA", "Tesla"],
+    "fugro": ["FUR", "Fugro N.V."],
 }
 ALIASES_PATH = RUNTIME / "aliases.json"
 _ALIASES: dict[str, list[str]] | None = None
@@ -184,6 +190,116 @@ def _is_ticker_like(term: str) -> bool:
     if not t:
         return False
     return re.fullmatch(r"[A-Za-z0-9]{1,6}([.\-][A-Za-z0-9]{1,2})?", t) is not None
+
+async def _collect_from_matching_symbols(syms, qualify_limit: int = 6) -> list[dict]:
+    """
+    Normalize results from reqMatchingSymbols.
+    Qualify only a handful (qualify_limit) to enrich exchange/currency quickly.
+    """
+    out: list[dict] = []
+    to_qualify: list[Contract] = []
+    for s in (syms or []):
+        for desc in (getattr(s, "contractDescriptions", None) or []):
+            c = getattr(desc, "contract", None)
+            if not c:
+                continue
+            row = {
+                "symbol": s.symbol or getattr(c, "symbol", None),
+                "name": s.description or getattr(c, "localSymbol", None) or getattr(c, "symbol", None),
+                "secType": getattr(c, "secType", None) or "STK",
+                "conId": int(getattr(c, "conId", 0)) or None,
+                "currency": getattr(c, "currency", None) or None,
+                "exchange": getattr(c, "primaryExchange", None) or getattr(c, "exchange", None) or None,
+                "primaryExchange": getattr(c, "primaryExchange", None) or None,
+            }
+            # mark for qualification if essential fields are missing
+            if (row["conId"] and (row["exchange"] is None or row["currency"] is None)
+                and len(to_qualify) < max(0, qualify_limit)):
+                to_qualify.append(c)
+            out.append(row)
+    # qualify a few to enrich metadata
+    if to_qualify:
+        try:
+            qcs = await ib.qualifyContractsAsync(*to_qualify)
+            qmap = {qc.conId: qc for qc in (qcs or []) if getattr(qc, "conId", None)}
+            for r in out:
+                cid = r.get("conId")
+                if cid and cid in qmap:
+                    qc = qmap[cid]
+                    r["currency"] = getattr(qc, "currency", None) or r["currency"]
+                    r["exchange"] = getattr(qc, "primaryExchange", None) or getattr(qc, "exchange", None) or r["exchange"]
+                    r["primaryExchange"] = getattr(qc, "primaryExchange", None) or r["primaryExchange"]
+        except Exception:
+            pass
+    # fill sensible defaults now that we tried to enrich
+    for r in out:
+        if r["secType"] == "FX" or _is_fx_pair(str(r.get("symbol") or "")):
+            r["currency"] = r["currency"] or (str(r.get("symbol") or "USDUSD")[3:])
+            r["exchange"] = r["exchange"] or "IDEALPRO"
+            r["primaryExchange"] = r["primaryExchange"] or "IDEALPRO"
+        else:
+            r["currency"] = r["currency"] or "USD"
+            r["exchange"] = r["exchange"] or "SMART"
+    return out
+
+async def _match_batch(terms: list[str], per_timeout: float = 3.5, overall_timeout: float = 6.5, max_conc: int = 3) -> list[dict]:
+    """
+    Run reqMatchingSymbols over several variants with bounded concurrency and a global timeout.
+    Cancel any stragglers after the deadline.
+    """
+    results: list[dict] = []
+    sem = asyncio.Semaphore(max_conc)
+    async def one(term: str):
+        async with sem:
+            try:
+                syms = await asyncio.wait_for(ib.reqMatchingSymbolsAsync(term), timeout=per_timeout)
+                rows = await _collect_from_matching_symbols(syms, qualify_limit=6)
+                results.extend(rows)
+            except Exception:
+                return
+    tasks = [asyncio.create_task(one(t)) for t in terms]
+    try:
+        await asyncio.wait(tasks, timeout=overall_timeout)
+    finally:
+        for t in tasks:
+            if not t.done():
+                t.cancel()
+    return results
+
+async def _try_resolve_many(terms: list[str], secType: str = "STK") -> list[dict]:
+    """
+    Fast path: try to resolve a few ticker-like variants directly via reqContractDetails.
+    Much faster than name matching and yields a conId.
+    """
+    out: list[dict] = []
+    seen = set()
+    for t in terms:
+        s = (t or "").strip()
+        if not s:
+            continue
+        if not (_is_ticker_like(s) or _is_fx_pair(s.upper())):
+            continue
+        key = s.upper()
+        if key in seen:
+            continue
+        seen.add(key)
+        try:
+            st = "FX" if _is_fx_pair(s.upper()) else secType
+            ex = "IDEALPRO" if st == "FX" else "SMART"
+            cur = "USD"
+            # keep this snappy; don't let a stuck symbol block others
+            c = await asyncio.wait_for(_resolve_contract(s, st, ex, cur), timeout=2.5)
+            out.append({
+                "symbol": getattr(c, "localSymbol", None) or getattr(c, "symbol", None) or key,
+                "name": getattr(c, "symbol", None) or key,
+                "secType": getattr(c, "secType", None) or st,
+                "conId": int(getattr(c, "conId", 0)) or None,
+                "currency": getattr(c, "currency", None) or (key[3:] if st == "FX" else "USD"),
+                "exchange": getattr(c, "primaryExchange", None) or getattr(c, "exchange", None) or ex,
+            })
+        except Exception:
+            continue
+    return out
 
 def _heuristic_seed(term: str) -> list[dict]:
     """
@@ -337,6 +453,17 @@ async def _ensure_connected():
         return
     try:
         await ib.connectAsync(IB_HOST, _current_port(), clientId=IB_CLIENT_ID, timeout=4)
+        # Warm-up: some IBGW builds are sluggish immediately after login.
+        try:
+            # cheap ping
+            await ib.reqCurrentTimeAsync()
+        except Exception:
+            pass
+        try:
+            # prime symbol matcher so first real call is faster
+            await asyncio.wait_for(ib.reqMatchingSymbolsAsync("AAPL"), timeout=3.0)
+        except Exception:
+            pass
     except Exception as e:
         raise HTTPException(status_code=502, detail=f"IBKR connect failed: {e!s}")
 
@@ -983,64 +1110,36 @@ async def search(q: str | None = Query(None), query: str | None = Query(None)):
         await _ensure_connected()
     except Exception:
         online = False
-    async def _query_and_collect(qtext: str, out: list[dict]):
-        """Run reqMatchingSymbols on qtext and append normalized rows into out."""
-        try:
-            syms = await asyncio.wait_for(ib.reqMatchingSymbolsAsync(qtext), timeout=2.5)
-        except Exception as e:
-            # return silently so other variants still try
-            return
-        for s in (syms or []):
-            for desc in (getattr(s, "contractDescriptions", None) or []):
-                try:
-                    c = getattr(desc, "contract", None)
-                    if not c:
-                        continue
-                    # Qualify only if missing conId/exchange/currency
-                    need_qual = not getattr(c, "conId", None) or not getattr(c, "exchange", None) or not getattr(c, "currency", None)
-                    if need_qual:
-                        try:
-                            qc = (await ib.qualifyContractsAsync(c)) or []
-                            c = qc[0] if qc else c
-                        except Exception:
-                            pass
-                    out.append({
-                        "symbol": s.symbol or getattr(c, "symbol", None) or qtext.upper(),
-                        "name": s.description or getattr(c, "localSymbol", None) or getattr(c, "symbol", None) or qtext.upper(),
-                        "secType": getattr(c, "secType", None) or "STK",
-                        "conId": int(getattr(c, "conId", 0)) or None,
-                        "currency": getattr(c, "currency", None) or "USD",
-                        "exchange": getattr(c, "primaryExchange", None) or getattr(c, "exchange", None) or "SMART",
-                    })
-                except Exception:
-                    continue
-
     # Buckets so we can union later.
     out_online: list[dict] = []
     out_local:  list[dict] = []
     out_seed:   list[dict] = _heuristic_seed(term)
 
-    # 1) Online attempt
+    # Fast path for obvious tickers (AAPL, BRK.B, EURUSD, etc.) and alias-variants
     if online:
-        await _query_and_collect(term, out_online)
+        variants_quick: list[str] = [term]
+        variants_quick += _alias_variants(term)
+        # keep small and unique
+        seen_fast = set()
+        variants_quick = [v for v in variants_quick if not (v in seen_fast or seen_fast.add(v))][:6]
+        out_online.extend(await _try_resolve_many(variants_quick, secType="STK"))
 
-    # 2) If weak or empty, try robust variants including aliases
-    if (online and len(out_online) < 5) or (not online):
+    # Online name matching with aliases (bounded concurrency + global timeout)
+    if online and len(out_online) < 10:
         variants: list[str] = []
+        variants += [term]
         variants += _alias_variants(term)
-        # also basic case variants
         variants += [term.upper(), term.lower(), term.title()]
-        # unique order-preserving
+        # unique, preserve order; keep it tight
         seen_v = set()
-        variants = [v for v in variants if not (v in seen_v or seen_v.add(v))]
-        if online:
-            for v in variants[:8]:
-                await _query_and_collect(v, out_online)
-
+        variants = [v for v in variants if not (v in seen_v or seen_v.add(v))][:8]
+        # Run the batch quickly; cancel stragglers
+        out_online.extend(await _match_batch(variants, per_timeout=3.5, overall_timeout=6.5, max_conc=3))
+ 
     # Add local universe/aliases (works offline too).
     out_local = _local_match(term, limit=50)
 
-    # Union: seed (heuristics) + local + online
+   # Union: seed (heuristics) + local + online
     out = out_seed + out_local + out_online
 
     # De-dup by (conId) then (symbol, exchange)
@@ -1092,6 +1191,8 @@ async def search(q: str | None = Query(None), query: str | None = Query(None)):
                 })
             except Exception:
                 pass
+        if not uniq:
+            log.warning("search: no online hits for '%s' (likely timeout/slow gateway); returned heuristics/local", term)
 
     # cache results under multiple keys (term, alias variants, and result tokens)
     try:

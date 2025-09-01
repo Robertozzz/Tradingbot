@@ -7,6 +7,7 @@ from fastapi.middleware.cors import CORSMiddleware
 from fastapi.staticfiles import StaticFiles
 from fastapi.responses import FileResponse, JSONResponse, StreamingResponse
 from fastapi import Body
+from pydantic import BaseModel
 
 mimetypes.init()
 mimetypes.add_type("text/javascript", ".mjs")
@@ -86,6 +87,86 @@ try:
     auth_log.info("Mounted /auth router")
 except Exception as e:
     auth_log.exception("Failed to mount auth router")
+
+# -------- OPENAI SETTINGS STORAGE --------
+def _openai_settings_path() -> Path:
+    rt = _runtime_dir()
+    rt.mkdir(parents=True, exist_ok=True)
+    return rt / "openai_settings.json"
+
+def _load_openai_settings() -> dict:
+    fp = _openai_settings_path()
+    if fp.exists():
+        try:
+            return json.loads(fp.read_text(encoding="utf-8"))
+        except Exception:
+            pass
+    # Defaults (safe fallbacks)
+    return {
+        "model": "gpt-5",
+        "openai_api_key": "",       # stored locally; not returned to UI
+        "search_api_key": "",
+        "enable_browsing": True,
+    }
+
+def _save_openai_settings(data: dict) -> None:
+    # Persist
+    _openai_settings_path().write_text(json.dumps(data, ensure_ascii=False), encoding="utf-8")
+    # Also expose to process env so children reuse without restart
+    if "openai_api_key" in data:
+        os.environ["OPENAI_API_KEY"] = (data.get("openai_api_key") or "").strip()
+    if "search_api_key" in data:
+        os.environ["SEARCH_API_KEY"] = (data.get("search_api_key") or "").strip()
+    if "model" in data:
+        os.environ["OPENAI_MODEL"] = (data.get("model") or "gpt-5").strip()
+    if "enable_browsing" in data:
+        os.environ["OPENAI_ENABLE_BROWSING"] = "1" if data.get("enable_browsing") else "0"
+
+class OpenAISettingsIn(BaseModel):
+    model: str = "gpt-5"
+    openai_api_key: str | None = None
+    search_api_key: str | None = None
+    enable_browsing: bool = True
+
+@app.get("/api/openai/settings")
+def get_openai_settings():
+    """Return settings (without leaking the raw API key)."""
+    data = _load_openai_settings()
+    # never return raw key; just whether it's set
+    return {
+        "model": data.get("model", "gpt-5"),
+        "has_openai_api_key": bool(data.get("openai_api_key")),
+        "has_search_api_key": bool(data.get("search_api_key")),
+        "enable_browsing": bool(data.get("enable_browsing", True)),
+    }
+
+@app.post("/api/openai/settings")
+def update_openai_settings(payload: OpenAISettingsIn):
+    current = _load_openai_settings()
+    if payload.model:
+        current["model"] = payload.model.strip()
+    if payload.openai_api_key is not None:
+        current["openai_api_key"] = payload.openai_api_key.strip() if payload.openai_api_key else ""
+    if payload.search_api_key is not None:
+        current["search_api_key"] = payload.search_api_key.strip() if payload.search_api_key else ""
+    current["enable_browsing"] = bool(payload.enable_browsing)
+    _save_openai_settings(current)
+    return {"ok": True}
+
+@app.post("/api/openai/test")
+def openai_test(body: dict = Body(default={})):
+    """
+    Light 'ping'—asks the model to reply 'pong'.
+    Useful to validate key/model from the UI without heavy cost.
+    """
+    try:
+        from . import openai as ai
+        # ensure runtime settings are applied
+        ai.apply_runtime_settings()
+        txt, usage = ai.test_openai(prompt=body.get("prompt") or "ping")
+        return {"ok": True, "reply": txt, "usage": usage}
+    except Exception as e:
+        raise HTTPException(500, f"OpenAI test failed: {e}")
     
 def _runtime_dir() -> Path:
     for p in [

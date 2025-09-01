@@ -59,7 +59,9 @@ class _AssetLookupSheetState extends State<AssetLookupSheet> {
     try {
       setState(() => _loading = true);
       // Single backend call; it handles variants, aliases, and offline fallbacks.
-      final list = await Api.ibkrSearch(q).timeout(const Duration(seconds: 5));
+      // IB name-matching can be slow; backend now cancels stragglers,
+      // so allow a slightly longer overall timeout to avoid false negatives.
+      final list = await Api.ibkrSearch(q).timeout(const Duration(seconds: 12));
       if (!mounted || sid != _seq) return; // later search already won
       final out = <Map<String, dynamic>>[
         for (final e in list) Map<String, dynamic>.from(e as Map)
