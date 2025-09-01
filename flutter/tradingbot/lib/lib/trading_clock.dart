@@ -502,6 +502,181 @@ final List<Market> defaultMarkets = [
   ),
 ];
 
+/// ============================================================================
+/// Holiday feed parser (for IBKR calendar-style text)
+///
+/// Feed raw text like:
+///   January 1, 2025Wednesday
+///   All US Exchanges Holiday
+///   London Stock Exchange Holiday
+///   ...
+///
+/// Then do:
+///   final holidays = parseIbCalendarText(kHolidayText2025);
+///   TapeClockCentered(holidaysYMD: holidays, ...);
+///
+/// It maps tokens such as "All US Exchanges Holiday", "London Stock Exchange
+/// Holiday", "XETRA Holiday", etc. to the Market names used in `defaultMarkets`.
+/// Only lines containing "Holiday" are treated as closures; expirations are ignored.
+/// ============================================================================
+
+/// Map tokens from dataset -> our Market.name values.
+const Map<String, List<String>> kHolidayTokenToMarkets = {
+  // US equities
+  'All US Exchanges Holiday': ['NYSE', 'NASDAQ'],
+  'United States Holiday': ['NYSE', 'NASDAQ'],
+  // UK
+  'London Stock Exchange Holiday': ['LONDON'],
+  'United Kingdom Holiday': ['LONDON'],
+  // Germany
+  'XETRA Holiday': ['FRANKFURT'],
+  'Germany Holiday': ['FRANKFURT'],
+  'EUREX Holiday': ['FRANKFURT'],
+  // France
+  'France Holiday': ['PARIS'],
+  // Switzerland
+  'SIX Swiss Exchange Holiday': ['ZURICH'],
+  'Switzerland Holiday': ['ZURICH'],
+  // Spain
+  'MEFF Madrid Holiday': ['MADRID'],
+  // Canada
+  'Canada Holiday': ['TSX'],
+  'TSX Venture Holiday': ['TSX'],
+  'Montreal Exchange Holiday': ['TSX'],
+  // Australia
+  'Australia Securities Exchange Holiday': ['SYDNEY'],
+  'Australia Holiday': ['SYDNEY'],
+  // Hong Kong
+  'Hong Kong Stock Exchange Holiday': ['HONG KONG'],
+  'Hong Kong Holiday': ['HONG KONG'],
+  'Hong Kong Futures Holiday': ['HONG KONG'],
+  // China
+  'Shanghai Stock Exchange Holiday': ['SHANGHAI'],
+  // Japan
+  'Tokyo Stock Exchange Holiday': ['TOKYO'],
+  'Japan Holiday': ['TOKYO'],
+  // Singapore
+  'Singapore Holiday': ['SINGAPORE'],
+
+  // Not used by our defaultMarkets (intentionally ignored)
+  'Borsa Italiana Holiday': [],
+  'Euronext Amsterdam Holiday': [],
+  'Korean Exchange Holiday': [],
+  'NSE India Holiday': [],
+  'Saudi Arabia Holiday': [],
+  'Israel Holiday': [],
+  'ICE Futures Exchange Holiday': [],
+  'Cboe Futures Exchange Holiday': [],
+  'CME Chicago Mercantile Exchange': [],
+  'Eurex Bonds Holiday': [],
+};
+
+/// Prefer specific exchange tokens over generic country tokens.
+const Map<String, int> kHolidayTokenPriority = {
+  // High
+  'London Stock Exchange Holiday': 10,
+  'XETRA Holiday': 10,
+  'SIX Swiss Exchange Holiday': 10,
+  'Hong Kong Stock Exchange Holiday': 10,
+  'Shanghai Stock Exchange Holiday': 10,
+  'Tokyo Stock Exchange Holiday': 10,
+  'Australia Securities Exchange Holiday': 10,
+  'TSX Venture Holiday': 10,
+  'Montreal Exchange Holiday': 10,
+  // Medium
+  'All US Exchanges Holiday': 7,
+  'Hong Kong Futures Holiday': 6,
+  'MEFF Madrid Holiday': 6,
+  // Low (country-level)
+  'United States Holiday': 3,
+  'United Kingdom Holiday': 3,
+  'France Holiday': 3,
+  'Germany Holiday': 3,
+  'Switzerland Holiday': 3,
+  'Canada Holiday': 3,
+  'Australia Holiday': 3,
+  'Hong Kong Holiday': 3,
+  'Japan Holiday': 3,
+  'Singapore Holiday': 3,
+};
+
+/// Parse IBKR-style text to: {Market.name -> {YYYY-MM-DD -> tokenLabel}}
+Map<String, Map<String, String>> parseIbCalendarText(
+  String text, {
+  Map<String, List<String>> tokenToMarkets = kHolidayTokenToMarkets,
+  Map<String, int> tokenPriority = kHolidayTokenPriority,
+}) {
+  final Map<String, Map<String, String>> out = {};
+  final lines = text.split('\n');
+  final dateRe = RegExp(r'^([A-Za-z]+)\s+(\d{1,2}),\s+(\d{4})');
+  final months = const {
+    'january': 1,
+    'february': 2,
+    'march': 3,
+    'april': 4,
+    'may': 5,
+    'june': 6,
+    'july': 7,
+    'august': 8,
+    'september': 9,
+    'october': 10,
+    'november': 11,
+    'december': 12,
+  };
+  String two(int v) => v.toString().padLeft(2, '0');
+  String? currentYmd;
+
+  for (final raw in lines) {
+    final line = raw.trim();
+    if (line.isEmpty) continue;
+
+    final dm = dateRe.firstMatch(line);
+    if (dm != null) {
+      final mName = dm.group(1)!.toLowerCase();
+      final d = int.parse(dm.group(2)!);
+      final y = int.parse(dm.group(3)!);
+      final m = months[mName];
+      currentYmd = (m == null) ? null : '$y-${two(m)}-${two(d)}';
+      continue;
+    }
+    if (currentYmd == null) continue;
+    if (!line.toLowerCase().contains('holiday')) {
+      continue; // ignore expirations/etc.
+    }
+
+    // Exact-token first, else relaxed contains() pass.
+    Iterable<MapEntry<String, List<String>>> matches;
+    if (tokenToMarkets.containsKey(line)) {
+      matches = [MapEntry(line, tokenToMarkets[line]!)];
+    } else {
+      matches = tokenToMarkets.entries.where(
+        (e) =>
+            e.key.isNotEmpty &&
+            line.toLowerCase().contains(e.key.toLowerCase()),
+      );
+      if (matches.isEmpty) continue;
+    }
+
+    for (final e in matches) {
+      final markets = e.value;
+      if (markets.isEmpty) continue;
+      final pri = tokenPriority[e.key] ?? 5;
+      for (final mk in markets) {
+        out.putIfAbsent(mk, () => <String, String>{});
+        final prev = out[mk]![currentYmd];
+        final prevPri = (prev == null)
+            ? -999
+            : tokenPriority[prev] ??
+                (prev.toLowerCase().contains('exchange') ? 8 : 4);
+        if (pri >= prevPri) {
+          out[mk]![currentYmd] = e.key; // store label we’ll display
+        }
+      }
+    }
+  }
+  return out;
+}
+
 /// “Prefs” helper
 Map<String, bool> seedEnabledFewImportant(Iterable<Market> markets) {
   const onSet = {'NYSE', 'NASDAQ', 'LONDON', 'TOKYO'};
@@ -1096,6 +1271,7 @@ String _nextEventText(Market m, tz.Location displayLoc,
         tz.TZDateTime(marketLoc, todayM.year, todayM.month, todayM.day)
             .add(Duration(days: d));
     if (!m.tradingWeekdays.contains(baseDay.weekday)) continue; // skip weekends
+    // Skip explicit holidays (market-local)
     if (holidaysYMD != null) {
       String two(int v) => v.toString().padLeft(2, '0');
       final ymd = '${baseDay.year}-${two(baseDay.month)}-${two(baseDay.day)}';
@@ -1137,6 +1313,9 @@ String _currentBandInfo(Market m, tz.Location displayLoc,
     [Map<String, String>? holidaysYMD]) {
   final marketLoc = tz.getLocation(m.tzName);
   final now = tz.TZDateTime.now(displayLoc);
+  // helpers used below (must be declared before first use)
+  String two(int v) => v.toString().padLeft(2, '0');
+  String hhmm(tz.TZDateTime t) => '${two(t.hour)}:${two(t.minute)}';
 
   ({double startH, double endH, tz.TZDateTime openD, tz.TZDateTime closeD})
       hoursFor(BandKind kind) {
@@ -1155,9 +1334,6 @@ String _currentBandInfo(Market m, tz.Location displayLoc,
       }) h) {
     return now.isAfter(h.openD) && now.isBefore(h.closeD);
   }
-
-  String two(int v) => v.toString().padLeft(2, '0');
-  String hhmm(tz.TZDateTime t) => '${two(t.hour)}:${two(t.minute)}';
 
   // If today is a holiday (and would otherwise be a trading weekday), override with closure note.
   if (holidaysYMD != null) {
@@ -1202,7 +1378,6 @@ String _currentBandInfo(Market m, tz.Location displayLoc,
 
 /// ============================================================================
 /// Holiday feed parser (for IBKR calendar-style text)
-///
 /// You can feed the raw text you pasted into:
 final holidays = parseIbCalendarText(kHolidayText2025);
 
@@ -1216,167 +1391,8 @@ final holidays = parseIbCalendarText(kHolidayText2025);
 
 /// Map tokens from the dataset -> our market names (see `defaultMarkets`).
 /// You can expand/override this at call-site if you add more markets.
-const Map<String, List<String>> kHolidayTokenToMarkets = {
-  // US equities
-  'All US Exchanges Holiday': ['NYSE', 'NASDAQ'],
-  'United States Holiday': ['NYSE', 'NASDAQ'], // broader; lower priority
-  // UK
-  'London Stock Exchange Holiday': ['LONDON'],
-  'United Kingdom Holiday': ['LONDON'],
-  // Germany
-  'XETRA Holiday': ['FRANKFURT'],
-  'Germany Holiday': ['FRANKFURT'],
-  'EUREX Holiday': ['FRANKFURT'], // derivatives, usually aligns
-  // France
-  'France Holiday': ['PARIS'],
-  // Switzerland
-  'SIX Swiss Exchange Holiday': ['ZURICH'],
-  'Switzerland Holiday': ['ZURICH'],
-  // Spain
-  'MEFF Madrid Holiday': ['MADRID'], // derivatives, often aligns
-  // Canada
-  'Canada Holiday': ['TSX'],
-  'TSX Venture Holiday': ['TSX'],
-  'Montreal Exchange Holiday': ['TSX'],
-  // Australia
-  'Australia Securities Exchange Holiday': ['SYDNEY'],
-  'Australia Holiday': ['SYDNEY'],
-  // Hong Kong
-  'Hong Kong Stock Exchange Holiday': ['HONG KONG'],
-  'Hong Kong Holiday': ['HONG KONG'],
-  'Hong Kong Futures Holiday': ['HONG KONG'],
-  // China
-  'Shanghai Stock Exchange Holiday': ['SHANGHAI'],
-  // Japan
-  'Tokyo Stock Exchange Holiday': ['TOKYO'],
-  'Japan Holiday': ['TOKYO'],
-  // Singapore
-  'Singapore Holiday': ['SINGAPORE'],
-  // Not present in defaultMarkets -> intentionally ignored
-  'Borsa Italiana Holiday': [],
-  'Euronext Amsterdam Holiday': [],
-  'Korean Exchange Holiday': [],
-  'NSE India Holiday': [],
-  'Saudi Arabia Holiday': [],
-  'Israel Holiday': [],
-  'ICE Futures Exchange Holiday': [],
-  'Cboe Futures Exchange Holiday': [],
-  'CME Chicago Mercantile Exchange': [],
-  'Eurex Bonds Holiday': [],
-};
 
 /// Prefer specific exchange tokens over generic country tokens.
-const Map<String, int> kHolidayTokenPriority = {
-  // High
-  'London Stock Exchange Holiday': 10,
-  'XETRA Holiday': 10,
-  'SIX Swiss Exchange Holiday': 10,
-  'Hong Kong Stock Exchange Holiday': 10,
-  'Shanghai Stock Exchange Holiday': 10,
-  'Tokyo Stock Exchange Holiday': 10,
-  'Australia Securities Exchange Holiday': 10,
-  'TSX Venture Holiday': 10,
-  'Montreal Exchange Holiday': 10,
-  // Medium
-  'All US Exchanges Holiday': 7,
-  'Hong Kong Futures Holiday': 6,
-  'MEFF Madrid Holiday': 6,
-  // Low (country-level)
-  'United States Holiday': 3,
-  'United Kingdom Holiday': 3,
-  'France Holiday': 3,
-  'Germany Holiday': 3,
-  'Switzerland Holiday': 3,
-  'Canada Holiday': 3,
-  'Australia Holiday': 3,
-  'Hong Kong Holiday': 3,
-  'Japan Holiday': 3,
-  'Singapore Holiday': 3,
-};
-
-/// Parse a block of IBKR-style calendar text into holidays per market.
-/// Lines must contain English month names and a year, like "January 1, 2025".
-/// Any subsequent lines with the word "Holiday" are considered closures
-/// for those tokens on that date, mapped via [tokenToMarkets].
-Map<String, Map<String, String>> parseIbCalendarText(
-  String text, {
-  Map<String, List<String>> tokenToMarkets = kHolidayTokenToMarkets,
-  Map<String, int> tokenPriority = kHolidayTokenPriority,
-}) {
-  final Map<String, Map<String, String>> out = {};
-  final lines = text.split('\n');
-  final dateRe = RegExp(r'^([A-Za-z]+)\s+(\d{1,2}),\s+(\d{4})');
-  final months = const {
-    'january': 1,
-    'february': 2,
-    'march': 3,
-    'april': 4,
-    'may': 5,
-    'june': 6,
-    'july': 7,
-    'august': 8,
-    'september': 9,
-    'october': 10,
-    'november': 11,
-    'december': 12,
-  };
-
-  String two(int v) => v.toString().padLeft(2, '0');
-  String? currentYmd;
-
-  for (var raw in lines) {
-    final line = raw.trim();
-    if (line.isEmpty) continue;
-
-    final dm = dateRe.firstMatch(line);
-    if (dm != null) {
-      final mName = dm.group(1)!.toLowerCase();
-      final d = int.parse(dm.group(2)!);
-      final y = int.parse(dm.group(3)!);
-      final m = months[mName];
-      if (m != null) {
-        currentYmd = '$y-${two(m)}-${two(d)}';
-      } else {
-        currentYmd = null;
-      }
-      continue;
-    }
-
-    if (currentYmd == null) continue;
-    if (!line.toLowerCase().contains('holiday'))
-      continue; // ignore expiries/etc.
-
-    // Exact-token mapping first; if not found, try a relaxed contains() pass.
-    Iterable<MapEntry<String, List<String>>> matches;
-    if (tokenToMarkets.containsKey(line)) {
-      matches = [MapEntry(line, tokenToMarkets[line]!)];
-    } else {
-      matches = tokenToMarkets.entries.where((e) =>
-          e.key.isNotEmpty && line.toLowerCase().contains(e.key.toLowerCase()));
-      if (matches.isEmpty) continue;
-    }
-
-    for (final e in matches) {
-      final markets = e.value;
-      if (markets.isEmpty) continue; // intentionally ignored tokens
-      final pri = tokenPriority[e.key] ?? 5;
-      for (final mk in markets) {
-        out.putIfAbsent(mk, () => <String, String>{});
-        // If multiple tokens hit same market+date, keep the most specific by priority.
-        final prev = out[mk]![currentYmd];
-        final prevPri = (prev == null)
-            ? -999
-            : tokenPriority[prev] ??
-                (prev.toLowerCase().contains('exchange') ? 8 : 4);
-        if (pri >= prevPri) {
-          // Store the *label* we want to show in mini-info.
-          out[mk]![currentYmd] = e.key;
-        }
-      }
-    }
-  }
-  return out;
-}
 
 /// =====================
 /// RADIAL CLOCK
@@ -1837,15 +1853,6 @@ class _TapeClockCenteredState extends State<TapeClockCentered>
     _timer = Timer.periodic(const Duration(minutes: 1), (_) => _tickNow());
   }
 
-  bool _isHolidayToday(Market m, Map<String, String>? holidaysForMarket) {
-    if (holidaysForMarket == null || holidaysForMarket.isEmpty) return false;
-    final loc = tz.getLocation(m.tzName);
-    final nowM = tz.TZDateTime.now(loc);
-    String two(int v) => v.toString().padLeft(2, '0');
-    final ymd = '${nowM.year}-${two(nowM.month)}-${two(nowM.day)}';
-    return holidaysForMarket.containsKey(ymd);
-  }
-
   @override
   void didUpdateWidget(covariant TapeClockCentered oldWidget) {
     super.didUpdateWidget(oldWidget);
@@ -2046,9 +2053,7 @@ List<_LaneData> _buildOrderedLanes(
       var s = hh.startH;
       var e = hh.endH;
 
-      firstStart ??= s;
-
-      // --- FIX: normalize exact-midnight end so it doesn't wrap ---
+      // Normalize exact-midnight end so it doesn't wrap artificially
       const eps = 1e-6;
       if (e < s && e.abs() < eps) {
         // e == 0.0 (within tolerance) means the band ends exactly at 00:00
@@ -2058,6 +2063,7 @@ List<_LaneData> _buildOrderedLanes(
       // optional: drop true zero-length leftovers (s == e)
       if ((e - s).abs() < eps) continue;
       // ------------------------------------------------------------
+      firstStart ??= s;
 
       if (e < s) {
         // real wrap across midnight -> split into two halves,
@@ -2250,6 +2256,7 @@ class _CenteredTapePainter extends CustomPainter {
           final midHour = ((seg.startH + seg.endH) / 2.0) + shift; // hours
           final midDisplay =
               displayMidnight.add(Duration(minutes: (midHour * 60).round()));
+
           // Convert that instant to the MARKET tz and gate by its weekday
           final midMarket = tz.TZDateTime.from(midDisplay, seg.marketLoc);
           if (!seg.tradingWeekdays.contains(midMarket.weekday)) {

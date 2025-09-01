@@ -6,7 +6,7 @@ from fastapi import APIRouter, HTTPException, Body, Query
 import subprocess, shlex
 import re
 from fastapi.responses import StreamingResponse
-from ib_insync import IB, util, Stock, Forex, Future, Contract, Order, MarketOrder, LimitOrder, BarData
+from ib_insync import IB, util, Stock, Forex, Future, Contract, Order, MarketOrder, LimitOrder, BarData # type: ignore
 from typing import Any, Callable
 import asyncio
 from collections import defaultdict, deque

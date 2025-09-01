@@ -36,7 +36,7 @@ class _IbkrGatewayPanelState extends State<IbkrGatewayPanel> {
     super.initState();
 
     // Build iframe element (initially src-less; we set it only when allowed+online)
-    final xpraUrl = _xpraUrl(); // includes DPI+audio flags
+    _xpraUrl(); // includes DPI+audio flags
     _iframe = web.HTMLIFrameElement()
       ..src = '' // lazy: only set when we decide to show
       ..style.width = '100%'
