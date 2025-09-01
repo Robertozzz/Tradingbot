@@ -191,7 +191,7 @@ def _is_ticker_like(term: str) -> bool:
         return False
     return re.fullmatch(r"[A-Za-z0-9]{1,6}([.\-][A-Za-z0-9]{1,2})?", t) is not None
 
-async def _collect_from_matching_symbols(syms, qualify_limit: int = 6) -> list[dict]:
+async def _collect_from_matching_symbols(syms, qualify_limit: int = 12) -> list[dict]:
     """
     Normalize results from reqMatchingSymbols.
     Qualify only a handful (qualify_limit) to enrich exchange/currency quickly.
@@ -212,10 +212,11 @@ async def _collect_from_matching_symbols(syms, qualify_limit: int = 6) -> list[d
                 "exchange": getattr(c, "primaryExchange", None) or getattr(c, "exchange", None) or None,
                 "primaryExchange": getattr(c, "primaryExchange", None) or None,
             }
-            # mark for qualification if essential fields are missing
-            if (row["conId"] and (row["exchange"] is None or row["currency"] is None)
-                and len(to_qualify) < max(0, qualify_limit)):
-                to_qualify.append(c)
+            # If IB gave us a real contract but exchange/ccy missing, queue for qualify.
+            # Prioritize rows missing BOTH and rows whose secType is STK (common case).
+            if row["conId"] and (row["exchange"] is None or row["currency"] is None):
+                if len(to_qualify) < qualify_limit:
+                    to_qualify.append(c)
             out.append(row)
     # qualify a few to enrich metadata
     if to_qualify:
@@ -231,8 +232,12 @@ async def _collect_from_matching_symbols(syms, qualify_limit: int = 6) -> list[d
                     r["primaryExchange"] = getattr(qc, "primaryExchange", None) or r["primaryExchange"]
         except Exception:
             pass
-    # fill sensible defaults now that we tried to enrich
+    # Fill sensible defaults for *synthetic/local* rows only.
+    # If a row has a conId (came from IB), do not overwrite with fake USD/SMART.
     for r in out:
+        if r.get("conId"):
+            # keep whatever we learned; leave blanks if IB didn't provide
+            continue
         if r["secType"] == "FX" or _is_fx_pair(str(r.get("symbol") or "")):
             r["currency"] = r["currency"] or (str(r.get("symbol") or "USDUSD")[3:])
             r["exchange"] = r["exchange"] or "IDEALPRO"
@@ -286,9 +291,17 @@ async def _try_resolve_many(terms: list[str], secType: str = "STK") -> list[dict
         try:
             st = "FX" if _is_fx_pair(s.upper()) else secType
             ex = "IDEALPRO" if st == "FX" else "SMART"
-            cur = "USD"
-            # keep this snappy; don't let a stuck symbol block others
-            c = await asyncio.wait_for(_resolve_contract(s, st, ex, cur), timeout=2.5)
+            # Try common currencies quickly: USD then EUR (helps EU tickers like FUR)
+            curs = ["USD"] if st == "FX" else ["USD", "EUR"]
+            c = None
+            for cur in curs:
+                try:
+                    c = await asyncio.wait_for(_resolve_contract(s, st, ex, cur), timeout=2.0)
+                    break
+                except Exception:
+                    continue
+            if c is None:
+                raise RuntimeError("resolve failed")
             out.append({
                 "symbol": getattr(c, "localSymbol", None) or getattr(c, "symbol", None) or key,
                 "name": getattr(c, "symbol", None) or key,
@@ -1159,6 +1172,14 @@ async def search(q: str | None = Query(None), query: str | None = Query(None)):
                 continue
             seen_sym_ex.add(k)
             uniq.append(d)
+
+    # If we have any IBKR-backed row (with conId) for a symbol, drop local
+    # rows for the same symbol that don't have a conId (prevents SMART+NASDAQ dupes).
+    sym_with_conid = { (r.get("symbol") or "").upper()
+                       for r in uniq if r.get("conId") }
+    if sym_with_conid:
+        uniq = [r for r in uniq
+                if r.get("conId") or (r.get("symbol") or "").upper() not in sym_with_conid]
 
     # Soft-rank: prefer rows whose 'name' contains the term (case-insensitive)
     tl = term.lower()

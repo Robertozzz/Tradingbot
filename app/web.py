@@ -8,6 +8,7 @@ from fastapi.staticfiles import StaticFiles
 from fastapi.responses import FileResponse, JSONResponse, StreamingResponse
 from fastapi import Body
 from pydantic import BaseModel
+from typing import Optional, List
 
 mimetypes.init()
 mimetypes.add_type("text/javascript", ".mjs")
@@ -167,6 +168,32 @@ def openai_test(body: dict = Body(default={})):
         return {"ok": True, "reply": txt, "usage": usage}
     except Exception as e:
         raise HTTPException(500, f"OpenAI test failed: {e}")
+    
+# --- Optional: quick Bing search test without invoking GPT ---
+class SearchTestIn(BaseModel):
+    query: str
+    mode: str = "news"            # "news" or "web"
+    count: int = 5
+    mkt: str = "en-US"
+    freshness: Optional[str] = None
+    sites: Optional[List[str]] = None
+
+@app.post("/api/openai/search_test")
+def search_test(payload: SearchTestIn):
+    try:
+        from . import openai as ai
+        ai.apply_runtime_settings()
+        out = ai.tool_web_search(
+            payload.query,
+            count=payload.count,
+            mode=payload.mode,
+            mkt=payload.mkt,
+            freshness=payload.freshness,
+            sites=payload.sites,
+        )
+        return {"ok": True, "results": out}
+    except Exception as e:
+        raise HTTPException(500, f"Bing search failed: {e}")
     
 def _runtime_dir() -> Path:
     for p in [

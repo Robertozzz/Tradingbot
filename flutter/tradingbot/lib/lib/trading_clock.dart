@@ -1784,7 +1784,7 @@ class TapeClockCentered extends StatefulWidget {
     this.displayTzName,
     this.height = 160,
     this.padding = const EdgeInsets.symmetric(horizontal: 16, vertical: 12),
-    this.infoGutter = 400,
+    this.infoGutter = 600,
     this.snapBackDelay = const Duration(seconds: 2),
     this.snapDuration = const Duration(milliseconds: 800),
     this.autoHeight = false,
@@ -1841,7 +1841,7 @@ class _TapeClockCenteredState extends State<TapeClockCentered>
       widget.markets,
       widget.enabled,
       _displayLoc,
-      holidaysYMD: widget.holidaysYMD,
+      holidaysYMD: widget.holidaysYMD ?? holidays,
     );
 
     _anim = AnimationController(vsync: this, duration: widget.snapDuration);
@@ -1870,7 +1870,7 @@ class _TapeClockCenteredState extends State<TapeClockCentered>
         widget.markets,
         widget.enabled,
         _displayLoc,
-        holidaysYMD: widget.holidaysYMD,
+        holidaysYMD: widget.holidaysYMD ?? holidays,
       );
       _tickNow(); // NOW line reflects new tz immediately
       setState(() {}); // repaint
@@ -1894,7 +1894,7 @@ class _TapeClockCenteredState extends State<TapeClockCentered>
         widget.markets,
         widget.enabled,
         _displayLoc,
-        holidaysYMD: widget.holidaysYMD,
+        holidaysYMD: widget.holidaysYMD ?? holidays,
       );
     });
   }
@@ -1996,7 +1996,7 @@ class _TapeClockCenteredState extends State<TapeClockCentered>
             visibleHours: widget.visibleHours,
             weekdayToday: _weekdayDisplay,
             displayLoc: _displayLoc,
-            holidaysYMD: widget.holidaysYMD,
+            holidaysYMD: widget.holidaysYMD ?? holidays,
           ),
         ),
       );
@@ -2231,10 +2231,12 @@ class _CenteredTapePainter extends CustomPainter {
       final bandSpans = <({double leftX, double rightX, Color color})>[];
       final laneLabel = lanes[i].marketName.toUpperCase();
 
-      // Prefer the holiday closure message when present; else show the next event
-      final String text = lanes[i].miniInfo.startsWith('Market closed today')
+      // Prefer the holiday closure message when present; else show the next event.
+      // Prefix all mini text with the exchange name (short).
+      final String core = lanes[i].miniInfo.startsWith('Market closed today')
           ? lanes[i].miniInfo
           : lanes[i].infoNext;
+      final String text = '${lanes[i].marketName} - $core';
       final double colWidth = infoGutter - 16.0; // tiny extra padding
       final prepared = <({TextPainter tp, double dy})>[];
       if (text.isNotEmpty) {

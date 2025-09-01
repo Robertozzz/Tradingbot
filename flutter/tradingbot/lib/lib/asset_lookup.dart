@@ -211,8 +211,8 @@ class _AssetLookupSheetState extends State<AssetLookupSheet> {
                                         overflow: TextOverflow.ellipsis))),
                                 DataCell(Text((r['secType'] ?? '').toString())),
                                 DataCell(
-                                  Text((r['exchange'] ??
-                                          r['primaryExchange'] ??
+                                  Text((r['primaryExchange'] ??
+                                          r['exchange'] ??
                                           '')
                                       .toString()),
                                 ),

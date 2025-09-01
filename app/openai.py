@@ -33,41 +33,72 @@ ENABLE_STREAMING = True
 GPT5_INPUT_PER_M = 1.25      # USD per 1M input tokens  (example)
 GPT5_OUTPUT_PER_M = 10.00    # USD per 1M output tokens (example)
 
-# Replace with your real search backend (Bing, SerpAPI, etc.)
-SEARCH_ENDPOINT = "https://api.bing.microsoft.com/v7.0/search"
-SEARCH_API_KEY = os.getenv("SEARCH_API_KEY", "")   # can be updated at runtime
-
+# ---- Bing Search config ----
+# You can change endpoints if Azure tenant uses a different base URL.
+BING_BASE = os.getenv("BING_BASE", "https://api.bing.microsoft.com")
+BING_WEB_ENDPOINT  = f"{BING_BASE}/v7.0/search"
+BING_NEWS_ENDPOINT = f"{BING_BASE}/v7.0/news/search"
+SEARCH_API_KEY = os.getenv("SEARCH_API_KEY", "")   # set via Settings UI
 
 # =========================
 # Simple tool backends
 # =========================
-def tool_web_search(query: str, count: int = 5) -> T.Dict[str, T.Any]:
+def tool_web_search(
+    query: str,
+    count: int = 5,
+    mode: str = "news",              # "news" or "web"
+    mkt: str = "en-US",              # market (e.g., "en-US", "nl-NL")
+    freshness: str | None = None,    # e.g., "Day", "Week", "Month"
+    sites: list[str] | None = None,  # optional allowlist of domains
+) -> T.Dict[str, T.Any]:
     """
-    Minimal web search tool. Replace with your actual provider.
-    Returns a list of {title, url, snippet}.
+    Bing-backed search tool.
+    - mode="news": Bing News Search
+    - mode="web":  Bing Web Search
+    Returns normalized [{title, url, snippet, date}] items.
     """
     if not SEARCH_API_KEY:
-        return {
-            "provider": "none",
-            "results": [],
-            "note": "SEARCH_API_KEY not set; returning empty results."
-        }
+        return {"provider": "bing", "results": [], "note": "SEARCH_API_KEY not set"}
 
     headers = {"Ocp-Apim-Subscription-Key": SEARCH_API_KEY}
-    params = {"q": query, "count": count, "textDecorations": False, "textFormat": "Raw"}
-    r = requests.get(SEARCH_ENDPOINT, headers=headers, params=params, timeout=20)
+    params: dict[str, T.Any] = {
+        "q": query,
+        "count": max(1, min(count, 10)),
+        "mkt": mkt,
+    }
+    if freshness:
+        params["freshness"] = freshness  # Day|Week|Month
+
+    # Domain allowlist (if supplied)
+    if sites:
+        # Bing syntax supports (site:foo.com OR site:bar.com)
+        site_expr = " OR ".join([f"site:{s}" for s in sites if s])
+        if site_expr:
+            params["q"] = f"({params['q']}) ({site_expr})"
+
+    endpoint = BING_NEWS_ENDPOINT if mode == "news" else BING_WEB_ENDPOINT
+    r = requests.get(endpoint, headers=headers, params=params, timeout=25)
     r.raise_for_status()
     data = r.json()
 
-    results = []
-    for item in data.get("webPages", {}).get("value", [])[:count]:
-        results.append({
-            "title": item.get("name"),
-            "url": item.get("url"),
-            "snippet": item.get("snippet"),
-        })
-    return {"provider": "bing", "results": results}
+    results: list[dict] = []
+    if mode == "news":
+        for item in (data.get("value") or [])[:params["count"]]:
+            # Prefer originalUrl if available
+            url = item.get("url") or item.get("webSearchUrl")
+            name = item.get("name") or ""
+            snippet = item.get("description") or ""
+            date = item.get("datePublished")
+            results.append({"title": name, "url": url, "snippet": snippet, "date": date})
+    else:
+        for item in (data.get("webPages", {}).get("value") or [])[:params["count"]]:
+            name = item.get("name") or ""
+            url = item.get("url")
+            snippet = item.get("snippet") or ""
+            date = item.get("dateLastCrawled")
+            results.append({"title": name, "url": url, "snippet": snippet, "date": date})
 
+    return {"provider": "bing", "mode": mode, "results": results, "mkt": mkt, "freshness": freshness}
 
 def tool_fetch_url(url: str, max_chars: int = 20000) -> T.Dict[str, T.Any]:
     """
@@ -151,12 +182,16 @@ def apply_runtime_settings():
 TOOLS: list[dict] = [
     {
         "name": "web_search",
-        "description": "Search the web for recent news, analyses, or documentation.",
+        "description": "Search the web/news via Bing. mode=news|web; optional freshness=Day|Week|Month; mkt=en-US|nl-NL; sites=[domains].",
         "input_schema": {
             "type": "object",
             "properties": {
                 "query": {"type": "string"},
-                "count": {"type": "integer", "minimum": 1, "maximum": 10}
+                "count": {"type": "integer", "minimum": 1, "maximum": 10},
+                "mode": {"type": "string", "enum": ["news", "web"]},
+                "mkt": {"type": "string"},
+                "freshness": {"type": "string"},
+                "sites": {"type": "array", "items": {"type": "string"}}
             },
             "required": ["query"]
         }
@@ -231,7 +266,14 @@ TRADE_JSON_SCHEMA = {
 # =========================
 def call_tool(name: str, arguments: dict) -> dict:
     if name == "web_search":
-        return tool_web_search(arguments["query"], arguments.get("count", 5))
+        return tool_web_search(
+            arguments["query"],
+            arguments.get("count", 5),
+            arguments.get("mode", "news"),
+            arguments.get("mkt", "en-US"),
+            arguments.get("freshness"),
+            arguments.get("sites"),
+        )
     if name == "fetch_url":
         return tool_fetch_url(arguments["url"], arguments.get("max_chars", 20000))
     if name == "quote":

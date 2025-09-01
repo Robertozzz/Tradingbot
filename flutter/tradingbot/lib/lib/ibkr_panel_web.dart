@@ -30,6 +30,7 @@ class _IbkrGatewayPanelState extends State<IbkrGatewayPanel> {
   String? _status;
   bool _dbg = false; // switch state (server toggle)
   bool _dbgBusy = false; // POST in flight
+  bool _showPw = false; // toggle for password visibility
 
   @override
   void initState() {
@@ -43,6 +44,7 @@ class _IbkrGatewayPanelState extends State<IbkrGatewayPanel> {
       ..style.height = '100%'
       ..style.border = '0'
       ..style.overflow = 'hidden'
+      ..style.display = 'none' // ensure not visible until enabled
       ..allowFullscreen = true
       ..allow = 'clipboard-read; clipboard-write; fullscreen'
       ..sandbox.add('allow-forms')
@@ -75,12 +77,12 @@ class _IbkrGatewayPanelState extends State<IbkrGatewayPanel> {
   // Build the xpra HTML5 client URL with just the essentials:
   // - scaling=off, pixel_ratio=1, dpi=96 : prevent DPI conflict/flicker
   // - speaker=false, microphone=false, audio=false : fully mute
-  String _xpraUrl() {
+  String _xpraUrl({bool bust = false}) {
     final base = '/xpra-main/index.html';
     final u = web.URL(base, web.window.location.href);
 
     // Clear query (not used) and set options in the hash:
-    u.search = '';
+    u.search = bust ? '?v=${DateTime.now().millisecondsSinceEpoch}' : '';
     u.hash =
         'scaling=off&pixel_ratio=1&dpi=96&speaker=off&microphone=off&audio=off&bell=off';
 
@@ -96,7 +98,7 @@ class _IbkrGatewayPanelState extends State<IbkrGatewayPanel> {
         setState(() {
           _user.text = (j['IB_USER'] ?? '') as String;
           _mode = (j['IB_MODE'] ?? 'paper') as String;
-          _status = "Using port ${j['IB_PORT'] ?? '4002'}";
+          _status = null;
         });
       }
     } catch (_) {}
@@ -121,10 +123,21 @@ class _IbkrGatewayPanelState extends State<IbkrGatewayPanel> {
       if (r.statusCode == 200) {
         final j = json.decode(r.body);
         setState(() {
-          _status = 'Saved. Restarted (port ${j['port']}).';
+          _status = 'Saved. Restarted.';
         });
-        // if viewer is visible, nudge a reload after restart
-        if (_showXpra) _reload();
+        // if viewer is visible, detach and re-probe to avoid sticky 502
+        if (_showXpra) {
+          _hideIframe(); // fully detach
+          // After a short pause, poll and re-show when ready.
+          // Fire-and-forget; UI remains responsive.
+          () async {
+            await Future.delayed(const Duration(milliseconds: 600));
+            final ok = await _probeXpraWithRetry(
+                attempts: 30, delay: const Duration(milliseconds: 400));
+            if (!mounted) return;
+            if (ok) _showIframe(bust: true);
+          }();
+        }
       } else {
         setState(() {
           _status = 'Error ${r.statusCode}: ${r.body}';
@@ -183,7 +196,7 @@ class _IbkrGatewayPanelState extends State<IbkrGatewayPanel> {
           final ok = await _probeXpraWithRetry();
           if (ok) {
             if (!mounted) return;
-            _showIframe();
+            _showIframe(bust: true);
           } else {
             if (!mounted) return;
             ScaffoldMessenger.of(context).showSnackBar(
@@ -229,9 +242,10 @@ class _IbkrGatewayPanelState extends State<IbkrGatewayPanel> {
     return false;
   }
 
-  void _showIframe() {
-    final url = _xpraUrl();
+  void _showIframe({bool bust = false}) {
+    final url = _xpraUrl(bust: bust);
     _iframe.src = url;
+    _iframe.style.display = ''; // unhide
     setState(() {
       _showXpra = true;
       _showOverlay = false; // will flip to true if onError fires
@@ -239,7 +253,9 @@ class _IbkrGatewayPanelState extends State<IbkrGatewayPanel> {
   }
 
   void _hideIframe() {
-    _iframe.src = ''; // detach
+    // Completely hide and detach to prevent overlay artifacts / stray 502.
+    _iframe.src = 'about:blank';
+    _iframe.style.display = 'none';
     setState(() {
       _showXpra = false;
       _showOverlay = false;
@@ -264,11 +280,12 @@ class _IbkrGatewayPanelState extends State<IbkrGatewayPanel> {
       );
 
       await web.window.fetch(url, init).toDart;
-      await Future.delayed(const Duration(seconds: 1));
-      if (_showXpra) {
-        _iframe.src = _xpraUrl();
-        setState(() => _showOverlay = false);
-      }
+      // Detach the iframe to avoid stale 502, then probe and reattach.
+      _hideIframe();
+      await Future.delayed(const Duration(milliseconds: 600));
+      final ok = await _probeXpraWithRetry(
+          attempts: 30, delay: const Duration(milliseconds: 400));
+      if (ok) _showIframe(bust: true);
     } catch (_) {
       // keep overlay; user can try again
     } finally {
@@ -276,13 +293,13 @@ class _IbkrGatewayPanelState extends State<IbkrGatewayPanel> {
     }
   }
 
-  void _reload() {
-    if (_showXpra) _iframe.src = _xpraUrl();
+  void reload({bool bust = false}) {
+    if (_showXpra) _iframe.src = _xpraUrl(bust: bust);
   }
 
   // Make the viewer height responsive to the viewport so we don't clip.
   // ~60% of the window height, clamped to a sensible min/max.
-  double _viewerHeight(BuildContext context) {
+  double viewerHeight(BuildContext context) {
     final vh = MediaQuery.of(context).size.height;
     final target = vh * 0.60;
     // keep at least 480px so IBKR is usable; cap to avoid silly tall panes
@@ -294,15 +311,14 @@ class _IbkrGatewayPanelState extends State<IbkrGatewayPanel> {
   Widget build(BuildContext context) {
     final scheme = Theme.of(context).colorScheme;
 
-    return Scrollbar(
-      thumbVisibility: true,
-      child: SingleChildScrollView(
-        padding: const EdgeInsets.only(bottom: 16),
-        child: Column(children: [
+    return SingleChildScrollView(
+      padding: const EdgeInsets.only(bottom: 16),
+      child: Column(
+        children: [
           // ---- merged settings card ----
           Card(
             elevation: 0,
-            color: scheme.surface.withValues(alpha: .6),
+            color: scheme.surface,
             shape:
                 RoundedRectangleBorder(borderRadius: BorderRadius.circular(16)),
             child: Padding(
@@ -310,77 +326,92 @@ class _IbkrGatewayPanelState extends State<IbkrGatewayPanel> {
               child: Column(
                 crossAxisAlignment: CrossAxisAlignment.start,
                 children: [
-                  Row(children: [
-                    const Icon(Icons.lock, size: 18),
-                    const SizedBox(width: 8),
-                    Text('IBKR Gateway (IBC)',
-                        style: Theme.of(context)
-                            .textTheme
-                            .titleMedium
-                            ?.copyWith(fontWeight: FontWeight.w700)),
-                    const Spacer(),
-                    DropdownButton<String>(
-                      value: _mode,
-                      onChanged: _busy
-                          ? null
-                          : (v) => setState(() => _mode = v ?? 'paper'),
-                      items: const [
-                        DropdownMenuItem(value: 'paper', child: Text('Paper')),
-                        DropdownMenuItem(value: 'live', child: Text('Live')),
-                      ],
-                    ),
-                  ]),
-                  const SizedBox(height: 12),
-                  Row(children: [
-                    Expanded(
+                  // Compact header: user, password (with eye), mode, debug, save
+                  Wrap(
+                    runSpacing: 10,
+                    spacing: 12,
+                    crossAxisAlignment: WrapCrossAlignment.center,
+                    children: [
+                      const Icon(Icons.lock, size: 18),
+                      ConstrainedBox(
+                        constraints:
+                            const BoxConstraints(minWidth: 220, maxWidth: 300),
                         child: TextField(
-                      controller: _user,
-                      decoration: const InputDecoration(
-                        labelText: 'IBKR Username',
-                        border: OutlineInputBorder(),
+                          controller: _user,
+                          decoration: const InputDecoration(
+                            isDense: true,
+                            labelText: 'IBKR username',
+                            border: OutlineInputBorder(),
+                          ),
+                        ),
                       ),
-                    )),
-                    const SizedBox(width: 12),
-                    Expanded(
+                      ConstrainedBox(
+                        constraints:
+                            const BoxConstraints(minWidth: 220, maxWidth: 300),
                         child: TextField(
-                      controller: _pass,
-                      decoration: const InputDecoration(
-                        labelText: 'Password (not shown after save)',
-                        border: OutlineInputBorder(),
+                          controller: _pass,
+                          obscureText: !_showPw,
+                          decoration: InputDecoration(
+                            isDense: true,
+                            labelText: 'Password',
+                            border: const OutlineInputBorder(),
+                            suffixIcon: Focus(
+                              canRequestFocus: false,
+                              child: IconButton(
+                                tooltip:
+                                    _showPw ? 'Hide password' : 'Show password',
+                                onPressed: () =>
+                                    setState(() => _showPw = !_showPw),
+                                icon: Icon(_showPw
+                                    ? Icons.visibility_off
+                                    : Icons.visibility),
+                              ),
+                            ),
+                          ),
+                        ),
                       ),
-                      obscureText: true,
-                    )),
-                  ]),
-                  const SizedBox(height: 12),
-                  // Debug viewer row (controls the iframe visibility too)
-                  Row(children: [
-                    const Icon(Icons.display_settings, size: 18),
-                    const SizedBox(width: 8),
-                    const Text('Debug Viewer (Xpra)'),
-                    const Spacer(),
-                    Switch.adaptive(
-                      value: _dbg,
-                      onChanged: _dbgBusy ? null : (v) => _setDebug(v),
-                    ),
-                  ]),
-                  const SizedBox(height: 12),
-                  Row(children: [
-                    FilledButton.icon(
-                      onPressed: _busy ? null : _saveConfig,
-                      icon: _busy
-                          ? const SizedBox(
-                              width: 16,
-                              height: 16,
-                              child: CircularProgressIndicator(strokeWidth: 2))
-                          : const Icon(Icons.save),
-                      label: const Text('Save & Restart Gateway'),
-                    ),
-                    const SizedBox(width: 12),
-                    if (_status != null)
-                      Expanded(
-                          child:
-                              Text(_status!, overflow: TextOverflow.ellipsis)),
-                  ]),
+                      DropdownButtonHideUnderline(
+                        child: DropdownButton<String>(
+                          value: _mode,
+                          onChanged: _busy
+                              ? null
+                              : (v) => setState(() => _mode = v ?? 'paper'),
+                          items: const [
+                            DropdownMenuItem(
+                                value: 'paper', child: Text('Paper')),
+                            DropdownMenuItem(
+                                value: 'live', child: Text('Live')),
+                          ],
+                        ),
+                      ),
+                      Row(
+                        mainAxisSize: MainAxisSize.min,
+                        children: [
+                          const Text('Debug'),
+                          const SizedBox(width: 6),
+                          Switch.adaptive(
+                            value: _dbg,
+                            materialTapTargetSize:
+                                MaterialTapTargetSize.shrinkWrap,
+                            onChanged: _dbgBusy ? null : (v) => _setDebug(v),
+                          ),
+                        ],
+                      ),
+                      FilledButton.icon(
+                        onPressed: _busy ? null : _saveConfig,
+                        icon: _busy
+                            ? const SizedBox(
+                                width: 16,
+                                height: 16,
+                                child:
+                                    CircularProgressIndicator(strokeWidth: 2))
+                            : const Icon(Icons.save),
+                        label: const Text('Save & Restart'),
+                      ),
+                      if (_status != null)
+                        Text(_status!, overflow: TextOverflow.ellipsis),
+                    ],
+                  ),
                 ],
               ),
             ),
@@ -390,9 +421,11 @@ class _IbkrGatewayPanelState extends State<IbkrGatewayPanel> {
 
           // ---- viewer (hidden until enabled + reachable) ----
           SizedBox(
-            height: _viewerHeight(context),
+            height: viewerHeight(context),
             child: _showXpra
                 ? Stack(children: [
+                    // solid background to prevent perceived color shift on scroll
+                    Positioned.fill(child: Container(color: scheme.surface)),
                     const HtmlElementView(viewType: 'ibkr-xpra'),
 
                     // top-right tiny controls
@@ -403,7 +436,7 @@ class _IbkrGatewayPanelState extends State<IbkrGatewayPanel> {
                         Tooltip(
                           message: 'Reload',
                           child: IconButton(
-                            onPressed: _reload,
+                            onPressed: () => reload(bust: true),
                             icon: const Icon(Icons.refresh, size: 20),
                             style: ButtonStyle(
                               backgroundColor: WidgetStateProperty.all(
@@ -456,7 +489,7 @@ class _IbkrGatewayPanelState extends State<IbkrGatewayPanel> {
                                     ),
                                     const SizedBox(width: 12),
                                     OutlinedButton.icon(
-                                      onPressed: _reload,
+                                      onPressed: reload,
                                       icon: const Icon(Icons.refresh),
                                       label: const Text('Try Reload'),
                                     ),
@@ -477,7 +510,7 @@ class _IbkrGatewayPanelState extends State<IbkrGatewayPanel> {
                     ),
                   ),
           ),
-        ]),
+        ],
       ),
     );
   }
