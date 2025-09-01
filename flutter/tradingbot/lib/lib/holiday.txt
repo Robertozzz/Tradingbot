@@ -1,0 +1,514 @@
+const String kHolidayText2025 = '''
+January 1, 2025Wednesday
+Cboe Futures Exchange Holiday
+All US Exchanges Holiday
+ICE Futures Exchange Holiday
+United States Holiday
+Canada Holiday
+TSX Venture Holiday
+Montreal Exchange Holiday
+ICE Futures Holiday
+Euronext Amsterdam Holiday
+EUREX Holiday
+Eurex Bonds Holiday
+France Holiday
+United Kingdom Holiday
+Germany Holiday
+XETRA Holiday
+Italy Holiday
+London Stock Exchange Holiday
+MEFF Madrid Holiday
+Borsa Italiana Holiday
+Switzerland Holiday
+SIX Swiss Exchange Holiday
+Australia Holiday
+Australia Securities Exchange Holiday
+Shanghai Stock Exchange Holiday
+Hong Kong Holiday
+Hong Kong Futures Holiday
+Hong Kong Stock Exchange Holiday
+Japan Holiday
+Korean Exchange Holiday
+Singapore Holiday
+South Korea Holiday
+Tokyo Stock Exchange Holiday
+January 2, 2025Thursday
+Switzerland Holiday
+SIX Swiss Exchange Holiday
+Japan Holiday
+Korean Exchange Holiday
+Tokyo Stock Exchange Holiday
+January 3, 2025Friday
+Japan Holiday
+Tokyo Stock Exchange Holiday
+January 13, 2025Monday
+Japan Holiday
+Tokyo Stock Exchange Holiday
+January 20, 2025Monday
+Cboe Futures Exchange Holiday
+All US Exchanges Holiday
+United States Holiday
+January 27, 2025Monday
+Australia Holiday
+Australia Securities Exchange Holiday
+January 28, 2025Tuesday
+Shanghai Stock Exchange Holiday
+Hong Kong Futures Holiday
+Hong Kong Stock Exchange Holiday
+Korean Exchange Holiday
+South Korea Holiday
+January 29, 2025Wednesday
+Shanghai Stock Exchange Holiday
+Hong Kong Holiday
+Hong Kong Futures Holiday
+Hong Kong Stock Exchange Holiday
+Korean Exchange Holiday
+Singapore Holiday
+South Korea Holiday
+January 30, 2025Thursday
+Shanghai Stock Exchange Holiday
+Hong Kong Holiday
+Hong Kong Futures Holiday
+Hong Kong Stock Exchange Holiday
+Korean Exchange Holiday
+Singapore Holiday
+South Korea Holiday
+January 31, 2025Friday
+Shanghai Stock Exchange Holiday
+Hong Kong Holiday
+Hong Kong Futures Holiday
+Hong Kong Stock Exchange Holiday
+February 3, 2025Monday
+Shanghai Stock Exchange Holiday
+February 4, 2025Tuesday
+Shanghai Stock Exchange Holiday
+February 11, 2025Tuesday
+Japan Holiday
+Tokyo Stock Exchange Holiday
+February 17, 2025Monday
+Cboe Futures Exchange Holiday
+All US Exchanges Holiday
+United States Holiday
+Canada Holiday
+TSX Venture Holiday
+Montreal Exchange Holiday
+ICE Futures Holiday
+February 19, 2025Wednesday
+NSE India Holiday
+February 24, 2025Monday
+Japan Holiday
+Tokyo Stock Exchange Holiday
+February 25, 2025Tuesday
+NSE India Holiday
+February 26, 2025Wednesday
+India Holiday
+March 3, 2025Monday
+Korean Exchange Holiday
+South Korea Holiday
+March 14, 2025Friday
+India Holiday
+NSE India Holiday
+March 20, 2025Thursday
+Japan Holiday
+Tokyo Stock Exchange Holiday
+March 30, 2025Sunday
+Saudi Arabia Holiday
+March 31, 2025Monday
+Saudi Arabia Holiday
+India Holiday
+NSE India Holiday
+Singapore Holiday
+April 1, 2025Tuesday
+NSE India Holiday
+April 4, 2025Friday
+Shanghai Stock Exchange Holiday
+Hong Kong Holiday
+Hong Kong Stock Exchange Holiday
+April 10, 2025Thursday
+India Holiday
+April 13, 2025Sunday
+Israel Holiday
+April 14, 2025Monday
+NSE India Holiday
+April 18, 2025Friday
+Cboe Futures Exchange Holiday
+All US Exchanges Holiday
+ICE Futures Exchange Holiday
+United States Holiday
+Canada Holiday
+TSX Venture Holiday
+Montreal Exchange Holiday
+ICE Futures Holiday
+Euronext Amsterdam Holiday
+EUREX Holiday
+Eurex Bonds Holiday
+France Holiday
+United Kingdom Holiday
+Germany Holiday
+XETRA Holiday
+Italy Holiday
+London Stock Exchange Holiday
+MEFF Madrid Holiday
+Borsa Italiana Holiday
+Switzerland Holiday
+SIX Swiss Exchange Holiday
+Australia Holiday
+Australia Securities Exchange Holiday
+Hong Kong Holiday
+Hong Kong Futures Holiday
+Hong Kong Stock Exchange Holiday
+India Holiday
+NSE India Holiday
+Singapore Holiday
+April 21, 2025Monday
+Euronext Amsterdam Holiday
+EUREX Holiday
+Eurex Bonds Holiday
+France Holiday
+United Kingdom Holiday
+Germany Holiday
+XETRA Holiday
+Italy Holiday
+London Stock Exchange Holiday
+MEFF Madrid Holiday
+Borsa Italiana Holiday
+Switzerland Holiday
+SIX Swiss Exchange Holiday
+Australia Holiday
+Australia Securities Exchange Holiday
+Hong Kong Holiday
+Hong Kong Futures Holiday
+Hong Kong Stock Exchange Holiday
+April 25, 2025Friday
+Australia Holiday
+Australia Securities Exchange Holiday
+April 29, 2025Tuesday
+Japan Holiday
+Tokyo Stock Exchange Holiday
+May 1, 2025Thursday
+Euronext Amsterdam Holiday
+EUREX Holiday
+Eurex Bonds Holiday
+France Holiday
+Germany Holiday
+XETRA Holiday
+Israel Holiday
+Italy Holiday
+MEFF Madrid Holiday
+Borsa Italiana Holiday
+Switzerland Holiday
+SIX Swiss Exchange Holiday
+Shanghai Stock Exchange Holiday
+Hong Kong Holiday
+Hong Kong Futures Holiday
+Hong Kong Stock Exchange Holiday
+NSE India Holiday
+Korean Exchange Holiday
+Singapore Holiday
+South Korea Holiday
+May 2, 2025Friday
+Shanghai Stock Exchange Holiday
+May 5, 2025Monday
+United Kingdom Holiday
+London Stock Exchange Holiday
+Shanghai Stock Exchange Holiday
+Hong Kong Holiday
+Hong Kong Futures Holiday
+Hong Kong Stock Exchange Holiday
+Japan Holiday
+Korean Exchange Holiday
+South Korea Holiday
+Tokyo Stock Exchange Holiday
+May 6, 2025Tuesday
+Japan Holiday
+Korean Exchange Holiday
+South Korea Holiday
+Tokyo Stock Exchange Holiday
+May 12, 2025Monday
+India Holiday
+NSE India Holiday
+Singapore Holiday
+May 19, 2025Monday
+Canada Holiday
+TSX Venture Holiday
+Montreal Exchange Holiday
+ICE Futures Holiday
+May 26, 2025Monday
+Cboe Futures Exchange Holiday
+All US Exchanges Holiday
+ICE Futures Exchange Holiday
+United States Holiday
+United Kingdom Holiday
+London Stock Exchange Holiday
+May 29, 2025Thursday
+Switzerland Holiday
+SIX Swiss Exchange Holiday
+June 2, 2025Monday
+Israel Holiday
+Shanghai Stock Exchange Holiday
+June 4, 2025Wednesday
+Saudi Arabia Holiday
+June 5, 2025Thursday
+Saudi Arabia Holiday
+June 6, 2025Friday
+Korean Exchange Holiday
+South Korea Holiday
+June 9, 2025Monday
+XETRA Holiday
+Switzerland Holiday
+SIX Swiss Exchange Holiday
+Australia Holiday
+Australia Securities Exchange Holiday
+June 19, 2025Thursday
+Cboe Futures Exchange Holiday
+All US Exchanges Holiday
+United States Holiday
+July 1, 2025Tuesday
+Canada Holiday
+TSX Venture Holiday
+Montreal Exchange Holiday
+ICE Futures Holiday
+Hong Kong Holiday
+Hong Kong Futures Holiday
+Hong Kong Stock Exchange Holiday
+July 3, 2025Thursday
+Cboe Futures Exchange Holiday
+All US Exchanges Holiday
+July 4, 2025Friday
+Cboe Futures Exchange Holiday
+All US Exchanges Holiday
+ICE Futures Exchange Holiday
+United States Holiday
+July 21, 2025Monday
+Japan Holiday
+Tokyo Stock Exchange Holiday
+August 1, 2025Friday
+Switzerland Holiday
+SIX Swiss Exchange Holiday
+August 3, 2025Sunday
+Israel Holiday
+August 4, 2025Monday
+Canada Holiday
+TSX Venture Holiday
+Montreal Exchange Holiday
+ICE Futures Holiday
+Australia Holiday
+August 11, 2025Monday
+Japan Holiday
+Tokyo Stock Exchange Holiday
+August 15, 2025Friday
+Borsa Italiana Holiday
+India Holiday
+NSE India Holiday
+Korean Exchange Holiday
+South Korea Holiday
+August 19, 2025Tuesday
+NSE India Holiday
+August 25, 2025Monday
+United Kingdom Holiday
+London Stock Exchange Holiday
+August 26, 2025Tuesday
+NSE India Holiday
+September 1, 2025Monday
+Cboe Futures Exchange Holiday
+All US Exchanges Holiday
+ICE Futures Exchange Holiday
+United States Holiday
+Canada Holiday
+TSX Venture Holiday
+Montreal Exchange Holiday
+ICE Futures Holiday
+September 5, 2025Friday
+India Holiday
+NSE India Holiday
+September 15, 2025Monday
+Japan Holiday
+Tokyo Stock Exchange Holiday
+September 23, 2025Tuesday
+Israel Holiday
+Saudi Arabia Holiday
+Japan Holiday
+Tokyo Stock Exchange Holiday
+September 24, 2025Wednesday
+Israel Holiday
+September 30, 2025Tuesday
+Canada Holiday
+October 1, 2025Wednesday
+Israel Holiday
+Shanghai Stock Exchange Holiday
+Hong Kong Holiday
+Hong Kong Futures Holiday
+Hong Kong Stock Exchange Holiday
+October 2, 2025Thursday
+Israel Holiday
+Shanghai Stock Exchange Holiday
+India Holiday
+NSE India Holiday
+October 3, 2025Friday
+XETRA Holiday
+Shanghai Stock Exchange Holiday
+Korean Exchange Holiday
+South Korea Holiday
+October 6, 2025Monday
+Australia Holiday
+Shanghai Stock Exchange Holiday
+Korean Exchange Holiday
+South Korea Holiday
+October 7, 2025Tuesday
+Israel Holiday
+Shanghai Stock Exchange Holiday
+Hong Kong Holiday
+Hong Kong Futures Holiday
+Hong Kong Stock Exchange Holiday
+Korean Exchange Holiday
+South Korea Holiday
+October 8, 2025Wednesday
+Shanghai Stock Exchange Holiday
+Korean Exchange Holiday
+South Korea Holiday
+October 9, 2025Thursday
+Korean Exchange Holiday
+South Korea Holiday
+October 13, 2025Monday
+Cboe Futures Exchange Holiday
+All US Exchanges Holiday
+United States Holiday
+Canada Holiday
+TSX Venture Holiday
+Montreal Exchange Holiday
+ICE Futures Holiday
+Japan Holiday
+Tokyo Stock Exchange Holiday
+October 14, 2025Tuesday
+Israel Holiday
+October 20, 2025Monday
+India Holiday
+Singapore Holiday
+October 22, 2025Wednesday
+NSE India Holiday
+October 29, 2025Wednesday
+Hong Kong Holiday
+Hong Kong Futures Holiday
+Hong Kong Stock Exchange Holiday
+November 3, 2025Monday
+Japan Holiday
+Tokyo Stock Exchange Holiday
+November 5, 2025Wednesday
+India Holiday
+NSE India Holiday
+November 11, 2025Tuesday
+Cboe Futures Exchange Holiday
+All US Exchanges Holiday
+United States Holiday
+Canada Holiday
+TSX Venture Holiday
+Montreal Exchange Holiday
+ICE Futures Holiday
+November 13, 2025Thursday
+Korean Exchange Holiday
+November 20, 2025Thursday
+NSE India Holiday
+November 24, 2025Monday
+Japan Holiday
+Tokyo Stock Exchange Holiday
+November 27, 2025Thursday
+Cboe Futures Exchange Holiday
+All US Exchanges Holiday
+ICE Futures Exchange Holiday
+United States Holiday
+November 28, 2025Friday
+Cboe Futures Exchange Holiday
+All US Exchanges Holiday
+ICE Futures Exchange Holiday
+December 24, 2025Wednesday
+Cboe Futures Exchange Holiday
+All US Exchanges Holiday
+ICE Futures Exchange Holiday
+TSX Venture Holiday
+Montreal Exchange Holiday
+ICE Futures Holiday
+Euronext Amsterdam Holiday
+EUREX Holiday
+Eurex Bonds Holiday
+XETRA Holiday
+London Stock Exchange Holiday
+MEFF Madrid Holiday
+Borsa Italiana Holiday
+SIX Swiss Exchange Holiday
+Australia Securities Exchange Holiday
+Hong Kong Futures Holiday
+Hong Kong Stock Exchange Holiday
+December 25, 2025Thursday
+Cboe Futures Exchange Holiday
+All US Exchanges Holiday
+ICE Futures Exchange Holiday
+United States Holiday
+Canada Holiday
+TSX Venture Holiday
+Montreal Exchange Holiday
+ICE Futures Holiday
+Euronext Amsterdam Holiday
+EUREX Holiday
+Eurex Bonds Holiday
+France Holiday
+United Kingdom Holiday
+Germany Holiday
+XETRA Holiday
+Italy Holiday
+London Stock Exchange Holiday
+MEFF Madrid Holiday
+Borsa Italiana Holiday
+Switzerland Holiday
+SIX Swiss Exchange Holiday
+Australia Holiday
+Australia Securities Exchange Holiday
+Hong Kong Holiday
+Hong Kong Futures Holiday
+Hong Kong Stock Exchange Holiday
+India Holiday
+NSE India Holiday
+Korean Exchange Holiday
+Singapore Holiday
+South Korea Holiday
+December 26, 2025Friday
+Canada Holiday
+TSX Venture Holiday
+Montreal Exchange Holiday
+ICE Futures Holiday
+Euronext Amsterdam Holiday
+EUREX Holiday
+Eurex Bonds Holiday
+France Holiday
+United Kingdom Holiday
+Germany Holiday
+XETRA Holiday
+Italy Holiday
+London Stock Exchange Holiday
+MEFF Madrid Holiday
+Borsa Italiana Holiday
+Switzerland Holiday
+SIX Swiss Exchange Holiday
+Australia Holiday
+Australia Securities Exchange Holiday
+Hong Kong Holiday
+Hong Kong Futures Holiday
+Hong Kong Stock Exchange Holiday
+December 30, 2025Tuesday
+XETRA Holiday
+December 31, 2025Wednesday
+ICE Futures Exchange Holiday
+Euronext Amsterdam Holiday
+EUREX Holiday
+Eurex Bonds Holiday
+XETRA Holiday
+London Stock Exchange Holiday
+MEFF Madrid Holiday
+Borsa Italiana Holiday
+SIX Swiss Exchange Holiday
+Australia Securities Exchange Holiday
+Hong Kong Futures Holiday
+Hong Kong Stock Exchange Holiday
+Japan Holiday
+Korean Exchange Holiday
+Tokyo Stock Exchange Holiday
+''';

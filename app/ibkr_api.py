@@ -11,6 +11,7 @@ from typing import Any, Callable
 import asyncio
 from collections import defaultdict, deque
 from datetime import datetime, timezone
+from fastapi import Request
 
 # Router must be created before any @router.get/post decorators
 router = APIRouter(prefix="/ibkr", tags=["ibkr"])
@@ -160,6 +161,59 @@ def _alias_variants(term: str) -> list[str]:
     # unique, preserve order
     seen=set(); uniq=[x for x in out if not (x.lower() in seen or seen.add(x.lower()))]
     return uniq
+
+# --- quick heuristics so tickers/FX work even when offline -------------------
+_FX3 = {
+    "USD","EUR","GBP","JPY","AUD","CAD","CHF","NZD","SEK","NOK","DKK",
+    "CNH","CNY","HKD","SGD","MXN","ZAR"
+}
+
+def _is_fx_pair(term: str) -> bool:
+    t = (term or "").strip().upper()
+    if len(t) != 6:  # e.g. EURUSD
+        return False
+    a, b = t[:3], t[3:]
+    return a in _FX3 and b in _FX3 and a != b
+
+def _is_ticker_like(term: str) -> bool:
+    """
+    Very permissive stock ticker check: letters/digits with optional dot or hyphen,
+    length 1..6 for main part (so BRK.B, RDS-A are fine).
+    """
+    t = (term or "").strip()
+    if not t:
+        return False
+    return re.fullmatch(r"[A-Za-z0-9]{1,6}([.\-][A-Za-z0-9]{1,2})?", t) is not None
+
+def _heuristic_seed(term: str) -> list[dict]:
+    """
+    Return a minimal contract row for obvious tickers or FX pairs so the UI
+    always shows *something* immediately, even offline.
+    """
+    t = (term or "").strip().upper()
+    out: list[dict] = []
+    if _is_fx_pair(t):
+        out.append({
+            "symbol": t,
+            "name": t,
+            "secType": "FX",
+            "conId": None,
+            "currency": t[3:],                 # RHS (EURUSD -> USD)
+            "exchange": "IDEALPRO",
+            "primaryExchange": "IDEALPRO",
+        })
+        return out
+    if _is_ticker_like(t):
+        out.append({
+            "symbol": t,
+            "name": t,
+            "secType": "STK",
+            "conId": None,
+            "currency": "USD",
+            "exchange": "SMART",
+            "primaryExchange": "SMART",
+        })
+    return out
 
 def _local_match(term: str, limit: int = 50) -> list[dict]:
     tl = (term or "").strip().lower()
@@ -961,13 +1015,17 @@ async def search(q: str | None = Query(None), query: str | None = Query(None)):
                 except Exception:
                     continue
 
-    # 1) Primary attempt
-    out: list[dict] = []
+    # Buckets so we can union later.
+    out_online: list[dict] = []
+    out_local:  list[dict] = []
+    out_seed:   list[dict] = _heuristic_seed(term)
+
+    # 1) Online attempt
     if online:
-        await _query_and_collect(term, out)
+        await _query_and_collect(term, out_online)
 
     # 2) If weak or empty, try robust variants including aliases
-    if (online and len(out) < 5) or (not online):
+    if (online and len(out_online) < 5) or (not online):
         variants: list[str] = []
         variants += _alias_variants(term)
         # also basic case variants
@@ -976,31 +1034,36 @@ async def search(q: str | None = Query(None), query: str | None = Query(None)):
         seen_v = set()
         variants = [v for v in variants if not (v in seen_v or seen_v.add(v))]
         if online:
-            for v in variants[:8]:  # keep it sane
-                await _query_and_collect(v, out)
+            for v in variants[:8]:
+                await _query_and_collect(v, out_online)
 
-    # De-dup by conId (keep first)
+    # Add local universe/aliases (works offline too).
+    out_local = _local_match(term, limit=50)
+
+    # Union: seed (heuristics) + local + online
+    out = out_seed + out_local + out_online
+
+    # De-dup by (conId) then (symbol, exchange)
     seen: set[int] = set()
     uniq: list[dict] = []
+    seen_sym_ex = set()
     for d in out:
         cid = d.get("conId")
-        if not cid:   # keep those without conId too (rare)
+        if cid:
+            if cid in seen:
+                continue
+            seen.add(cid)
             uniq.append(d)
-            continue
-        if cid in seen:
-            continue
-        seen.add(cid)
-        uniq.append(d)
+        else:
+            k = (str(d.get("symbol","")).upper(), str(d.get("exchange","SMART")).upper())
+            if k in seen_sym_ex:
+                continue
+            seen_sym_ex.add(k)
+            uniq.append(d)
 
     # Soft-rank: prefer rows whose 'name' contains the term (case-insensitive)
     tl = term.lower()
     uniq.sort(key=lambda r: 0 if tl in (r.get("name","") or "").lower() else 1)
-
-    # If still empty or offline, use local universe/aliases.
-    if not uniq:
-        local = _local_match(term, limit=50)
-        if local:
-            uniq.extend(local)
 
     # Fallback: try direct resolve if nothing matched online (AAPL/EURUSD)
     if online and not uniq:
