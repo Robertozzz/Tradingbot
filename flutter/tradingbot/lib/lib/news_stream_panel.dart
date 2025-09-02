@@ -1,7 +1,7 @@
 import 'dart:async';
 import 'package:flutter/material.dart';
 import 'news_api.dart';
-import 'ai_placeholder.dart'; // <- AI placeholder facade
+import 'ai_placeholder.dart'; // <- AI facade
 
 class NewsStreamPanel extends StatefulWidget {
   const NewsStreamPanel({
@@ -686,12 +686,33 @@ class _NewsStreamPanelState extends State<NewsStreamPanel> {
       _aiOut = '';
     });
     try {
-      final reply = await AIPipeline.ping(prompt);
+      final reply = await AIPipeline.ask(prompt);
       if (!mounted) return;
       setState(() => _aiOut = reply);
     } catch (e) {
       if (!mounted) return;
-      setState(() => _aiOut = 'Error: $e');
+      final msg = e.toString();
+      if (msg.contains('key not set') ||
+          msg.contains('OPENAI_API_KEY not set')) {
+        // Modal popup if key missing
+        if (mounted) {
+          await showDialog<void>(
+            context: context,
+            builder: (ctx) => AlertDialog(
+              title: const Text('OpenAI key not set'),
+              content: const Text(
+                  'Set your OpenAI API key in Settings before using AI.'),
+              actions: [
+                TextButton(
+                    onPressed: () => Navigator.of(ctx).pop(),
+                    child: const Text('OK')),
+              ],
+            ),
+          );
+        }
+      } else {
+        setState(() => _aiOut = 'Error: $e');
+      }
     } finally {
       if (mounted) setState(() => _aiBusy = false);
     }
@@ -705,8 +726,7 @@ class _NewsStreamPanelState extends State<NewsStreamPanel> {
       _aiOut = '';
     });
     try {
-      // Placeholder prompt; later point this to a real /api/openai/analyze endpoint.
-      final reply = await AIPipeline.ping('summarize watchlist: $wl');
+      final reply = await AIPipeline.ask('Summarize watchlist: $wl');
       if (!mounted) return;
       setState(() => _aiOut = reply);
     } catch (e) {

@@ -341,24 +341,44 @@ async def _enrich_names_with_details(rows: list[dict], maxn: int = 6) -> None:
         except Exception:
             continue
 
-async def _match_batch(terms: list[str], per_timeout: float = 3.5, overall_timeout: float = 6.5, max_conc: int = 3) -> list[dict]:
+async def _match_batch(
+    terms: list[str],
+    per_timeout: float = 3.5,
+    overall_timeout: float = 6.5,
+    max_conc: int = 3,
+    min_results: int = 5
+) -> list[dict]:
     """
     Run reqMatchingSymbols over several variants with bounded concurrency and a global timeout.
-    Cancel any stragglers after the deadline.
+    Return **early** as soon as we have a minimum number of results, and cancel stragglers.
     """
     results: list[dict] = []
     sem = asyncio.Semaphore(max_conc)
-    async def one(term: str):
+    async def one(term: str) -> list[dict]:
         async with sem:
             try:
                 syms = await asyncio.wait_for(ib.reqMatchingSymbolsAsync(term), timeout=per_timeout)
-                rows = await _collect_from_matching_symbols(syms, qualify_limit=6)
-                results.extend(rows)
+                return await _collect_from_matching_symbols(syms, qualify_limit=6)
             except Exception:
-                return
+                return []
     tasks = [asyncio.create_task(one(t)) for t in terms]
     try:
-        await asyncio.wait(tasks, timeout=overall_timeout)
+        # NOTE: asyncio.as_completed returns a regular iterator of awaitables,
+        # not an async iterator. Use a normal 'for' loop here.
+        for fut in asyncio.as_completed(tasks, timeout=overall_timeout):
+            try:
+                batch = await fut
+                if batch:
+                    results.extend(batch)
+                    if len(results) >= min_results:
+                        # We got enough results; cancel any stragglers early to
+                        # respect the time budget.
+                        for t in tasks:
+                            if not t.done():
+                                t.cancel()
+                        break
+            except Exception:
+                pass
     finally:
         for t in tasks:
             if not t.done():
@@ -559,7 +579,7 @@ async def _ensure_connected():
     if ib.isConnected():
         return
     try:
-        await ib.connectAsync(IB_HOST, _current_port(), clientId=IB_CLIENT_ID, timeout=4)
+        await ib.connectAsync(IB_HOST, _current_port(), clientId=IB_CLIENT_ID, timeout=2)
         # Warm-up: some IBGW builds are sluggish immediately after login.
         try:
             # cheap ping
@@ -568,7 +588,7 @@ async def _ensure_connected():
             pass
         try:
             # prime symbol matcher so first real call is faster
-            await asyncio.wait_for(ib.reqMatchingSymbolsAsync("AAPL"), timeout=3.0)
+            await asyncio.wait_for(ib.reqMatchingSymbolsAsync("AAPL"), timeout=1.2)
         except Exception:
             pass
     except Exception as e:
@@ -1233,16 +1253,46 @@ async def search(q: str | None = Query(None), query: str | None = Query(None)):
 
     # Online name matching with aliases + *prefix* variants (freer matching)
     if online and len(out_online) < 10:
+        # Build variants with **short prefixes first** so we get early hits.
+        prefixes = _name_prefix_variants(term, min_len=3, max_per_word=6)
+        prefixes.sort(key=len)  # shortest first: 'man', 'manh', 'manha', ...
+        # Try quick ticker resolves on uppercase prefixes (cheap, often hits)
+        probable_tickers = []
+        seen_pt = set()
+        for p in prefixes:
+            u = p.upper()
+            if u in seen_pt:
+                continue
+            seen_pt.add(u)
+            if _is_ticker_like(u):   # e.g., MANH
+                probable_tickers.append(u)
+        if probable_tickers:
+            out_online.extend(await _try_resolve_many(probable_tickers[:6], secType="STK"))
         variants: list[str] = []
-        variants += [term]
-        variants += _alias_variants(term)
-        variants += _name_prefix_variants(term)  # <= this is what makes 'Manhattan' hit MANH
-        variants += [term.upper(), term.lower(), term.title()]
+        variants += prefixes[:8]                  # prioritize short prefixes
+        variants += [term, term.lower(), term.title()]
+        variants += _alias_variants(term)         # includes tokenized words; no manual aliasing needed
         # unique, preserve order; keep it tight
         seen_v = set()
-        variants = [v for v in variants if not (v in seen_v or seen_v.add(v))][:12]
-        # Run the batch; allow a hair more time for name searches
-        out_online.extend(await _match_batch(variants, per_timeout=4.5, overall_timeout=9.0, max_conc=3))
+        variants = [v for v in variants if not (v in seen_v or seen_v.add(v))][:14]
+        # Run the batch; **return early** as soon as we have a few rows
+        out_online.extend(
+            await _match_batch(
+                variants,
+                per_timeout=3.5,
+                overall_timeout=7.0,
+                max_conc=4,
+                min_results=6
+            )
+        )
+
+    # If still nothing from IB name search, try a very short prefix once.
+    if online and not out_online and len(term) >= 4:
+        short = re.split(r"[^A-Za-z0-9]+", term)[0][:4].lower()
+        if len(short) >= 3:
+            out_online.extend(
+                await _match_batch([short], per_timeout=3.0, overall_timeout=3.0, max_conc=1, min_results=2)
+            )
  
     # Add local universe/aliases (works offline too).
     out_local = _local_match(term, limit=50)

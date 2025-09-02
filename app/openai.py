@@ -432,10 +432,18 @@ if __name__ == "__main__":
 
 # ---------- tiny test entry ----------
 def test_openai(prompt: str = "ping") -> tuple[str, dict]:
-    """Small, cheap test to validate key/model from /api/openai/test."""
+    """
+    Lightweight ask used by the UI.
+    - If no key is configured, raise (UI will show 'key not set').
+    - Otherwise return the real model reply to the provided prompt.
+    """
     apply_runtime_settings()
+    # Fail fast if key absent
+    api_key = os.environ.get("OPENAI_API_KEY", "")
+    if not api_key:
+        raise RuntimeError("OPENAI_API_KEY not set")
     r = _mk_client().responses.create(
         model=OPENAI_MODEL,
-        input=f"Reply exactly 'pong' if you see '{prompt}'. Otherwise say 'nope'."
+        input=prompt,
     )
     return (r.output_text or ""), (r.usage or {})

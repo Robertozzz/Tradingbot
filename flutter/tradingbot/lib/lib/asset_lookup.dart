@@ -61,10 +61,23 @@ class _AssetLookupSheetState extends State<AssetLookupSheet> {
       // Single backend call; it handles variants, aliases, and offline fallbacks.
       // IB name-matching can be slow; backend now cancels stragglers,
       // so allow a slightly longer overall timeout to avoid false negatives.
-      final list = await Api.ibkrSearch(q).timeout(const Duration(seconds: 12));
+      List<dynamic> hits;
+      try {
+        hits = await Api.ibkrSearch(q).timeout(const Duration(seconds: 12));
+      } on TimeoutException {
+        // One quick fallback: retry with a short prefix to coax IB's matcher.
+        final short = q.split(RegExp(r'[^A-Za-z0-9]+')).first;
+        if (short.length >= 3) {
+          // IMPORTANT: substring endIndex must be an int, not num.
+          final int prefixLen = short.length < 5 ? short.length : 5;
+          hits = await Api.ibkrSearch(short.substring(0, prefixLen));
+        } else {
+          rethrow;
+        }
+      }
       if (!mounted || sid != _seq) return; // later search already won
       final out = <Map<String, dynamic>>[
-        for (final e in list) Map<String, dynamic>.from(e as Map)
+        for (final e in hits) Map<String, dynamic>.from(e as Map)
       ];
       // Prefer "real" IB rows: if any have conId, hide heuristic rows (conId == null).
       final hasReal = out.any((m) => (m['conId'] as num?) != null);

@@ -181,6 +181,7 @@ class _ApiSettingsCardState extends State<_ApiSettingsCard> {
   bool _testing = false;
   bool _hasOpenAIKey = false;
   bool _hasSearchKey = false;
+  static const _MASK = '********';
 
   @override
   void initState() {
@@ -198,6 +199,9 @@ class _ApiSettingsCardState extends State<_ApiSettingsCard> {
         _enableBrowsing = (j['enable_browsing'] as bool?) ?? true;
         _hasOpenAIKey = (j['has_openai_api_key'] as bool?) ?? false;
         _hasSearchKey = (j['has_search_api_key'] as bool?) ?? false;
+        // Populate masked placeholders so users see "something is set".
+        if (_hasOpenAIKey) _openaiKeyC.text = _MASK;
+        if (_hasSearchKey) _searchKeyC.text = _MASK;
       }
     } catch (_) {}
     setState(() => _loading = false);
@@ -211,9 +215,15 @@ class _ApiSettingsCardState extends State<_ApiSettingsCard> {
     try {
       final body = {
         "model": _model,
-        // Only send when user typed something; keep empty to clear server-side
-        "openai_api_key": _openaiKeyC.text.isNotEmpty ? _openaiKeyC.text : null,
-        "search_api_key": _searchKeyC.text.isNotEmpty ? _searchKeyC.text : null,
+        // Only send if user typed a real value (not mask). Blank means "no change".
+        "openai_api_key":
+            (_openaiKeyC.text.isNotEmpty && _openaiKeyC.text != _MASK)
+                ? _openaiKeyC.text
+                : null,
+        "search_api_key":
+            (_searchKeyC.text.isNotEmpty && _searchKeyC.text != _MASK)
+                ? _searchKeyC.text
+                : null,
         "enable_browsing": _enableBrowsing,
       };
       body.removeWhere((k, v) => v == null);
@@ -223,10 +233,13 @@ class _ApiSettingsCardState extends State<_ApiSettingsCard> {
         body: jsonEncode(body),
       );
       if (r.statusCode >= 200 && r.statusCode < 300) {
-        if (_openaiKeyC.text.isNotEmpty) _hasOpenAIKey = true;
-        if (_searchKeyC.text.isNotEmpty) _hasSearchKey = true;
-        _openaiKeyC.clear();
-        _searchKeyC.clear();
+        if (_openaiKeyC.text.isNotEmpty && _openaiKeyC.text != _MASK)
+          _hasOpenAIKey = true;
+        if (_searchKeyC.text.isNotEmpty && _searchKeyC.text != _MASK)
+          _hasSearchKey = true;
+        // Re-mask after saving.
+        _openaiKeyC.text = _hasOpenAIKey ? _MASK : '';
+        _searchKeyC.text = _hasSearchKey ? _MASK : '';
         if (mounted) {
           messenger?.showSnackBar(
             const SnackBar(content: Text('API settings saved')),
@@ -251,6 +264,12 @@ class _ApiSettingsCardState extends State<_ApiSettingsCard> {
     final messenger = ScaffoldMessenger.maybeOf(context);
     setState(() => _testing = true);
     try {
+      // Block test if key not set
+      if (!_hasOpenAIKey) {
+        messenger
+            ?.showSnackBar(const SnackBar(content: Text('OpenAI key not set')));
+        return;
+      }
       final r = await http.post(Uri.parse('/api/openai/test'),
           headers: {"Content-Type": "application/json"},
           body: jsonEncode({"prompt": "ping"}));
@@ -367,12 +386,54 @@ class _ApiSettingsCardState extends State<_ApiSettingsCard> {
                       controller: _openaiKeyC,
                       obscureText: true,
                       decoration: InputDecoration(
-                        labelText: _hasOpenAIKey
-                            ? 'OpenAI API key (set)'
-                            : 'OpenAI API key',
-                        helperText: _hasOpenAIKey
-                            ? 'Leave blank to keep existing key.'
-                            : 'Paste your OpenAI API key.',
+                        labelText: 'OpenAI API key',
+                        helperText: 'Paste your OpenAI API key.',
+                        suffixIcon: _hasOpenAIKey
+                            ? IconButton(
+                                tooltip: 'Remove key',
+                                icon: const Icon(Icons.delete_outline),
+                                onPressed: _saving
+                                    ? null
+                                    : () async {
+                                        final messenger =
+                                            ScaffoldMessenger.maybeOf(context);
+                                        setState(() => _saving = true);
+                                        try {
+                                          final r = await http.post(
+                                            Uri.parse('/api/openai/settings'),
+                                            headers: {
+                                              "Content-Type": "application/json"
+                                            },
+                                            body: jsonEncode(
+                                                {"openai_api_key": ""}),
+                                          );
+                                          if (r.statusCode >= 200 &&
+                                              r.statusCode < 300) {
+                                            setState(() {
+                                              _hasOpenAIKey = false;
+                                              _openaiKeyC.text = '';
+                                            });
+                                            messenger?.showSnackBar(
+                                              const SnackBar(
+                                                  content: Text(
+                                                      'OpenAI key removed')),
+                                            );
+                                          } else {
+                                            throw Exception(
+                                                'HTTP ${r.statusCode}');
+                                          }
+                                        } catch (e) {
+                                          messenger?.showSnackBar(
+                                            SnackBar(
+                                                content:
+                                                    Text('Remove failed: $e')),
+                                          );
+                                        } finally {
+                                          setState(() => _saving = false);
+                                        }
+                                      },
+                              )
+                            : null,
                       ),
                     ),
                     const SizedBox(height: 12),
@@ -383,8 +444,55 @@ class _ApiSettingsCardState extends State<_ApiSettingsCard> {
                         labelText: _hasSearchKey
                             ? 'Search API key (set)'
                             : 'Search API key',
-                        helperText:
-                            'Optional: for web_search tool (Bing/SerpAPI/etc.).',
+                        helperText: _hasSearchKey
+                            ? 'Leave as ******** to keep. Overwrite to replace.'
+                            : 'Optional: for web_search tool (Bing/SerpAPI/etc.).',
+                        suffixIcon: _hasSearchKey
+                            ? IconButton(
+                                tooltip: 'Remove key',
+                                icon: const Icon(Icons.delete_outline),
+                                onPressed: _saving
+                                    ? null
+                                    : () async {
+                                        final messenger =
+                                            ScaffoldMessenger.maybeOf(context);
+                                        setState(() => _saving = true);
+                                        try {
+                                          final r = await http.post(
+                                            Uri.parse('/api/openai/settings'),
+                                            headers: {
+                                              "Content-Type": "application/json"
+                                            },
+                                            body: jsonEncode(
+                                                {"search_api_key": ""}),
+                                          );
+                                          if (r.statusCode >= 200 &&
+                                              r.statusCode < 300) {
+                                            setState(() {
+                                              _hasSearchKey = false;
+                                              _searchKeyC.text = '';
+                                            });
+                                            messenger?.showSnackBar(
+                                              const SnackBar(
+                                                  content: Text(
+                                                      'Search key removed')),
+                                            );
+                                          } else {
+                                            throw Exception(
+                                                'HTTP ${r.statusCode}');
+                                          }
+                                        } catch (e) {
+                                          messenger?.showSnackBar(
+                                            SnackBar(
+                                                content:
+                                                    Text('Remove failed: $e')),
+                                          );
+                                        } finally {
+                                          setState(() => _saving = false);
+                                        }
+                                      },
+                              )
+                            : null,
                       ),
                     ),
                   ],
