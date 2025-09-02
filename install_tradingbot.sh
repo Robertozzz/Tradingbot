@@ -145,6 +145,28 @@ fi
 chown -R www-data:www-data /opt/tradingbot
 chown -R www-data:www-data /opt/tradingbot/app
 
+# ---- Write a managed requirements.txt (always overwrite; latest versions) ----
+cat > /opt/tradingbot/requirements.txt <<'REQS'
+fastapi
+uvicorn
+pydantic
+python-dotenv
+SQLAlchemy
+aiosqlite
+httpx
+binance-connector
+python-telegram-bot
+Jinja2
+passlib[bcrypt]
+pyotp
+qrcode[pil]
+ib-insync
+openai
+requests
+beautifulsoup4
+REQS
+chown www-data:www-data /opt/tradingbot/requirements.txt
+
 # ---- venv & deps (optional) ----
 USE_VENV=0
 if [[ -f /opt/tradingbot/requirements.txt ]]; then
@@ -162,8 +184,9 @@ if [[ -f /opt/tradingbot/requirements.txt ]]; then
   # install/upgrade only what’s needed; fast on re-runs
   sudo -u www-data -H env PIP_CACHE_DIR=$PIP_CACHE_DIR \
     /opt/tradingbot/.venv/bin/pip install --upgrade pip wheel
+  # Always install latest versions from our managed requirements.txt
   sudo -u www-data -H env PIP_CACHE_DIR=$PIP_CACHE_DIR \
-    /opt/tradingbot/.venv/bin/pip install --upgrade -r requirements.txt --upgrade-strategy only-if-needed
+    /opt/tradingbot/.venv/bin/pip install --upgrade -r requirements.txt
   USE_VENV=1
 fi
 

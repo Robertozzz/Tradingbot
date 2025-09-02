@@ -168,6 +168,59 @@ def _alias_variants(term: str) -> list[str]:
     seen=set(); uniq=[x for x in out if not (x.lower() in seen or seen.add(x.lower()))]
     return uniq
 
+def _name_prefix_variants(term: str, min_len: int = 3, max_per_word: int = 4) -> list[str]:
+    """
+    For human-ish names (not tickers), return short prefixes of each word.
+    Example: 'Manhattan Associates' -> ['man','manh','manha','assoc','asso','ass']
+    (bounded so we don't spam IB.)
+    """
+    t = (term or "").strip()
+    if not t:
+        return []
+    words = [w for w in re.split(r"[^A-Za-z]+", t) if len(w) >= min_len]
+    out: list[str] = []
+    for w in words:
+        wl = w.lower()
+        upto = min(len(wl), min_len + max_per_word - 1)
+        for L in range(min_len, upto + 1):
+            out.append(wl[:L])
+    # unique, preserve order
+    seen = set()
+    return [x for x in out if not (x in seen or seen.add(x))]
+
+def _cache_scan_by_name_substring(term: str, limit: int = 30) -> list[dict]:
+    """
+    Fallback: scan our search cache for rows whose name contains the substring.
+    Helps when IB is sluggish and we’ve previously looked up related names.
+    """
+    tl = (term or "").strip().lower()
+    if not tl:
+        return []
+    cache = _cache_read("search_cache.json", {})
+    if not isinstance(cache, dict):
+        return []
+    out: list[dict] = []
+    seen = set()
+    for rows in cache.values():
+        if not isinstance(rows, list):
+            continue
+        for r in rows:
+            try:
+                name = (r.get("name") or r.get("description") or "").lower()
+                sym  = (r.get("symbol") or "").upper()
+                ex   = (r.get("exchange") or r.get("primaryExchange") or "SMART").upper()
+                key  = (r.get("conId") or f"{sym}-{ex}")
+                if key in seen:
+                    continue
+                if tl and tl in name:
+                    seen.add(key)
+                    out.append(dict(r))
+                    if len(out) >= limit:
+                        return out
+            except Exception:
+                continue
+    return out
+
 # --- quick heuristics so tickers/FX work even when offline -------------------
 _FX3 = {
     "USD","EUR","GBP","JPY","AUD","CAD","CHF","NZD","SEK","NOK","DKK",
@@ -1178,23 +1231,26 @@ async def search(q: str | None = Query(None), query: str | None = Query(None)):
         variants_quick = [v for v in variants_quick if not (v in seen_fast or seen_fast.add(v))][:6]
         out_online.extend(await _try_resolve_many(variants_quick, secType="STK"))
 
-    # Online name matching with aliases (bounded concurrency + global timeout)
+    # Online name matching with aliases + *prefix* variants (freer matching)
     if online and len(out_online) < 10:
         variants: list[str] = []
         variants += [term]
         variants += _alias_variants(term)
+        variants += _name_prefix_variants(term)  # <= this is what makes 'Manhattan' hit MANH
         variants += [term.upper(), term.lower(), term.title()]
         # unique, preserve order; keep it tight
         seen_v = set()
-        variants = [v for v in variants if not (v in seen_v or seen_v.add(v))][:8]
-        # Run the batch quickly; cancel stragglers
-        out_online.extend(await _match_batch(variants, per_timeout=3.5, overall_timeout=6.5, max_conc=3))
+        variants = [v for v in variants if not (v in seen_v or seen_v.add(v))][:12]
+        # Run the batch; allow a hair more time for name searches
+        out_online.extend(await _match_batch(variants, per_timeout=4.5, overall_timeout=9.0, max_conc=3))
  
     # Add local universe/aliases (works offline too).
     out_local = _local_match(term, limit=50)
+    # Also, use cache substring fallback to catch prior lookups containing this name
+    out_cached = _cache_scan_by_name_substring(term, limit=30)
 
-   # Union: seed (heuristics) + local + online
-    out = out_seed + out_local + out_online
+    # Union: seed (heuristics) + local + cached + online
+    out = out_seed + out_local + out_cached + out_online
 
     # De-dup by (conId) then (symbol, exchange)
     seen: set[int] = set()
@@ -1222,9 +1278,16 @@ async def search(q: str | None = Query(None), query: str | None = Query(None)):
         uniq = [r for r in uniq
                 if r.get("conId") or (r.get("symbol") or "").upper() not in sym_with_conid]
 
-    # Soft-rank: prefer rows whose 'name' contains the term (case-insensitive)
+    # Soft-rank: prefer name **starts with** term, then contains term
     tl = term.lower()
-    uniq.sort(key=lambda r: 0 if tl in (r.get("name","") or "").lower() else 1)
+    def _rank(r: dict) -> tuple[int,int]:
+        nm = (r.get("name","") or "").lower()
+        if nm.startswith(tl):  # e.g., "Manhattan Associates"
+            return (0, len(nm))
+        if tl in nm:
+            return (1, len(nm))
+        return (2, len(nm))
+    uniq.sort(key=_rank)
 
     # If we have any *real* IB rows at all, drop every heuristic row (conId == None).
     # This removes fake USD/SMART placeholders like the FUGRO row when a real FUR exists.
