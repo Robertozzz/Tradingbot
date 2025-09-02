@@ -19,6 +19,7 @@ class AssetsPage extends StatefulWidget {
 class _AssetsPageState extends State<AssetsPage> {
   Timer? timer;
   final fMoney = NumberFormat.currency(symbol: '\$');
+  // lighter: final fMoney = NumberFormat.compactCurrency(symbol: '\$');
   List<Map<String, dynamic>> _ibkrPos = const [];
   final Map<String, List<double>> _sparks = {}; // symbol -> 0..1 norm spark
   final Map<int, Map<String, num>> _pnl =
@@ -84,6 +85,31 @@ class _AssetsPageState extends State<AssetsPage> {
   // add a small throttle like in lookup if you have lots of positions
   static int _sparkInflight = 0;
   static const int _sparkMax = 3;
+  // Keep raw ranges so spark axes can show meaningful labels.
+  final Map<String, List<double>> _sparkRanges = {}; // symbol -> [min,max]
+  // Parallel timestamps for bottom time labels.
+  final Map<String, List<DateTime>> _sparkTimes = {}; // symbol -> bars time[]
+
+  DateTime? _parseBarTime(dynamic raw) {
+    if (raw == null) return null;
+    if (raw is int) {
+      // Heuristic: seconds vs ms
+      final ms = raw > 2000000000 ? raw : raw * 1000;
+      return DateTime.fromMillisecondsSinceEpoch(ms, isUtc: true).toLocal();
+    }
+    if (raw is num) {
+      final v = raw.toInt();
+      final ms = v > 2000000000 ? v : v * 1000;
+      return DateTime.fromMillisecondsSinceEpoch(ms, isUtc: true).toLocal();
+    }
+    if (raw is String) {
+      // Try ISO first; if it lacks timezone, assume UTC.
+      final dt = DateTime.tryParse(raw);
+      return dt?.toLocal();
+    }
+    return null;
+  }
+
   Future<void> _loadSpark({String? symbol, int? conId, String? secType}) async {
     try {
       final st = (secType ?? '').toUpperCase();
@@ -103,18 +129,37 @@ class _AssetsPageState extends State<AssetsPage> {
         useRTH: useRth,
       );
       final bars = (h['bars'] as List?) ?? const [];
-      final vals = bars.map((b) => (b['c'] as num).toDouble()).toList();
+      final vals = <double>[];
+      final times = <DateTime>[];
+      for (final b in bars) {
+        if (b is Map) {
+          final c = (b['c'] as num?)?.toDouble();
+          if (c != null) {
+            vals.add(c);
+            final t = _parseBarTime(b['t'] ?? b['time'] ?? b['ts']);
+            if (t != null) times.add(t);
+          }
+        }
+      }
       if (vals.isNotEmpty) {
         final mn = vals.reduce((a, b) => a < b ? a : b);
         final mx = vals.reduce((a, b) => a > b ? a : b);
         final norm = mx - mn < 1e-9
             ? List.filled(vals.length, 0.5)
             : vals.map((v) => (v - mn) / (mx - mn)).toList();
-        if (symbol != null) setState(() => _sparks[symbol] = norm.toList());
+        if (symbol != null) {
+          setState(() {
+            _sparks[symbol] = norm.toList();
+            _sparkRanges[symbol] = [mn, mx];
+            _sparkTimes[symbol] =
+                times.length == vals.length ? times : const [];
+          });
+        }
       }
     } catch (_) {
     } finally {
-      _sparkInflight = (_sparkInflight - 1).clamp(0, _sparkMax);
+      // clamp() returns num; cast to int to avoid analyzer complaints
+      _sparkInflight = ((_sparkInflight - 1).clamp(0, _sparkMax));
     }
   }
 
@@ -163,7 +208,7 @@ class _AssetsPageState extends State<AssetsPage> {
     } catch (_) {
       // ignore; leave blank
     } finally {
-      _nameInflight = (_nameInflight - 1).clamp(0, _nameMax);
+      _nameInflight = ((_nameInflight - 1).clamp(0, _nameMax));
     }
   }
 
@@ -265,7 +310,15 @@ class _AssetsPageState extends State<AssetsPage> {
                       )),
                       DataCell(Text(m['secType']?.toString() ?? '')),
                       DataCell(FutureBuilder<Map<String, dynamic>>(
-                        future: Api.ibkrQuote(conId: conId, symbol: sym),
+                        future: Api.ibkrQuote(
+                          conId: conId,
+                          symbol: sym,
+                          secType: (m['secType'] ?? '').toString(),
+                          exchange:
+                              ((m['primaryExchange'] ?? m['exchange']) ?? '')
+                                  .toString(),
+                          currency: (m['currency'] ?? '').toString(),
+                        ),
                         builder: (_, snap) {
                           final px = (snap.data?['last'] ?? snap.data?['close'])
                               as num?;
@@ -296,8 +349,43 @@ class _AssetsPageState extends State<AssetsPage> {
                         (m['primaryExchange'] ?? m['exchange'] ?? '')
                             .toString(),
                       )),
-                      DataCell(SizedBox(
-                          width: 120, height: 36, child: sparkLine(spark))),
+                      DataCell(Builder(builder: (_) {
+                        final range = _sparkRanges[sym];
+                        final hasRange = range != null && range.length == 2;
+                        final yMinLabel =
+                            hasRange ? fMoney.format(range[0]) : '0';
+                        final yMaxLabel =
+                            hasRange ? fMoney.format(range[1]) : '1';
+                        return SizedBox(
+                          width: 120,
+                          height: 36,
+                          child: sparkLine(
+                            spark,
+                            height: 36,
+                            leftLabel: (v) {
+                              // values are 0..1 normalized → show only endpoints
+                              if ((v - 0.0).abs() < 1e-6) return yMinLabel;
+                              if ((v - 1.0).abs() < 1e-6) return yMaxLabel;
+                              return '';
+                            },
+                            bottomLabel: (x) {
+                              final ts = _sparkTimes[sym] ?? const [];
+                              if (ts.isEmpty) return '';
+                              // Show a few evenly spaced labels: start, mid, end.
+                              if ((x - x.roundToDouble()).abs() > 0.001) {
+                                return '';
+                              }
+                              final i = x.round();
+                              final n = ts.length;
+                              if (i < 0 || i >= n) return '';
+                              if (i == 0 || i == n - 1 || i == n ~/ 2) {
+                                return DateFormat('HH:mm').format(ts[i]);
+                              }
+                              return '';
+                            },
+                          ),
+                        );
+                      })),
                     ]);
                   }).toList(),
                 ),
@@ -422,6 +510,8 @@ class _AssetPanelState extends State<_AssetPanel> {
 
   // --- Account / Buying Power state ---
   Map<String, dynamic>? _acctSummary; // raw /ibkr/accounts (first account)
+  DateTime? _acctUpdatedAt;
+  bool _acctExpanded = false; // collapse advanced KPIs when space is tight
   // Split: cash-only vs margin buying power (USD)
   double? _bpCashUsd; // AvailableFunds / FullAvailableFunds
   double? _bpMarginUsd; // BuyingPower (fall back to cash if missing)
@@ -449,6 +539,7 @@ class _AssetPanelState extends State<_AssetPanel> {
           _acctSummary = first;
           _bpCashUsd = cash;
           _bpMarginUsd = marg;
+          _acctUpdatedAt = DateTime.now();
         });
       }
     } catch (_) {/* ignore */}
@@ -510,7 +601,13 @@ class _AssetPanelState extends State<_AssetPanel> {
                 (_quoteLive?['conId'] as num?) ??
                 (_histLive?['contract']?['conId'] as num?))
             ?.toInt();
-        final q = await Api.ibkrQuote(conId: conId, symbol: widget.symbol);
+        final q = await Api.ibkrQuote(
+          conId: conId,
+          symbol: widget.symbol,
+          secType: _bestSecType(),
+          exchange: _bestExchange() ?? '',
+          currency: _bestCurrency() ?? '',
+        );
         if (!mounted) return;
         setState(() {
           _quoteLive = q;
@@ -598,6 +695,35 @@ class _AssetPanelState extends State<_AssetPanel> {
     super.dispose();
   }
 
+  // --- Helpers to derive the best secType/exchange/currency for API calls ---
+  String _bestSecType() {
+    final v = (widget.pos['secType'] ??
+            widget.quote?['secType'] ??
+            widget.hist?['contract']?['secType'] ??
+            '')
+        .toString();
+    return v.isEmpty ? '' : v.toUpperCase();
+  }
+
+  String? _bestExchange() {
+    final v = (widget.pos['primaryExchange'] ??
+            widget.pos['exchange'] ??
+            widget.quote?['primaryExchange'] ??
+            widget.quote?['exchange'] ??
+            widget.hist?['contract']?['primaryExchange'] ??
+            widget.hist?['contract']?['exchange'])
+        ?.toString();
+    return (v == null || v.isEmpty) ? null : v;
+  }
+
+  String? _bestCurrency() {
+    final v = (widget.pos['currency'] ??
+            widget.quote?['currency'] ??
+            widget.hist?['contract']?['currency'])
+        ?.toString();
+    return (v == null || v.isEmpty) ? null : v;
+  }
+
   Future<void> _reloadQuoteHist() async {
     final int? conId = ((_quoteLive?['conId'] as num?) ??
             (_histLive?['contract']?['conId'] as num?) ??
@@ -606,8 +732,16 @@ class _AssetPanelState extends State<_AssetPanel> {
             (widget.pos['conId'] as num?))
         ?.toInt();
     try {
-      final q = await Api.ibkrQuote(conId: conId, symbol: widget.symbol);
-      final st = (widget.pos['secType'] ?? '').toString().toUpperCase();
+      final st = _bestSecType();
+      final exch = _bestExchange();
+      final ccy = _bestCurrency();
+      final q = await Api.ibkrQuote(
+        conId: conId,
+        symbol: widget.symbol,
+        secType: st,
+        exchange: exch ?? '',
+        currency: ccy ?? '',
+      );
       final what =
           (st == 'FX' || st == 'CASH' || st == 'IND') ? 'MIDPOINT' : 'TRADES';
       final useRth = !(st == 'FX' || st == 'CASH');
@@ -618,6 +752,9 @@ class _AssetPanelState extends State<_AssetPanel> {
         barSize: '30 mins',
         what: what,
         useRTH: useRth,
+        secType: st,
+        exchange: exch ?? '',
+        currency: ccy ?? '',
       );
       if (!mounted) return;
       setState(() {
@@ -726,6 +863,126 @@ class _AssetPanelState extends State<_AssetPanel> {
         if (isPending) const SizedBox(width: 6),
         Text(s),
       ],
+    );
+  }
+
+  // ---------- Account Summary helpers ----------
+  final NumberFormat _moneyFmt = NumberFormat.currency(symbol: '\$');
+  String _usdFmt(num? v) => _moneyFmt.format((v ?? 0).toDouble());
+  double? _acctNum(String key) => _numOrNull(_acctSummary?[key]);
+  Color _bpColor(double r) {
+    // thresholds: >=75% of NetLiq good, 40–75% ok, else warn
+    if (r >= 0.75) return const Color(0xFF4CC38A); // green
+    if (r >= 0.40) return const Color(0xFFFFC53D); // amber
+    return const Color(0xFFEF4444); // red
+  }
+
+  Widget _metricTile(
+    String label,
+    String value, {
+    String? help,
+  }) {
+    return Container(
+      constraints: const BoxConstraints(minWidth: 220),
+      padding: const EdgeInsets.all(12),
+      decoration: BoxDecoration(
+        color: const Color(0xFF111A2E),
+        border: Border.all(color: const Color(0xFF22314E)),
+        borderRadius: BorderRadius.circular(12),
+      ),
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          Row(
+            mainAxisSize: MainAxisSize.min,
+            children: [
+              Text(label, style: const TextStyle(color: Colors.white70)),
+              if (help != null) ...[
+                const SizedBox(width: 6),
+                Tooltip(
+                    message: help,
+                    child: const Icon(Icons.info_outline,
+                        size: 14, color: Colors.white54)),
+              ],
+            ],
+          ),
+          const SizedBox(height: 6),
+          Text(value,
+              style:
+                  const TextStyle(fontSize: 18, fontWeight: FontWeight.w700)),
+        ],
+      ),
+    );
+  }
+
+  Widget _bpTile({
+    required String label,
+    required double? amount,
+    required bool active,
+    double? maxAgainst, // usually NetLiq
+  }) {
+    final ratio = (amount != null && maxAgainst != null && maxAgainst > 0)
+        ? (amount / maxAgainst).clamp(0.0, 1.0)
+        : null;
+    final Color barColor =
+        ratio == null ? const Color(0xFF334366) : _bpColor(ratio);
+    return Container(
+      constraints: const BoxConstraints(minWidth: 260),
+      padding: const EdgeInsets.all(12),
+      decoration: BoxDecoration(
+        color: const Color(0xFF0F1A31),
+        border: Border.all(color: const Color(0xFF22314E)),
+        borderRadius: BorderRadius.circular(12),
+      ),
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          Row(
+            children: [
+              Expanded(
+                child:
+                    Text(label, style: const TextStyle(color: Colors.white70)),
+              ),
+              if (active)
+                Container(
+                  padding:
+                      const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
+                  decoration: BoxDecoration(
+                    color: const Color(0xFF1F4436),
+                    borderRadius: BorderRadius.circular(999),
+                  ),
+                  child: const Text('ACTIVE',
+                      style:
+                          TextStyle(fontSize: 11, fontWeight: FontWeight.w700)),
+                ),
+            ],
+          ),
+          const SizedBox(height: 6),
+          Text(_usdFmt(amount),
+              style:
+                  const TextStyle(fontSize: 18, fontWeight: FontWeight.w700)),
+          const SizedBox(height: 8),
+          if (ratio != null) ...[
+            ClipRRect(
+              borderRadius: BorderRadius.circular(6),
+              child: LinearProgressIndicator(
+                value: ratio,
+                minHeight: 8,
+                valueColor: AlwaysStoppedAnimation<Color>(barColor),
+                backgroundColor: const Color(0xFF1B2A4A),
+              ),
+            ),
+            const SizedBox(height: 4),
+            Text('vs NetLiq',
+                style: const TextStyle(color: Colors.white54, fontSize: 12)),
+          ] else
+            const Text('—',
+                style: TextStyle(color: Colors.white54, fontSize: 12)),
+          const SizedBox(height: 6),
+          const Text('Used for order sizing (toggle above)',
+              style: TextStyle(color: Colors.white54, fontSize: 11)),
+        ],
+      ),
     );
   }
 
@@ -857,20 +1114,11 @@ class _AssetPanelState extends State<_AssetPanel> {
                 )
               : (spots.length < 2
                   ? const Center(child: Text('No chart data'))
-                  : LineChart(
-                      LineChartData(
-                        gridData:
-                            FlGridData(show: true, drawVerticalLine: false),
-                        borderData: FlBorderData(show: false),
-                        titlesData: const FlTitlesData(show: false),
-                        lineBarsData: [
-                          LineChartBarData(
-                              spots: spots,
-                              isCurved: true,
-                              barWidth: 2,
-                              dotData: const FlDotData(show: false)),
-                        ],
-                      ),
+                  : lineChart(
+                      spots,
+                      height: 260,
+                      showGrid: true,
+                      drawVerticalGrid: false,
                     )),
         ),
         const SizedBox(height: 12),
@@ -970,7 +1218,20 @@ class _AssetPanelState extends State<_AssetPanel> {
                 const SizedBox(width: 6),
                 Switch(
                   value: _cashOnlyBP,
-                  onChanged: (v) => setState(() => _cashOnlyBP = v),
+                  onChanged: (v) => setState(() {
+                    _cashOnlyBP = v;
+                    // Make the toggle visibly affect sizing immediately:
+                    final bp = _activeBp();
+                    if (_sizing == 'USD' && bp != null) {
+                      // Clamp USD notional to the selected BP
+                      if (_usd > bp) _usd = bp;
+                    } else if (_sizing == 'QTY') {
+                      final px = _entryPx(side);
+                      if (px != null && px > 0) {
+                        qty = qty.clamp(1, _maxQtyFor(px).toDouble());
+                      }
+                    }
+                  }),
                 ),
               ])),
           _chip('Type',
@@ -1051,42 +1312,92 @@ class _AssetPanelState extends State<_AssetPanel> {
         const SizedBox(height: 12),
         if (_acctSummary != null)
           Container(
-            padding: const EdgeInsets.all(10),
+            padding: const EdgeInsets.all(12),
             decoration: BoxDecoration(
               color: const Color(0xFF0F1A31),
-              borderRadius: BorderRadius.circular(10),
+              borderRadius: BorderRadius.circular(12),
               border: Border.all(color: const Color(0xFF22314E)),
             ),
-            child: Wrap(
-              spacing: 12,
-              runSpacing: 12,
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
               children: [
-                _chip('Account ID',
-                    trailing: Text((_acctSummary!['accountId'] ??
-                            _acctSummary!['AccountId'] ??
-                            _acctSummary!['acctId'] ??
-                            '')
-                        .toString())),
-                _chip('Currency',
-                    trailing: Text((_acctSummary!['Currency'] ??
-                            _acctSummary!['currency'] ??
-                            'USD')
-                        .toString())),
-                _chip('NetLiq',
-                    trailing: Text(NumberFormat.currency(symbol: '\$').format(
-                        _numOrNull(_acctSummary!['NetLiquidation']) ?? 0))),
-                _chip('Excess Liquidity',
-                    trailing: Text(NumberFormat.currency(symbol: '\$').format(
-                        _numOrNull(_acctSummary!['ExcessLiquidity']) ?? 0))),
-                _chip('Gross Position',
-                    trailing: Text(NumberFormat.currency(symbol: '\$').format(
-                        _numOrNull(_acctSummary!['GrossPositionValue']) ?? 0))),
-                _chip('BP (Cash)',
-                    trailing: Text(NumberFormat.currency(symbol: '\$')
-                        .format(_bpCashUsd ?? 0))),
-                _chip('BP (Margin)',
-                    trailing: Text(NumberFormat.currency(symbol: '\$')
-                        .format(_bpMarginUsd ?? 0))),
+                Row(
+                  children: [
+                    const Text('Account Summary',
+                        style: TextStyle(fontWeight: FontWeight.w700)),
+                    const Spacer(),
+                    if (_acctUpdatedAt != null)
+                      Text(
+                        'Updated ${DateFormat('HH:mm:ss').format(_acctUpdatedAt!)}',
+                        style: const TextStyle(
+                            color: Colors.white54, fontSize: 12),
+                      ),
+                    const SizedBox(width: 12),
+                    IconButton(
+                      tooltip: _acctExpanded ? 'Hide details' : 'Show details',
+                      icon: Icon(_acctExpanded
+                          ? Icons.expand_less
+                          : Icons.expand_more),
+                      onPressed: () =>
+                          setState(() => _acctExpanded = !_acctExpanded),
+                    ),
+                    const SizedBox(width: 8),
+                    Text(
+                      (_acctSummary!['accountId'] ??
+                              _acctSummary!['AccountId'] ??
+                              _acctSummary!['acctId'] ??
+                              '')
+                          .toString(),
+                      style: const TextStyle(color: Colors.white70),
+                    ),
+                    const SizedBox(width: 12),
+                    Chip(
+                      label: Text(
+                        (_acctSummary!['Currency'] ??
+                                _acctSummary!['currency'] ??
+                                'USD')
+                            .toString(),
+                        style: const TextStyle(fontWeight: FontWeight.w700),
+                      ),
+                    ),
+                  ],
+                ),
+                const SizedBox(height: 8),
+                Wrap(
+                  spacing: 12,
+                  runSpacing: 12,
+                  children: [
+                    _metricTile(
+                      'Net Liquidation',
+                      _usdFmt(_acctNum('NetLiquidation')),
+                      help: 'Total equity including unrealized P&L.',
+                    ),
+                    _bpTile(
+                      label: 'Buying Power — Cash',
+                      amount: _bpCashUsd,
+                      active: _cashOnlyBP,
+                      maxAgainst: _acctNum('NetLiquidation'),
+                    ),
+                    _bpTile(
+                      label: 'Buying Power — Margin',
+                      amount: _bpMarginUsd,
+                      active: !_cashOnlyBP,
+                      maxAgainst: _acctNum('NetLiquidation'),
+                    ),
+                    if (_acctExpanded)
+                      _metricTile(
+                        'Excess Liquidity',
+                        _usdFmt(_acctNum('ExcessLiquidity')),
+                        help: 'Funds available before risk limits kick in.',
+                      ),
+                    if (_acctExpanded)
+                      _metricTile(
+                        'Gross Position Value',
+                        _usdFmt(_acctNum('GrossPositionValue')),
+                        help: 'Absolute market value of open positions.',
+                      ),
+                  ],
+                ),
               ],
             ),
           ),
@@ -1172,14 +1483,14 @@ class _AssetPanelState extends State<_AssetPanel> {
           Expanded(
               child: FilledButton(
                   style: FilledButton.styleFrom(
-                      backgroundColor: const Color(0xFF1F4436)),
+                      backgroundColor: const Color.fromARGB(255, 0, 255, 0)),
                   onPressed: _busy ? null : () => _place('BUY'),
                   child: const Text('Buy'))),
           const SizedBox(width: 10),
           Expanded(
               child: FilledButton(
                   style: FilledButton.styleFrom(
-                      backgroundColor: const Color(0xFF5A1F1F)),
+                      backgroundColor: const Color.fromARGB(255, 255, 0, 0)),
                   onPressed: _busy ? null : () => _place('SELL'),
                   child: const Text('Sell'))),
         ]),
@@ -1412,6 +1723,10 @@ class _AssetPanelState extends State<_AssetPanel> {
         res = await Api.ibkrPlaceOrder(
           symbol: conId == null ? widget.symbol : null,
           conId: conId,
+          // Hint backend for non-STK instruments when no conId:
+          secType: _bestSecType(),
+          exchange: _bestExchange() ?? '',
+          currency: _bestCurrency() ?? '',
           side: side,
           type: type,
           qty: qFinal.toDouble(),

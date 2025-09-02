@@ -1199,9 +1199,15 @@ def _mk_contract(symbol: str | None = None, conId: int | None = None, exchange: 
         return c
     if not symbol:
         raise HTTPException(400, "symbol or conId required")
+    # Infer FX if caller omitted secType but symbol looks like EURUSD or EUR/USD.
+    st = (secType or "").upper()
+    sym = str(symbol)
+    if "/" in sym:
+        sym = sym.replace("/", "")  # IBKR FX usually uses compact form (EURUSD)
+    if st in ("FX", "CASH") or _is_fx_pair(sym.upper()):
+        return Forex(sym)  # e.g., "EURUSD"
     # default to SMART/US stocks unless specified
-    c = Stock(symbol, exchange or 'SMART', currency or 'USD')
-    return c
+    return Stock(sym, exchange or 'SMART', currency or 'USD')
 
 async def _qualify(c: Contract) -> Contract:
     """Best-effort qualification so exchange/currency are present."""

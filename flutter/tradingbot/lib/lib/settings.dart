@@ -233,10 +233,12 @@ class _ApiSettingsCardState extends State<_ApiSettingsCard> {
         body: jsonEncode(body),
       );
       if (r.statusCode >= 200 && r.statusCode < 300) {
-        if (_openaiKeyC.text.isNotEmpty && _openaiKeyC.text != _MASK)
+        if (_openaiKeyC.text.isNotEmpty && _openaiKeyC.text != _MASK) {
           _hasOpenAIKey = true;
-        if (_searchKeyC.text.isNotEmpty && _searchKeyC.text != _MASK)
+        }
+        if (_searchKeyC.text.isNotEmpty && _searchKeyC.text != _MASK) {
           _hasSearchKey = true;
+        }
         // Re-mask after saving.
         _openaiKeyC.text = _hasOpenAIKey ? _MASK : '';
         _searchKeyC.text = _hasSearchKey ? _MASK : '';
