@@ -205,6 +205,8 @@ class _ApiSettingsCardState extends State<_ApiSettingsCard> {
 
   Future<void> _save() async {
     if (!_formKey.currentState!.validate()) return;
+    // Capture messenger before any await to avoid using BuildContext across async gaps.
+    final messenger = ScaffoldMessenger.maybeOf(context);
     setState(() => _saving = true);
     try {
       final body = {
@@ -226,7 +228,7 @@ class _ApiSettingsCardState extends State<_ApiSettingsCard> {
         _openaiKeyC.clear();
         _searchKeyC.clear();
         if (mounted) {
-          ScaffoldMessenger.of(context).showSnackBar(
+          messenger?.showSnackBar(
             const SnackBar(content: Text('API settings saved')),
           );
         }
@@ -235,7 +237,7 @@ class _ApiSettingsCardState extends State<_ApiSettingsCard> {
       }
     } catch (e) {
       if (mounted) {
-        ScaffoldMessenger.of(context).showSnackBar(
+        messenger?.showSnackBar(
           SnackBar(content: Text('Save error: $e')),
         );
       }
@@ -245,6 +247,8 @@ class _ApiSettingsCardState extends State<_ApiSettingsCard> {
   }
 
   Future<void> _test() async {
+    // Capture messenger before awaits.
+    final messenger = ScaffoldMessenger.maybeOf(context);
     setState(() => _testing = true);
     try {
       final r = await http.post(Uri.parse('/api/openai/test'),
@@ -253,14 +257,14 @@ class _ApiSettingsCardState extends State<_ApiSettingsCard> {
       if (r.statusCode == 200) {
         final j = jsonDecode(r.body);
         final reply = (j['reply'] ?? '').toString();
-        ScaffoldMessenger.of(context).showSnackBar(
+        messenger?.showSnackBar(
           SnackBar(content: Text('OpenAI test: $reply')),
         );
       } else {
         throw Exception('HTTP ${r.statusCode}');
       }
     } catch (e) {
-      ScaffoldMessenger.of(context).showSnackBar(
+      messenger?.showSnackBar(
         SnackBar(content: Text('Test error: $e')),
       );
     } finally {

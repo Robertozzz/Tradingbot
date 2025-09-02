@@ -121,7 +121,6 @@ class _IbkrGatewayPanelState extends State<IbkrGatewayPanel> {
         }),
       );
       if (r.statusCode == 200) {
-        final j = json.decode(r.body);
         setState(() {
           _status = 'Saved. Restarted.';
         });
@@ -179,6 +178,8 @@ class _IbkrGatewayPanelState extends State<IbkrGatewayPanel> {
   }
 
   Future<void> _setDebug(bool enable) async {
+    // capture messenger BEFORE any awaits to avoid using BuildContext across async gaps
+    final messenger = ScaffoldMessenger.maybeOf(context);
     setState(() => _dbgBusy = true);
     try {
       final r = await http.post(
@@ -199,22 +200,21 @@ class _IbkrGatewayPanelState extends State<IbkrGatewayPanel> {
             _showIframe(bust: true);
           } else {
             if (!mounted) return;
-            ScaffoldMessenger.of(context).showSnackBar(
-              const SnackBar(
-                  content: Text(
-                      'Viewer enabled, waiting for Xpra to come online...')),
-            );
+            messenger?.showSnackBar(const SnackBar(
+              content:
+                  Text('Gateway screen enabled, waiting to come online...'),
+            ));
           }
         } else {
           _hideIframe();
         }
       } else {
-        ScaffoldMessenger.of(context).showSnackBar(
+        messenger?.showSnackBar(
           SnackBar(content: Text('Debug viewer: ${r.statusCode} ${r.body}')),
         );
       }
     } catch (e) {
-      ScaffoldMessenger.of(context).showSnackBar(
+      messenger?.showSnackBar(
         SnackBar(content: Text('Debug viewer error: $e')),
       );
     } finally {
@@ -387,7 +387,7 @@ class _IbkrGatewayPanelState extends State<IbkrGatewayPanel> {
                       Row(
                         mainAxisSize: MainAxisSize.min,
                         children: [
-                          const Text('Debug'),
+                          const Text('Show IB gateway screen'),
                           const SizedBox(width: 6),
                           Switch.adaptive(
                             value: _dbg,
@@ -417,99 +417,87 @@ class _IbkrGatewayPanelState extends State<IbkrGatewayPanel> {
             ),
           ),
 
-          const SizedBox(height: 8),
+          // ---- viewer (only rendered when enabled + reachable) ----
+          if (_showXpra) ...[
+            const SizedBox(height: 8),
+            SizedBox(
+              height: viewerHeight(context),
+              child: Stack(children: [
+                // solid background to prevent perceived color shift on scroll
+                Positioned.fill(child: Container(color: scheme.surface)),
+                const HtmlElementView(viewType: 'ibkr-xpra'),
 
-          // ---- viewer (hidden until enabled + reachable) ----
-          SizedBox(
-            height: viewerHeight(context),
-            child: _showXpra
-                ? Stack(children: [
-                    // solid background to prevent perceived color shift on scroll
-                    Positioned.fill(child: Container(color: scheme.surface)),
-                    const HtmlElementView(viewType: 'ibkr-xpra'),
-
-                    // top-right tiny controls
-                    Positioned(
-                      right: 8,
-                      top: 8,
-                      child: Row(children: [
-                        Tooltip(
-                          message: 'Reload',
-                          child: IconButton(
-                            onPressed: () => reload(bust: true),
-                            icon: const Icon(Icons.refresh, size: 20),
-                            style: ButtonStyle(
-                              backgroundColor: WidgetStateProperty.all(
-                                  const Color(0x66000000)),
-                              foregroundColor:
-                                  WidgetStateProperty.all(Colors.white),
-                            ),
-                          ),
+                // top-right tiny controls
+                Positioned(
+                  right: 8,
+                  top: 8,
+                  child: Row(children: [
+                    Tooltip(
+                      message: 'Reload',
+                      child: IconButton(
+                        onPressed: () => reload(bust: true),
+                        icon: const Icon(Icons.refresh, size: 20),
+                        style: ButtonStyle(
+                          backgroundColor:
+                              WidgetStateProperty.all(const Color(0x66000000)),
+                          foregroundColor:
+                              WidgetStateProperty.all(Colors.white),
                         ),
-                      ]),
+                      ),
                     ),
+                  ]),
+                ),
 
-                    // Gateway-down overlay with quick actions
-                    if (_showOverlay)
-                      Positioned.fill(
-                        child: Container(
-                          color: const Color(0xCC0E1526),
-                          child: Center(
-                            child: Column(
+                // Gateway-down overlay with quick actions
+                if (_showOverlay)
+                  Positioned.fill(
+                    child: Container(
+                      color: const Color(0xCC0E1526),
+                      child: Center(
+                        child: Column(
+                          mainAxisSize: MainAxisSize.min,
+                          children: [
+                            const Text(
+                              'IBKR Gateway is not reachable',
+                              style: TextStyle(
+                                  fontSize: 18, fontWeight: FontWeight.w700),
+                            ),
+                            const SizedBox(height: 8),
+                            const Text(
+                              'Start or restart the app, then this panel will load.',
+                              style: TextStyle(color: Colors.white70),
+                            ),
+                            const SizedBox(height: 16),
+                            Row(
                               mainAxisSize: MainAxisSize.min,
                               children: [
-                                const Text(
-                                  'IBKR Gateway is not reachable',
-                                  style: TextStyle(
-                                      fontSize: 18,
-                                      fontWeight: FontWeight.w700),
+                                FilledButton.icon(
+                                  onPressed: _starting ? null : _restartGateway,
+                                  icon: _starting
+                                      ? const SizedBox(
+                                          width: 16,
+                                          height: 16,
+                                          child: CircularProgressIndicator(
+                                              strokeWidth: 2))
+                                      : const Icon(Icons.power_settings_new),
+                                  label: const Text('Start / Restart Gateway'),
                                 ),
-                                const SizedBox(height: 8),
-                                const Text(
-                                  'Start or restart the app, then this panel will load.',
-                                  style: TextStyle(color: Colors.white70),
-                                ),
-                                const SizedBox(height: 16),
-                                Row(
-                                  mainAxisSize: MainAxisSize.min,
-                                  children: [
-                                    FilledButton.icon(
-                                      onPressed:
-                                          _starting ? null : _restartGateway,
-                                      icon: _starting
-                                          ? const SizedBox(
-                                              width: 16,
-                                              height: 16,
-                                              child: CircularProgressIndicator(
-                                                  strokeWidth: 2))
-                                          : const Icon(
-                                              Icons.power_settings_new),
-                                      label:
-                                          const Text('Start / Restart Gateway'),
-                                    ),
-                                    const SizedBox(width: 12),
-                                    OutlinedButton.icon(
-                                      onPressed: reload,
-                                      icon: const Icon(Icons.refresh),
-                                      label: const Text('Try Reload'),
-                                    ),
-                                  ],
+                                const SizedBox(width: 12),
+                                OutlinedButton.icon(
+                                  onPressed: reload,
+                                  icon: const Icon(Icons.refresh),
+                                  label: const Text('Try Reload'),
                                 ),
                               ],
                             ),
-                          ),
+                          ],
                         ),
                       ),
-                  ])
-                : Center(
-                    child: Text(
-                      _dbg
-                          ? 'Enabling viewer… waiting for Xpra to come online'
-                          : 'Viewer hidden. Enable “Debug Viewer (Xpra)” to show it here.',
-                      style: Theme.of(context).textTheme.bodyMedium,
                     ),
                   ),
-          ),
+              ]),
+            ),
+          ],
         ],
       ),
     );

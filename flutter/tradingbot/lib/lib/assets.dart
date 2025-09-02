@@ -23,6 +23,8 @@ class _AssetsPageState extends State<AssetsPage> {
   final Map<String, List<double>> _sparks = {}; // symbol -> 0..1 norm spark
   final Map<int, Map<String, num>> _pnl =
       {}; // conId -> {unrealized, realized, daily}
+  // cache of pretty names keyed by conId (fallback to symbol key)
+  final Map<String, String> _names = {};
   final _searchCtl = TextEditingController();
   StreamSubscription<Map<String, dynamic>>? _orderBusSub;
 
@@ -73,6 +75,8 @@ class _AssetsPageState extends State<AssetsPage> {
             symbol: s, conId: conId, secType: (m['secType'] ?? '').toString());
 
         if (conId != null && !_pnl.containsKey(conId)) _loadPnlSingle(conId);
+        // best-effort pretty name enrichment (once per row)
+        _ensurePrettyName(symbol: s, conId: conId);
       }
     } catch (_) {}
   }
@@ -123,6 +127,44 @@ class _AssetsPageState extends State<AssetsPage> {
             'daily': (d['daily'] as num?) ?? 0,
           });
     } catch (_) {}
+  }
+
+  // --- Pretty name enrichment for positions table --------------------------
+  static int _nameInflight = 0;
+  static const int _nameMax = 3;
+  Future<void> _ensurePrettyName({required String symbol, int? conId}) async {
+    final key = (conId != null ? 'CID:$conId' : 'SYM:$symbol');
+    if (symbol.isEmpty || _names.containsKey(key)) return;
+    try {
+      while (_nameInflight >= _nameMax) {
+        await Future.delayed(const Duration(milliseconds: 120));
+      }
+      _nameInflight++;
+      final list = await Api.ibkrSearch(symbol);
+      String? name;
+      if (conId != null) {
+        for (final e in list) {
+          final m = Map<String, dynamic>.from(e as Map);
+          final cid = (m['conId'] as num?)?.toInt();
+          if (cid != null && cid == conId) {
+            name = (m['name'] ?? m['description'] ?? '').toString();
+            break;
+          }
+        }
+      }
+      name ??= (() {
+        if (list.isEmpty) return null;
+        final m = Map<String, dynamic>.from(list.first as Map);
+        return (m['name'] ?? m['description'] ?? '').toString();
+      })();
+      if (name != null && name.trim().isNotEmpty && mounted) {
+        setState(() => _names[key] = name!.trim());
+      }
+    } catch (_) {
+      // ignore; leave blank
+    } finally {
+      _nameInflight = (_nameInflight - 1).clamp(0, _nameMax);
+    }
   }
 
   void _openLookup(String q) {
@@ -183,6 +225,7 @@ class _AssetsPageState extends State<AssetsPage> {
                   columns: const [
                     DataColumn(label: Text('Account')),
                     DataColumn(label: Text('Symbol')),
+                    DataColumn(label: Text('Name')),
                     DataColumn(label: Text('Type')),
                     DataColumn(label: Text('Price')),
                     DataColumn(label: Text('Qty')),
@@ -200,6 +243,8 @@ class _AssetsPageState extends State<AssetsPage> {
                     final conId = (m['conId'] as num?)?.toInt();
                     final spark = _sparks[sym] ?? const [];
                     final pn = conId != null ? _pnl[conId] : null;
+                    final nameKey = conId != null ? 'CID:$conId' : 'SYM:$sym';
+                    final pretty = _names[nameKey] ?? '';
 
                     return DataRow(cells: [
                       DataCell(Text(m['account']?.toString() ?? '')),
@@ -210,6 +255,13 @@ class _AssetsPageState extends State<AssetsPage> {
                           const SizedBox(width: 6),
                           const Icon(Icons.open_in_new, size: 14),
                         ]),
+                      )),
+                      DataCell(SizedBox(
+                        width: 260,
+                        child: Text(
+                          pretty.isEmpty ? '—' : pretty,
+                          overflow: TextOverflow.ellipsis,
+                        ),
                       )),
                       DataCell(Text(m['secType']?.toString() ?? '')),
                       DataCell(FutureBuilder<Map<String, dynamic>>(
@@ -240,7 +292,10 @@ class _AssetsPageState extends State<AssetsPage> {
                                   ? const Color(0xFF4CC38A)
                                   : const Color(0xFFEF4444)))),
                       DataCell(Text(m['currency']?.toString() ?? '')),
-                      DataCell(Text(m['exchange']?.toString() ?? '')),
+                      DataCell(Text(
+                        (m['primaryExchange'] ?? m['exchange'] ?? '')
+                            .toString(),
+                      )),
                       DataCell(SizedBox(
                           width: 120, height: 36, child: sparkLine(spark))),
                     ]);

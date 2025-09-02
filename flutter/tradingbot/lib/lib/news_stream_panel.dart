@@ -1,6 +1,7 @@
 import 'dart:async';
 import 'package:flutter/material.dart';
 import 'news_api.dart';
+import 'ai_placeholder.dart'; // <- AI placeholder facade
 
 class NewsStreamPanel extends StatefulWidget {
   const NewsStreamPanel({
@@ -31,6 +32,11 @@ class _NewsStreamPanelState extends State<NewsStreamPanel> {
   bool streaming = false;
   String status = 'idle';
   DateTime? lastHeadlineAt;
+
+  // ---------- AI Placeholder state ----------
+  final TextEditingController _aiPromptCtl = TextEditingController();
+  bool _aiBusy = false;
+  String _aiOut = '';
 
   // ---------- Auto-trade settings ----------
   bool autoTradeEnabled = false;
@@ -349,6 +355,81 @@ class _NewsStreamPanelState extends State<NewsStreamPanel> {
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
+          // ---------- AI Placeholder (uses /api/openai/test via AIPipeline.ping) ----------
+          Card(
+            elevation: 0,
+            color: scheme.surface.withValues(alpha: .6),
+            shape:
+                RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
+            child: Padding(
+              padding: const EdgeInsets.all(12),
+              child: Column(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  Row(
+                    children: [
+                      const Icon(Icons.smart_toy, size: 18),
+                      const SizedBox(width: 8),
+                      const Text('AI (placeholder)'),
+                      const Spacer(),
+                      if (_aiBusy)
+                        const SizedBox(
+                          width: 18,
+                          height: 18,
+                          child: CircularProgressIndicator(strokeWidth: 2),
+                        ),
+                    ],
+                  ),
+                  const SizedBox(height: 8),
+                  Row(
+                    children: [
+                      Expanded(
+                        child: TextField(
+                          controller: _aiPromptCtl,
+                          decoration: const InputDecoration(
+                            hintText:
+                                'Ask AI about a symbol or headline (placeholder uses /api/openai/test)',
+                            filled: true,
+                          ),
+                          onSubmitted: (_) => _aiAsk(),
+                        ),
+                      ),
+                      const SizedBox(width: 8),
+                      FilledButton.icon(
+                        onPressed: _aiBusy ? null : _aiAsk,
+                        icon: const Icon(Icons.send),
+                        label: const Text('Ask AI'),
+                      ),
+                      const SizedBox(width: 8),
+                      OutlinedButton(
+                        onPressed: _aiBusy ? null : _aiSummarizeWatchlist,
+                        child: const Text('Summarize Watchlist'),
+                      ),
+                    ],
+                  ),
+                  if (_aiOut.isNotEmpty) ...[
+                    const SizedBox(height: 8),
+                    Container(
+                      width: double.infinity,
+                      padding: const EdgeInsets.all(10),
+                      decoration: BoxDecoration(
+                        color: scheme.surface.withValues(alpha: .35),
+                        borderRadius: BorderRadius.circular(8),
+                        border: Border.all(
+                            color: Colors.white.withValues(alpha: .06)),
+                      ),
+                      child: SelectableText(
+                        _aiOut,
+                        style: const TextStyle(fontSize: 13.5, height: 1.25),
+                      ),
+                    ),
+                  ],
+                ],
+              ),
+            ),
+          ),
+          const SizedBox(height: 8),
+
           // Header / controls
           Row(
             children: [
@@ -594,5 +675,45 @@ class _NewsStreamPanelState extends State<NewsStreamPanel> {
         ],
       ),
     );
+  }
+
+  // ---------- AI Placeholder actions ----------
+  Future<void> _aiAsk() async {
+    final prompt = _aiPromptCtl.text.trim();
+    if (prompt.isEmpty) return;
+    setState(() {
+      _aiBusy = true;
+      _aiOut = '';
+    });
+    try {
+      final reply = await AIPipeline.ping(prompt);
+      if (!mounted) return;
+      setState(() => _aiOut = reply);
+    } catch (e) {
+      if (!mounted) return;
+      setState(() => _aiOut = 'Error: $e');
+    } finally {
+      if (mounted) setState(() => _aiBusy = false);
+    }
+  }
+
+  Future<void> _aiSummarizeWatchlist() async {
+    final wl =
+        watchSymbols.isEmpty ? '(empty watchlist)' : watchSymbols.join(', ');
+    setState(() {
+      _aiBusy = true;
+      _aiOut = '';
+    });
+    try {
+      // Placeholder prompt; later point this to a real /api/openai/analyze endpoint.
+      final reply = await AIPipeline.ping('summarize watchlist: $wl');
+      if (!mounted) return;
+      setState(() => _aiOut = reply);
+    } catch (e) {
+      if (!mounted) return;
+      setState(() => _aiOut = 'Error: $e');
+    } finally {
+      if (mounted) setState(() => _aiBusy = false);
+    }
   }
 }

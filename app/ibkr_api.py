@@ -247,6 +247,47 @@ async def _collect_from_matching_symbols(syms, qualify_limit: int = 12) -> list[
             r["exchange"] = r["exchange"] or "SMART"
     return out
 
+async def _enrich_names_with_details(rows: list[dict], maxn: int = 6) -> None:
+    """
+    For rows that have a conId but a weak name (== symbol or empty),
+    fetch ContractDetails and fill 'name' from longName/description.
+    Mutates rows in place. Best-effort and bounded by maxn.
+    """
+    # Pick a handful of conIds that look like they need a better name
+    need: list[int] = []
+    for r in rows:
+        cid = r.get("conId")
+        if not cid:
+            continue
+        nm = (r.get("name") or "").strip()
+        sym = (r.get("symbol") or "").strip()
+        if (not nm) or (nm.upper() == sym.upper()):
+            need.append(int(cid))
+            if len(need) >= maxn:
+                break
+    if not need:
+        return
+    try:
+        await _ensure_connected()
+    except Exception:
+        return
+    for cid in need:
+        try:
+            cds = await ib.reqContractDetailsAsync(Contract(conId=int(cid)))
+            if not cds:
+                continue
+            cd = cds[0]
+            long_name = getattr(cd, "longName", None) or getattr(cd, "description", None)
+            prim_exch = getattr(cd.contract, "primaryExchange", None) or getattr(cd.contract, "exchange", None)
+            for r in rows:
+                if r.get("conId") == cid:
+                    if long_name and ((r.get("name") or "").strip().upper() in ("", (r.get("symbol") or "").strip().upper())):
+                        r["name"] = long_name
+                    if prim_exch and not r.get("primaryExchange"):
+                        r["primaryExchange"] = prim_exch
+        except Exception:
+            continue
+
 async def _match_batch(terms: list[str], per_timeout: float = 3.5, overall_timeout: float = 6.5, max_conc: int = 3) -> list[dict]:
     """
     Run reqMatchingSymbols over several variants with bounded concurrency and a global timeout.
@@ -1184,6 +1225,18 @@ async def search(q: str | None = Query(None), query: str | None = Query(None)):
     # Soft-rank: prefer rows whose 'name' contains the term (case-insensitive)
     tl = term.lower()
     uniq.sort(key=lambda r: 0 if tl in (r.get("name","") or "").lower() else 1)
+
+    # If we have any *real* IB rows at all, drop every heuristic row (conId == None).
+    # This removes fake USD/SMART placeholders like the FUGRO row when a real FUR exists.
+    if any(r.get("conId") for r in uniq):
+        uniq = [r for r in uniq if r.get("conId")]
+
+    # Enrich a few names (e.g., turn "FUR" -> "Fugro N.V.", "GOOGL" -> "Alphabet Inc. Class A")
+    if online and uniq:
+        try:
+            await _enrich_names_with_details(uniq, maxn=6)
+        except Exception:
+            pass
 
     # Fallback: try direct resolve if nothing matched online (AAPL/EURUSD)
     if online and not uniq:

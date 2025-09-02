@@ -17,6 +17,7 @@ Environment:
 
 from __future__ import annotations
 import os, json, time, typing as T
+from pathlib import Path   # ← REQUIRED
 from dataclasses import dataclass
 import requests
 from bs4 import BeautifulSoup

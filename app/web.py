@@ -164,6 +164,8 @@ def openai_test(body: dict = Body(default={})):
         from . import openai as ai
         # ensure runtime settings are applied
         ai.apply_runtime_settings()
+        if not os.environ.get("OPENAI_API_KEY"):
+            raise HTTPException(400, "OpenAI API key not set. Save it in Settings first.")
         txt, usage = ai.test_openai(prompt=body.get("prompt") or "ping")
         return {"ok": True, "reply": txt, "usage": usage}
     except Exception as e:

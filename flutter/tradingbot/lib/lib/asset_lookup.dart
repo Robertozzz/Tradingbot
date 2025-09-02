@@ -66,8 +66,13 @@ class _AssetLookupSheetState extends State<AssetLookupSheet> {
       final out = <Map<String, dynamic>>[
         for (final e in list) Map<String, dynamic>.from(e as Map)
       ];
+      // Prefer "real" IB rows: if any have conId, hide heuristic rows (conId == null).
+      final hasReal = out.any((m) => (m['conId'] as num?) != null);
+      final filtered = hasReal
+          ? out.where((m) => (m['conId'] as num?) != null).toList()
+          : out;
       setState(() {
-        _rows = out.take(30).toList();
+        _rows = filtered.take(30).toList();
         _loading = false;
         _maybeIbkrOffline = _rows.isEmpty;
       });
@@ -201,32 +206,38 @@ class _AssetLookupSheetState extends State<AssetLookupSheet> {
                               final cid = (r['conId'] as num?);
                               final key = cid != null ? cid.toString() : sym;
                               final spark = _sparks[key] ?? const [];
-                              return DataRow(cells: [
-                                DataCell(Text(sym)),
-                                DataCell(SizedBox(
-                                    width: 240,
-                                    child: Text(
-                                        (r['name'] ?? r['description'] ?? '')
-                                            .toString(),
-                                        overflow: TextOverflow.ellipsis))),
-                                DataCell(Text((r['secType'] ?? '').toString())),
-                                DataCell(
-                                  Text((r['primaryExchange'] ??
-                                          r['exchange'] ??
-                                          '')
-                                      .toString()),
-                                ),
-                                DataCell(
-                                    Text((r['currency'] ?? '').toString())),
-                                DataCell(SizedBox(
-                                    width: 120,
-                                    height: 36,
-                                    child: sparkLine(spark))),
-                                DataCell(FilledButton(
-                                  onPressed: () => widget.onSelect(r),
-                                  child: const Text('Open'),
-                                )),
-                              ]);
+                              return DataRow(
+                                  onSelectChanged: (_) =>
+                                      widget.onSelect(r), // make row clickable
+                                  cells: [
+                                    DataCell(Text(sym)),
+                                    DataCell(SizedBox(
+                                        width: 240,
+                                        child: Text(
+                                            (r['name'] ??
+                                                    r['description'] ??
+                                                    '')
+                                                .toString(),
+                                            overflow: TextOverflow.ellipsis))),
+                                    DataCell(
+                                        Text((r['secType'] ?? '').toString())),
+                                    DataCell(
+                                      Text((r['primaryExchange'] ??
+                                              r['exchange'] ??
+                                              '')
+                                          .toString()),
+                                    ),
+                                    DataCell(
+                                        Text((r['currency'] ?? '').toString())),
+                                    DataCell(SizedBox(
+                                        width: 120,
+                                        height: 36,
+                                        child: sparkLine(spark))),
+                                    DataCell(FilledButton(
+                                      onPressed: () => widget.onSelect(r),
+                                      child: const Text('Open'),
+                                    )),
+                                  ]);
                             }).toList(),
                           ),
                         ),

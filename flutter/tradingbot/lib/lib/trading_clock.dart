@@ -1784,7 +1784,7 @@ class TapeClockCentered extends StatefulWidget {
     this.displayTzName,
     this.height = 160,
     this.padding = const EdgeInsets.symmetric(horizontal: 16, vertical: 12),
-    this.infoGutter = 600,
+    this.infoGutter = 1000,
     this.snapBackDelay = const Duration(seconds: 2),
     this.snapDuration = const Duration(milliseconds: 800),
     this.autoHeight = false,
