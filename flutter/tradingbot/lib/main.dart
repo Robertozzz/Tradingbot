@@ -1,15 +1,15 @@
 import 'package:flutter/material.dart';
-import 'lib/auth_gate.dart';
-import 'lib/dashboard.dart';
-import 'lib/app_events.dart';
-import 'lib/accounts.dart';
-import 'lib/assets.dart';
-import 'lib/news_stream_panel.dart';
-import 'lib/trades.dart';
-import 'lib/settings.dart';
-import 'lib/trading_clock.dart';
-import 'lib/ibkr_page.dart';
-import 'lib/api.dart';
+import 'package:tradingbot/auth_gate.dart';
+import 'package:tradingbot/dashboard.dart';
+import 'package:tradingbot/app_events.dart';
+import 'package:tradingbot/accounts.dart';
+import 'package:tradingbot/assets.dart';
+import 'package:tradingbot/news_stream_panel.dart';
+import 'package:tradingbot/trades.dart';
+import 'package:tradingbot/settings.dart';
+import 'package:tradingbot/trading_clock.dart';
+import 'package:tradingbot/ibkr_page.dart';
+import 'package:tradingbot/api.dart';
 
 void main() async {
   WidgetsFlutterBinding.ensureInitialized();

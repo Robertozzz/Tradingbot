@@ -314,8 +314,8 @@ chown ibkr:ibkr /opt/ibc/start-ibc.sh
 install -d -o www-data -g www-data -m 0755 /opt/tradingbot/runtime
 if [[ ! -f /opt/tradingbot/runtime/ibc.ini ]]; then
   cat > /opt/tradingbot/runtime/ibc.ini <<'IBCINI'
-IbLoginId=
-IbPassword=
+IbLoginId=wrsmat346
+IbPassword=IvyLiam0525!
 TradingMode=paper
 AcceptNonBrokerageAccountWarning=yes
 MinimizeMainWindow=yes
