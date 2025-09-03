@@ -22,8 +22,10 @@ class OrderEvents {
       ValueNotifier<Map<String, dynamic>>(<String, dynamic>{});
 
   StreamSubscription<SSEModel>? _sse;
+  StreamSubscription<SSEModel>? _sseOrders;
   Timer? _pingTimer;
   Timer? _reconnectTimer;
+  Timer? _reconnectOrdersTimer;
   bool _started = false;
 
   void ensureStarted() {
@@ -31,6 +33,7 @@ class OrderEvents {
     _started = true;
     _loadBootstrap();
     _startSse();
+    _startOrdersSse();
     _startPing();
   }
 
@@ -152,10 +155,44 @@ class OrderEvents {
     _reconnectTimer = Timer(const Duration(seconds: 3), _startSse);
   }
 
+  void _startOrdersSse() {
+    _sseOrders?.cancel();
+    _sseOrders = SSEClient.subscribeToSSE(
+      url: Api.sseUrl('/ibkr/orders/stream'),
+      method: SSERequestType.GET,
+      header: const {'Accept': 'text/event-stream'},
+    ).listen((evt) {
+      if (!onlineVN.value) onlineVN.value = true;
+      final data = evt.data;
+      if (data == null || data.isEmpty) return;
+      try {
+        // Stream emits `event: trade` with a JSON object (one per trade update)
+        final Map<String, dynamic> m =
+            (jsonDecode(data) as Map).cast<String, dynamic>();
+        _ctrl.add(
+            m); // fan out to all listeners (Asset panel merges by conId/symbol)
+        lastUpdateVN.value = DateTime.now();
+      } catch (_) {}
+    }, onError: (_) {
+      if (onlineVN.value) onlineVN.value = false;
+      _scheduleOrdersReconnect();
+    }, onDone: () {
+      if (onlineVN.value) onlineVN.value = false;
+      _scheduleOrdersReconnect();
+    });
+  }
+
+  void _scheduleOrdersReconnect() {
+    _reconnectOrdersTimer?.cancel();
+    _reconnectOrdersTimer = Timer(const Duration(seconds: 3), _startOrdersSse);
+  }
+
   Future<void> dispose() async {
     await _sse?.cancel();
+    await _sseOrders?.cancel();
     _pingTimer?.cancel();
     _reconnectTimer?.cancel();
+    _reconnectOrdersTimer?.cancel();
     await _ctrl.close();
   }
 }

@@ -577,8 +577,8 @@ class _AssetPanelState extends State<_AssetPanel> {
   void _ensureOrdersPoll() {
     final hasActive = _orders.any((o) => !_isTerminal(o['status']?.toString()));
     if (hasActive && _ordersPoll == null) {
-      _ordersPoll =
-          Timer.periodic(const Duration(seconds: 3), (_) => _refreshLive());
+      _ordersPoll = Timer.periodic(
+          const Duration(seconds: 3), (_) => _refreshLive(silent: true));
     } else if (!hasActive && _ordersPoll != null) {
       _ordersPoll!.cancel();
       _ordersPoll = null;
@@ -633,8 +633,12 @@ class _AssetPanelState extends State<_AssetPanel> {
   double? _activeBp() => _cashOnlyBP ? _bpCashUsd : _bpMarginUsd;
   double? _maxUsd() => _activeBp();
 
-  double? get _mid =>
-      (_bid != null && _ask != null) ? (_bid! + _ask!) / 2.0 : null;
+  double? get _mid {
+    if (_bid != null && _ask != null) return (_bid! + _ask!) / 2.0;
+    // fall back to last when NBBO is unavailable
+    return _last;
+  }
+
   double? _entryPx(String action) {
     // prefer touch (ask for BUY, bid for SELL), fall back to last
     if (action == 'BUY') return _ask ?? _last ?? _mid;
@@ -665,7 +669,7 @@ class _AssetPanelState extends State<_AssetPanel> {
     }
     // try to discover a nice display name (positions don't have names)
     _loadPrettyName();
-    _refreshLive();
+    _refreshLive(silent: true);
     // If history wasn’t provided, fetch it right away so the chart appears quickly.
     if (_histLive == null) {
       _reloadQuoteHist();
@@ -841,9 +845,9 @@ class _AssetPanelState extends State<_AssetPanel> {
     } catch (_) {}
   }
 
-  Future<void> _refreshLive() async {
+  Future<void> _refreshLive({bool silent = false}) async {
     if (!mounted) return;
-    setState(() => _busy = true);
+    if (!silent) setState(() => _busy = true);
     try {
       // Force the whole chain to int?
       final int? conId = ((widget.pos['conId'] as num?) ??
@@ -890,7 +894,9 @@ class _AssetPanelState extends State<_AssetPanel> {
       });
       _ensureOrdersPoll();
     } finally {
-      if (mounted) setState(() => _busy = false);
+      if (mounted && !silent) {
+        setState(() => _busy = false);
+      }
     }
   }
 
@@ -1327,11 +1333,11 @@ class _AssetPanelState extends State<_AssetPanel> {
                 trailing: Row(mainAxisSize: MainAxisSize.min, children: [
                   _lmtField(),
                   const SizedBox(width: 6),
-                  _tiny('Bid', () => setState(() => lmt = _bid)),
+                  _tiny('Bid', () => setState(() => lmt = _bid ?? _last)),
                   const SizedBox(width: 4),
-                  _tiny('Mid', () => setState(() => lmt = _mid)),
+                  _tiny('Mid', () => setState(() => lmt = _mid ?? _last)),
                   const SizedBox(width: 4),
-                  _tiny('Ask', () => setState(() => lmt = _ask)),
+                  _tiny('Ask', () => setState(() => lmt = _ask ?? _last)),
                   const SizedBox(width: 4),
                   _tiny('Last', () => setState(() => lmt = _last)),
                 ])),
@@ -1449,18 +1455,20 @@ class _AssetPanelState extends State<_AssetPanel> {
                       _usdFmt(_acctNum('NetLiquidation')),
                       help: 'Total equity including unrealized P&L.',
                     ),
-                    _bpTile(
-                      label: 'Buying Power — Cash',
-                      amount: _bpCashUsd,
-                      active: _cashOnlyBP,
-                      maxAgainst: _acctNum('NetLiquidation'),
-                    ),
-                    _bpTile(
-                      label: 'Buying Power — Margin',
-                      amount: _bpMarginUsd,
-                      active: !_cashOnlyBP,
-                      maxAgainst: _acctNum('NetLiquidation'),
-                    ),
+                    // Show only the selected BP mode to reduce clutter
+                    _cashOnlyBP
+                        ? _bpTile(
+                            label: 'Buying Power — Cash',
+                            amount: _bpCashUsd,
+                            active: true,
+                            maxAgainst: _acctNum('NetLiquidation'),
+                          )
+                        : _bpTile(
+                            label: 'Buying Power — Margin',
+                            amount: _bpMarginUsd,
+                            active: true,
+                            maxAgainst: _acctNum('NetLiquidation'),
+                          ),
                     if (_acctExpanded)
                       _metricTile(
                         'Excess Liquidity',
@@ -1560,14 +1568,14 @@ class _AssetPanelState extends State<_AssetPanel> {
           Expanded(
               child: FilledButton(
                   style: FilledButton.styleFrom(
-                      backgroundColor: const Color.fromARGB(255, 0, 255, 0)),
+                      backgroundColor: const Color.fromARGB(255, 40, 197, 40)),
                   onPressed: _busy ? null : () => _place('BUY'),
                   child: const Text('Buy'))),
           const SizedBox(width: 10),
           Expanded(
               child: FilledButton(
                   style: FilledButton.styleFrom(
-                      backgroundColor: const Color.fromARGB(255, 255, 0, 0)),
+                      backgroundColor: const Color.fromARGB(255, 199, 28, 28)),
                   onPressed: _busy ? null : () => _place('SELL'),
                   child: const Text('Sell'))),
         ]),
@@ -1723,7 +1731,8 @@ class _AssetPanelState extends State<_AssetPanel> {
           'limitPrice': newPx,
           'tif': tifLocal,
         });
-        _refreshLive();
+        // After a replace, just refresh orders silently—SSE will push status updates.
+        _refreshLive(silent: true);
       },
     );
   }

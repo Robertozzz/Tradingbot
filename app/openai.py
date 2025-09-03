@@ -20,8 +20,8 @@ import os, json, time, typing as T
 from pathlib import Path   # ← REQUIRED
 from dataclasses import dataclass
 import requests
-from bs4 import BeautifulSoup
-from openai import OpenAI
+from bs4 import BeautifulSoup # type: ignore
+from openai import OpenAI # type: ignore
 
 # =========================
 # Config
