@@ -17,8 +17,19 @@ class Api {
     return Uri.parse('$root$p');
   }
 
+  /// Absolute URL for SSE endpoints when a package needs a string.
+  static String sseUrl(String path) {
+    final p = path.startsWith('/') ? path : '/$path';
+    if (baseUrl.isEmpty) return p; // relative
+    final root = baseUrl.endsWith('/')
+        ? baseUrl.substring(0, baseUrl.length - 1)
+        : baseUrl;
+    return '$root$p';
+  }
+
   static Future<Map<String, dynamic>> _getObj(String path) async {
-    final r = await http.get(_uri(path));
+    final r =
+        await http.get(_uri(path), headers: {'Accept': 'application/json'});
     if (r.statusCode != 200) {
       throw Exception(
           'GET $path -> ${r.statusCode} ${r.reasonPhrase ?? ''} ${r.body}');
@@ -28,8 +39,12 @@ class Api {
     return d;
   }
 
+  // --- Cache-first UI bootstrap (served by web.py from runtime/state.json) ---
+  static Future<Map<String, dynamic>> bootstrap() => _getObj('/api/bootstrap');
+
   static Future<List<dynamic>> _getList(String path) async {
-    final r = await http.get(_uri(path));
+    final r =
+        await http.get(_uri(path), headers: {'Accept': 'application/json'});
     if (r.statusCode != 200) {
       throw Exception(
           'GET $path -> ${r.statusCode} ${r.reasonPhrase ?? ''} ${r.body}');

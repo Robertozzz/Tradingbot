@@ -17,7 +17,6 @@ class AssetsPage extends StatefulWidget {
 }
 
 class _AssetsPageState extends State<AssetsPage> {
-  Timer? timer;
   final fMoney = NumberFormat.currency(symbol: '\$');
   // lighter: final fMoney = NumberFormat.compactCurrency(symbol: '\$');
   List<Map<String, dynamic>> _ibkrPos = const [];
@@ -28,58 +27,73 @@ class _AssetsPageState extends State<AssetsPage> {
   final Map<String, String> _names = {};
   final _searchCtl = TextEditingController();
   StreamSubscription<Map<String, dynamic>>? _orderBusSub;
+  VoidCallback? _snapListen;
 
   @override
   void initState() {
     super.initState();
-
-    _loadIbkr();
-    timer = Timer.periodic(const Duration(seconds: 20), (_) {
-      _loadIbkr();
-    });
-    // System-wide refresh whenever any order status changes anywhere.
+    // Ensure the global event bus is running (bootstrap + SSE).
+    OrderEvents.instance.ensureStarted();
+    // Seed from the current snapshot immediately (instant paint),
+    // then keep it in sync via listener.
+    _applySnapshot(OrderEvents.instance.snapshotVN.value);
+    _snapListen = () {
+      _applySnapshot(OrderEvents.instance.snapshotVN.value);
+    };
+    OrderEvents.instance.snapshotVN.addListener(_snapListen!);
+    // When orders stream in (e.g., fills), we *optionally* do targeted refreshes
+    // like P&L per-conId. We no longer re-pull the entire positions table here.
     _orderBusSub = OrderEvents.instance.stream.listen((event) {
-      // Heuristic: only refresh when meaningful status transitions arrive.
-      final st = (event['status'] ?? event['parentStatus'] ?? '').toString();
-      if (st.isNotEmpty) {
-        _loadIbkr(); // refresh positions, sparks, and per-conId P&L
+      final conId = (event['conId'] as num?)?.toInt();
+      if (conId != null && !_pnl.containsKey(conId)) {
+        _loadPnlSingle(conId);
       }
-    }, onError: (_) {
-      // ignore bus errors
-    });
+    }, onError: (_) {});
   }
 
   @override
   void dispose() {
-    timer?.cancel();
     try {
       _orderBusSub?.cancel();
     } catch (_) {}
+    if (_snapListen != null) {
+      OrderEvents.instance.snapshotVN.removeListener(_snapListen!);
+    }
     super.dispose();
   }
 
-  Future<void> _loadIbkr() async {
-    try {
-      final rows = await Api.ibkrPositions();
-      final list = rows
-          .map<Map<String, dynamic>>((e) => Map<String, dynamic>.from(e as Map))
-          .toList();
-      setState(() {
-        _ibkrPos = list;
-      });
-      // fetch tiny history for sparks (best-effort)
-      for (final m in list) {
-        final s = (m['symbol'] ?? '').toString();
-        final conId = (m['conId'] as num?)?.toInt();
-        if (s.isEmpty || _sparks.containsKey(s)) continue;
-        _loadSpark(
-            symbol: s, conId: conId, secType: (m['secType'] ?? '').toString());
-
-        if (conId != null && !_pnl.containsKey(conId)) _loadPnlSingle(conId);
-        // best-effort pretty name enrichment (once per row)
+  void _applySnapshot(Map<String, dynamic> snap) {
+    if (!mounted) return;
+    // Prefer 'positions' if present in snapshot; otherwise keep current list.
+    final pos = (snap['positions'] as List?) ?? const [];
+    final sparks = (snap['sparks'] as Map?) ?? const {};
+    final list = pos
+        .map<Map<String, dynamic>>((e) => Map<String, dynamic>.from(e as Map))
+        .toList();
+    setState(() {
+      if (pos.isNotEmpty) _ibkrPos = list;
+      // Merge spark arrays from snapshot (normalized 0..1)
+      for (final entry in sparks.entries) {
+        final k = entry.key.toString();
+        final v = (entry.value as List?)
+                ?.map((x) => (x as num).toDouble())
+                .toList() ??
+            const <double>[];
+        _sparks[k] = v;
+      }
+    });
+    // Enrich names lazily
+    for (final m in list) {
+      final s = (m['symbol'] ?? '').toString();
+      final conId = (m['conId'] as num?)?.toInt();
+      if (s.isEmpty) continue;
+      if (!_names.containsKey(conId != null ? 'CID:$conId' : 'SYM:$s')) {
         _ensurePrettyName(symbol: s, conId: conId);
       }
-    } catch (_) {}
+      if (conId != null && !_pnl.containsKey(conId)) {
+        _loadPnlSingle(conId);
+      }
+    }
   }
 
   // add a small throttle like in lookup if you have lots of positions

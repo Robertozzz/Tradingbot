@@ -9,6 +9,7 @@ from fastapi.responses import FileResponse, JSONResponse, StreamingResponse
 from fastapi import Body
 from pydantic import BaseModel
 from typing import Optional, List
+import hashlib
 
 mimetypes.init()
 mimetypes.add_type("text/javascript", ".mjs")
@@ -292,24 +293,101 @@ def logs_tail(name: str, bytes: int = 4000):
         text = ""
     return {"name": name, "exists": True, "tail": text, "size": size, "truncated": start > 0}
 
-# ---- SSE: push status.json changes (optional; polling also works) ----
-@app.get("/system/stream")
-async def system_stream():
-    async def event_gen():
-        rt = _runtime_dir()
-        status = rt / "status.json"
-        last_mtime = 0.0
+# === SNAPSHOT + STREAM for fast first paint & live updates ===============
+
+def _state_path() -> Path:
+    """Single source of truth on disk for the UI snapshot."""
+    rt = _runtime_dir()
+    return rt / "state.json"  # maintained by your IBKR/engine process
+
+def _read_state_text() -> tuple[str, float, str]:
+    """
+    Returns (text, mtime, etag_hex). If file missing, '{}' with generated etag.
+    """
+    fp = _state_path()
+    try:
+        raw = fp.read_bytes()
+        mtime = fp.stat().st_mtime
+        etag = hashlib.sha1(raw).hexdigest()
+        return raw.decode("utf-8", errors="replace"), mtime, etag
+    except FileNotFoundError:
+        raw = b"{}"
+        mtime = time.time()
+        etag = hashlib.sha1(raw).hexdigest()
+        return "{}", mtime, etag
+
+@app.get("/api/bootstrap")
+def bootstrap(request: Request):
+    """
+    Serve the last-known-good UI state with strong caching (ETag/Last-Modified).
+    This endpoint NEVER calls IBKR; it only reads the persisted snapshot.
+    """
+    text, mtime, etag = _read_state_text()
+
+    # Conditional requests
+    inm = request.headers.get("If-None-Match")
+    ims = request.headers.get("If-Modified-Since")
+    lm_http = time.strftime("%a, %d %b %Y %H:%M:%S GMT", time.gmtime(mtime))
+
+    if inm and inm.strip('"') == etag:
+        return JSONResponse(status_code=304, content=None, headers={
+            "ETag": f"\"{etag}\"",
+            "Last-Modified": lm_http,
+            "Cache-Control": "max-age=5, must-revalidate",
+        })
+    if ims:
+        try:
+            ims_ts = time.mktime(time.strptime(ims, "%a, %d %b %Y %H:%M:%S GMT"))
+            if int(ims_ts) >= int(mtime):
+                return JSONResponse(status_code=304, content=None, headers={
+                    "ETag": f"\"{etag}\"",
+                    "Last-Modified": lm_http,
+                    "Cache-Control": "max-age=5, must-revalidate",
+                })
+        except Exception:
+            pass
+
+    # Normal 200 with body
+    return JSONResponse(
+        content=json.loads(text or "{}"),
+        headers={
+            "ETag": f"\"{etag}\"",
+            "Last-Modified": lm_http,
+            "Cache-Control": "max-age=5, must-revalidate",
+        },
+    )
+
+@app.get("/sse/updates")
+async def sse_updates():
+    """
+    Single SSE stream for the UI. Emits:
+      event: snapshot
+      data: <contents of state.json>
+    whenever runtime/state.json changes. Also sends a heartbeat every 15s.
+    """
+    async def gen():
+        last_mtime = -1.0
+        last_beat = 0.0
         while True:
             try:
-                m = status.stat().st_mtime
+                fp = _state_path()
+                m = fp.stat().st_mtime
                 if m != last_mtime:
                     last_mtime = m
-                    payload = status.read_text(encoding="utf-8")
-                    yield f"event: status\ndata: {payload}\n\n"
+                    payload = fp.read_text(encoding="utf-8")
+                    yield f"event: snapshot\ndata: {payload}\n\n"
             except FileNotFoundError:
-                yield "event: status\ndata: {}\n\n"
+                # Emit empty snapshot once until a file appears
+                if last_mtime != 0:
+                    last_mtime = 0
+                    yield "event: snapshot\ndata: {}\n\n"
+            # heartbeat
+            now = time.time()
+            if now - last_beat > 15:
+                last_beat = now
+                yield "event: hb\ndata: {}\n\n"
             await asyncio.sleep(1.0)
-    return StreamingResponse(event_gen(), media_type="text/event-stream")
+    return StreamingResponse(gen(), media_type="text/event-stream")
 
 # (optional) mount /exports for quick inspection
 for _p in [
