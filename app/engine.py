@@ -8,6 +8,8 @@ from datetime import datetime
 from pathlib import Path
 from typing import Any, Dict, List
 import os
+import http.client
+from urllib.parse import urlparse
 
 from sqlalchemy import select
 from sqlalchemy.orm import selectinload
@@ -37,6 +39,8 @@ RUNTIME = Path("./runtime")
 RUNTIME.mkdir(parents=True, exist_ok=True)
 STATE_FP = RUNTIME / "state.json"
 STATUS_FP = RUNTIME / "status.json"   # optional: written by your watchdog/IBKR process
+CACHE_DIR = RUNTIME / "cache"
+CACHE_DIR.mkdir(parents=True, exist_ok=True)
 
 def _write_atomic(fp: Path, text: str) -> None:
     """Atomic write: prevents readers from seeing partial files."""
@@ -168,6 +172,127 @@ async def export_assets(session) -> None:
         pass
     return rows
 
+def _read_json_file(fp: Path, default):
+    try:
+        if fp.exists():
+            return json.loads(fp.read_text(encoding="utf-8"))
+    except Exception:
+        pass
+    return default
+
+def _http_json_get(url: str, timeout: float = 2.5):
+    """
+    Tiny, dependency-free GET for localhost-only fallbacks.
+    Returns parsed JSON or None on failure.
+    """
+    try:
+        u = urlparse(url)
+        conn = http.client.HTTPConnection(u.hostname or "127.0.0.1", u.port or 80, timeout=timeout)
+        path = u.path + (("?" + u.query) if u.query else "")
+        conn.request("GET", path, headers={"Accept": "application/json"})
+        resp = conn.getresponse()
+        if resp.status != 200:
+            return None
+        body = resp.read()
+        return json.loads(body.decode("utf-8"))
+    except Exception:
+        return None
+    finally:
+        try:
+            conn.close()
+        except Exception:
+            pass
+
+async def export_positions() -> List[Dict[str, Any]]:
+    """
+    Prefer the IBKR API cache (runtime/cache/positions.json) to avoid any
+    hard dependency or blocking. If missing/stale, try a quick local HTTP hit.
+    Always write exports/positions.json for inspection and return a list.
+    """
+    # 1) Read cached positions dumped by ibkr_api.py
+    cached = _read_json_file(CACHE_DIR / "positions.json", default=None)
+    rows: List[Dict[str, Any]] = []
+    if isinstance(cached, list):
+        rows = [dict(r) for r in cached]
+    # 2) If no cache, attempt a quick localhost fetch (best-effort)
+    if not rows:
+        api_base = os.getenv("TB_API_BASE", "http://127.0.0.1:8000")
+        fresh = _http_json_get(f"{api_base}/ibkr/positions", timeout=2.5)
+        if isinstance(fresh, list):
+            rows = [dict(r) for r in fresh]
+    # Normalize fields, compute USD notionals and summaries
+    total_positions = len(rows)
+    by_ccy: Dict[str, int] = {}
+    usd_by_ccy: Dict[str, float] = {}
+    grand_usd = 0.0
+    for r in rows:
+        try:
+            r["symbol"] = (r.get("symbol") or "").upper()
+            r["secType"] = (r.get("secType") or "").upper()
+            r["currency"] = (r.get("currency") or "USD").upper()
+            r["exchange"] = (r.get("exchange") or r.get("primaryExchange") or "SMART")
+            # sanitize numerics
+            pos = r.get("position")
+            r["position"] = float(pos) if pos is not None else 0.0
+            avg = r.get("avgCost")
+            r["avgCost"] = float(avg) if avg is not None else 0.0
+            # simple notional in account currency (only reliable when currency == USD)
+            usd = r["position"] * r["avgCost"] if r["currency"] == "USD" else 0.0
+            r["usd"] = usd
+            by_ccy[r["currency"]] = by_ccy.get(r["currency"], 0) + 1
+            if r["currency"] == "USD":
+                usd_by_ccy["USD"] = usd_by_ccy.get("USD", 0.0) + usd
+                grand_usd += usd
+        except Exception:
+            continue
+    # 3) Persist a pretty export for humans
+    try:
+        (EXPORTS / "positions.json").write_text(json.dumps({"positions": rows}, indent=2), encoding="utf-8")
+    except Exception:
+        pass
+    # 3b) Rolling snapshot for time-based trends/sparklines
+    try:
+        ts = datetime.utcnow().strftime("%Y%m%dT%H%M%SZ")
+        snap = {
+            "ts": ts,
+            "positions": [
+                # keep just the essential fields in the history to stay light
+                {
+                    "symbol": r.get("symbol"),
+                    "secType": r.get("secType"),
+                    "currency": r.get("currency"),
+                    "position": r.get("position"),
+                    "avgCost": r.get("avgCost"),
+                    "usd": r.get("usd", 0.0),
+                } for r in rows
+            ],
+            "totals": {
+                "count": total_positions,
+                "byCurrency": by_ccy,
+                "usdByCurrency": usd_by_ccy,
+                "grandUSD": grand_usd,
+            }
+        }
+        (HIST / f"positions-{ts}.json").write_text(json.dumps(snap, indent=2), encoding="utf-8")
+    except Exception:
+        pass
+
+    # Attach a small meta dict for dashboards
+    meta = {
+        "count": total_positions,
+        "byCurrency": by_ccy,
+        "usdByCurrency": usd_by_ccy,
+        "grandUSD": grand_usd,
+    }
+    # Also store a compact machine snapshot in runtime for other processes if useful
+    try:
+        _write_atomic(RUNTIME / "positions.state.json", json.dumps({"positions": rows, "meta": meta}, separators=(",", ":"), ensure_ascii=False))
+    except Exception:
+        pass
+    # stash meta on function for reuse (no globals churn)
+    export_positions.meta = meta  # type: ignore[attr-defined]
+    return rows
+
 async def fetch_pending_plans(session):
     if Plan is None:
         return []
@@ -194,6 +319,7 @@ async def engine_loop(interval: float = 10.0):
             try:
                 accounts = await export_accounts(session)
                 assets = await export_assets(session)
+                positions = await export_positions()
                 for p in await fetch_pending_plans(session):
                     await process_plan(session, p)
                 await session.commit()
@@ -206,6 +332,8 @@ async def engine_loop(interval: float = 10.0):
                     "health": _read_health(),
                     "accounts": accounts or [],
                     "assets": assets or [],
+                    "positions": positions or [],
+                    "positionsMeta": getattr(export_positions, "meta", {"count": 0, "byCurrency": {}, "usdByCurrency": {}, "grandUSD": 0.0}),
                     "sparks": sparks,  # symbol -> [0..1] series (may be empty initially)
                 }
                 # Write atomically so web readers never see partial JSON

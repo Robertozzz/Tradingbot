@@ -4,6 +4,8 @@ import 'package:http/http.dart' as http;
 
 class Api {
   static String baseUrl = '';
+  static final Map<String, _Memo> _memo = {};
+  static const _memoTtl = Duration(seconds: 5);
 
   static Uri _uri(String path) {
     final p = path.startsWith('/') ? path : '/$path';
@@ -17,6 +19,8 @@ class Api {
     return Uri.parse('$root$p');
   }
 
+  static String _memoKey(String path) => 'GET $path';
+
   /// Absolute URL for SSE endpoints when a package needs a string.
   static String sseUrl(String path) {
     final p = path.startsWith('/') ? path : '/$path';
@@ -28,6 +32,14 @@ class Api {
   }
 
   static Future<Map<String, dynamic>> _getObj(String path) async {
+    // tiny 5s memo for hot endpoints to prevent stampedes
+    final k = _memoKey(path);
+    final now = DateTime.now();
+    final hit = _memo[k];
+    if (hit != null && now.isBefore(hit.expires)) {
+      final d = jsonDecode(hit.body);
+      if (d is Map<String, dynamic>) return d;
+    }
     final r =
         await http.get(_uri(path), headers: {'Accept': 'application/json'});
     if (r.statusCode != 200) {
@@ -35,6 +47,7 @@ class Api {
           'GET $path -> ${r.statusCode} ${r.reasonPhrase ?? ''} ${r.body}');
     }
     final d = jsonDecode(r.body);
+    _memo[k] = _Memo(r.body, now.add(_memoTtl));
     if (d is! Map<String, dynamic>) throw Exception('Expected object');
     return d;
   }
@@ -43,6 +56,13 @@ class Api {
   static Future<Map<String, dynamic>> bootstrap() => _getObj('/api/bootstrap');
 
   static Future<List<dynamic>> _getList(String path) async {
+    final k = _memoKey(path);
+    final now = DateTime.now();
+    final hit = _memo[k];
+    if (hit != null && now.isBefore(hit.expires)) {
+      final d = jsonDecode(hit.body);
+      if (d is List) return d;
+    }
     final r =
         await http.get(_uri(path), headers: {'Accept': 'application/json'});
     if (r.statusCode != 200) {
@@ -50,6 +70,7 @@ class Api {
           'GET $path -> ${r.statusCode} ${r.reasonPhrase ?? ''} ${r.body}');
     }
     final d = jsonDecode(r.body);
+    _memo[k] = _Memo(r.body, now.add(_memoTtl));
     if (d is! List) throw Exception('Expected list');
     return d;
   }
@@ -249,4 +270,10 @@ class Api {
     }
     return jsonDecode(r.body) as Map<String, dynamic>;
   }
+}
+
+class _Memo {
+  final String body;
+  final DateTime expires;
+  _Memo(this.body, this.expires);
 }

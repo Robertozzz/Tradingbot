@@ -155,7 +155,11 @@ class _ShellState extends State<Shell> {
                     alignment: Alignment.topCenter,
                     child: ConstrainedBox(
                       constraints: const BoxConstraints(maxWidth: 1400),
-                      child: pages[index],
+                      // Keep pages alive to avoid tearing down state on tab switches
+                      child: IndexedStack(
+                        index: index,
+                        children: pages,
+                      ),
                     ),
                   ),
                 ),
@@ -409,30 +413,44 @@ class _IbkrStatusPill extends StatelessWidget {
     return ValueListenableBuilder<bool>(
       valueListenable: OrderEvents.instance.onlineVN,
       builder: (_, online, __) {
-        final bg = (online ? const Color(0xFF13301F) : const Color(0xFF3A1C1C));
-        final fg = (online ? const Color(0xFF4CC38A) : const Color(0xFFEF4444));
-        final label = online ? 'IBKR • Online' : 'IBKR • Offline';
-        final icon = online ? Icons.check_circle : Icons.error;
-        final pill = Container(
-          padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 8),
-          decoration: BoxDecoration(
-            color: bg,
-            borderRadius: BorderRadius.circular(999),
-            border: Border.all(color: fg.withValues(alpha: .35)),
-          ),
-          child: Row(
-            mainAxisSize: MainAxisSize.min,
-            children: [
-              Icon(icon, size: 16, color: fg),
-              const SizedBox(width: 8),
-              Text(label,
-                  style: TextStyle(color: fg, fontWeight: FontWeight.w700)),
-            ],
-          ),
+        return ValueListenableBuilder<DateTime?>(
+          valueListenable: OrderEvents.instance.lastUpdateVN,
+          builder: (_, ts, __) {
+            final bg =
+                online ? const Color(0xFF13301F) : const Color(0xFF3A1C1C);
+            final fg =
+                online ? const Color(0xFF4CC38A) : const Color(0xFFEF4444);
+            final label = online ? 'IBKR • Online' : 'IBKR • Offline';
+            final icon = online ? Icons.check_circle : Icons.error;
+            String when = '—';
+            if (ts != null) {
+              final h = ts.hour.toString().padLeft(2, '0');
+              final m = ts.minute.toString().padLeft(2, '0');
+              final s = ts.second.toString().padLeft(2, '0');
+              when = '$h:$m:$s';
+            }
+            final pill = Container(
+              padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 8),
+              decoration: BoxDecoration(
+                color: bg,
+                borderRadius: BorderRadius.circular(999),
+                border: Border.all(color: fg.withValues(alpha: .35)),
+              ),
+              child: Row(
+                mainAxisSize: MainAxisSize.min,
+                children: [
+                  Icon(icon, size: 16, color: fg),
+                  const SizedBox(width: 8),
+                  Text('$label • $when',
+                      style: TextStyle(color: fg, fontWeight: FontWeight.w700)),
+                ],
+              ),
+            );
+            return expanded
+                ? Align(alignment: Alignment.centerLeft, child: pill)
+                : pill;
+          },
         );
-        return expanded
-            ? Align(alignment: Alignment.centerLeft, child: pill)
-            : pill;
       },
     );
   }
