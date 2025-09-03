@@ -366,8 +366,6 @@ class _AssetsPageState extends State<AssetsPage> {
             const SizedBox(height: 12),
             if (_ibkrPos.isNotEmpty) ...[
               const SizedBox(height: 20),
-              const Text('IBKR Positions',
-                  style: TextStyle(fontWeight: FontWeight.w700)),
               Row(
                 children: [
                   const Text('IBKR Positions',
