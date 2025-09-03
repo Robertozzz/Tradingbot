@@ -131,6 +131,20 @@ class _AssetsPageState extends State<AssetsPage> {
             const <double>[];
         _sparks[k] = v;
       }
+
+      // OPTIONAL: if your bootstrap/snapshot carries pretty names, merge them.
+      final snapNames = (snap['names'] as Map?) ?? const {};
+      for (final entry in snapNames.entries) {
+        final rawKey = entry.key;
+        final name = (entry.value ?? '').toString();
+        if (name.isEmpty) continue;
+        if (rawKey is num ||
+            (rawKey is String && int.tryParse(rawKey) != null)) {
+          _names['CID:${int.parse(rawKey.toString())}'] = name;
+        } else {
+          _names['SYM:${rawKey.toString()}'] = name;
+        }
+      }
     });
 
     // If a symbol lacks a spark in snapshot, backfill one lazily from /ibkr/history.
@@ -167,6 +181,17 @@ class _AssetsPageState extends State<AssetsPage> {
   // Parallel timestamps for bottom time labels.
   final Map<String, List<DateTime>> _sparkTimes = {}; // symbol -> bars time[]
 
+  // Spark timeframe (applies to Positions table mini charts)
+  String _sparkTf = '1D';
+  static const Map<String, Map<String, String>> _sparkTfParams = {
+    '1D': {'duration': '1 D', 'barSize': '5 mins'},
+    '3D': {'duration': '3 D', 'barSize': '15 mins'},
+    '1W': {'duration': '1 W', 'barSize': '30 mins'},
+    '1M': {'duration': '1 M', 'barSize': '1 day'},
+    '3M': {'duration': '3 M', 'barSize': '1 day'},
+    '1Y': {'duration': '1 Y', 'barSize': '1 week'},
+  };
+
   DateTime? _parseBarTime(dynamic raw) {
     if (raw == null) return null;
     if (raw is int) {
@@ -193,6 +218,9 @@ class _AssetsPageState extends State<AssetsPage> {
       final what =
           (st == 'FX' || st == 'CASH' || st == 'IND') ? 'MIDPOINT' : 'TRADES';
       final useRth = !(st == 'FX' || st == 'CASH');
+      final tf = _sparkTfParams[_sparkTf]!;
+      final tfDuration = tf['duration']!;
+      final tfBarSize = tf['barSize']!;
       while (_sparkInflight >= _sparkMax) {
         await Future.delayed(const Duration(milliseconds: 180));
       }
@@ -200,8 +228,8 @@ class _AssetsPageState extends State<AssetsPage> {
       final h = await Api.ibkrHistory(
         symbol: symbol,
         conId: conId,
-        duration: '1 D',
-        barSize: '5 mins',
+        duration: tfDuration,
+        barSize: tfBarSize,
         what: what,
         useRTH: useRth,
       );
@@ -340,6 +368,37 @@ class _AssetsPageState extends State<AssetsPage> {
               const SizedBox(height: 20),
               const Text('IBKR Positions',
                   style: TextStyle(fontWeight: FontWeight.w700)),
+              Row(
+                children: [
+                  const Text('IBKR Positions',
+                      style: TextStyle(fontWeight: FontWeight.w700)),
+                  const Spacer(),
+                  SegmentedButton<String>(
+                    segments: const [
+                      ButtonSegment(value: '1D', label: Text('1d')),
+                      ButtonSegment(value: '3D', label: Text('3d')),
+                      ButtonSegment(value: '1W', label: Text('1w')),
+                      ButtonSegment(value: '1M', label: Text('1m')),
+                      ButtonSegment(value: '3M', label: Text('3m')),
+                      ButtonSegment(value: '1Y', label: Text('1y')),
+                    ],
+                    selected: {_sparkTf},
+                    onSelectionChanged: (s) {
+                      setState(() => _sparkTf = s.first);
+                      // Re-load sparks for visible positions under new TF.
+                      for (final m in _ibkrPos) {
+                        final s = (m['symbol'] ?? '').toString();
+                        if (s.isEmpty) continue;
+                        _loadSpark(
+                          symbol: s,
+                          conId: (m['conId'] as num?)?.toInt(),
+                          secType: (m['secType'] ?? '').toString(),
+                        );
+                      }
+                    },
+                  ),
+                ],
+              ),
               const SizedBox(height: 8),
               SingleChildScrollView(
                 scrollDirection: Axis.horizontal,
@@ -371,7 +430,13 @@ class _AssetsPageState extends State<AssetsPage> {
                     return DataRow(cells: [
                       DataCell(Text(m['account']?.toString() ?? '')),
                       DataCell(InkWell(
-                        onTap: () => _showAssetPanel(sym, m),
+                        onTap: () => _showAssetPanel(
+                          sym,
+                          {
+                            ...m,
+                            if (pretty.isNotEmpty) 'prettyName': pretty,
+                          },
+                        ),
                         child: Row(children: [
                           Text(sym),
                           const SizedBox(width: 6),
@@ -565,6 +630,23 @@ class _AssetPanelState extends State<_AssetPanel> {
   VoidCallback? _advListener;
   StreamSubscription<Map<String, dynamic>>? _orderBusSub;
   Timer? _ordersPoll;
+  DateTime? _parseBarTime(dynamic raw) {
+    if (raw == null) return null;
+    if (raw is int) {
+      final ms = raw > 2000000000 ? raw : raw * 1000;
+      return DateTime.fromMillisecondsSinceEpoch(ms, isUtc: true).toLocal();
+    }
+    if (raw is num) {
+      final v = raw.toInt();
+      final ms = v > 2000000000 ? v : v * 1000;
+      return DateTime.fromMillisecondsSinceEpoch(ms, isUtc: true).toLocal();
+    }
+    if (raw is String) {
+      final dt = DateTime.tryParse(raw);
+      return dt?.toLocal();
+    }
+    return null;
+  }
 
   bool _isTerminal(String? s) {
     final st = (s ?? '').toUpperCase();
@@ -667,8 +749,14 @@ class _AssetPanelState extends State<_AssetPanel> {
       _last = (_quoteLive!['last'] as num?)?.toDouble() ??
           (_quoteLive!['close'] as num?)?.toDouble();
     }
-    // try to discover a nice display name (positions don't have names)
-    _loadPrettyName();
+    // Seed a nice display name if the caller already had it cached.
+    final seeded = (widget.pos['prettyName'] as String?);
+    if (seeded != null && seeded.isNotEmpty) {
+      _assetName = seeded;
+    } else {
+      // Fall back to a quick lookup.
+      _loadPrettyName();
+    }
     _refreshLive(silent: true);
     // If history wasn’t provided, fetch it right away so the chart appears quickly.
     if (_histLive == null) {
@@ -1074,7 +1162,7 @@ class _AssetPanelState extends State<_AssetPanel> {
     final q = _quoteLive ?? widget.quote;
     final h = _histLive ?? widget.hist;
     final bars = (h?['bars'] as List?) ?? const [];
-    // build line safely (no O(n^2) indexOf + guard empty)
+    // build line safely + parallel times
     final List<FlSpot> spots = () {
       double i = 0;
       final out = <FlSpot>[];
@@ -1084,6 +1172,19 @@ class _AssetPanelState extends State<_AssetPanel> {
       }
       return out;
     }();
+    final times = <DateTime>[];
+    for (final b in bars) {
+      if (b is Map) {
+        final t = _parseBarTime(b['t'] ?? b['time'] ?? b['ts']);
+        if (t != null) times.add(t);
+      }
+    }
+    final double? minYv = spots.isEmpty
+        ? null
+        : spots.map((s) => s.y).reduce((a, b) => a < b ? a : b);
+    final double? maxYv = spots.isEmpty
+        ? null
+        : spots.map((s) => s.y).reduce((a, b) => a > b ? a : b);
     final avg = (widget.pos['avgCost'] as num?)?.toDouble();
     final heldQty = (widget.pos['position'] as num?)?.toDouble() ?? 0;
     final last = (q?['last'] ?? q?['close']) as num?;
@@ -1202,6 +1303,36 @@ class _AssetPanelState extends State<_AssetPanel> {
                       height: 260,
                       showGrid: true,
                       drawVerticalGrid: false,
+                      minY: minYv,
+                      maxY: maxYv,
+                      leftLabel: (v) {
+                        if (minYv == null || maxYv == null) return '';
+                        const eps = 1e-6;
+                        if ((v - minYv).abs() < eps) {
+                          return NumberFormat.currency(symbol: '\$')
+                              .format(minYv);
+                        }
+                        if ((v - maxYv).abs() < eps) {
+                          return NumberFormat.currency(symbol: '\$')
+                              .format(maxYv);
+                        }
+                        return '';
+                      },
+                      bottomLabel: (x) {
+                        if (times.isEmpty) return '';
+                        if ((x - x.roundToDouble()).abs() > 0.001) return '';
+                        final i = x.round();
+                        final n = times.length;
+                        if (i < 0 || i >= n) return '';
+                        if (i == 0 || i == n - 1 || i == n ~/ 2) {
+                          final span = times.last.difference(times.first);
+                          final fmt = span.inDays >= 1
+                              ? DateFormat('MMM d')
+                              : DateFormat('HH:mm');
+                          return fmt.format(times[i]);
+                        }
+                        return '';
+                      },
                     )),
         ),
         const SizedBox(height: 12),

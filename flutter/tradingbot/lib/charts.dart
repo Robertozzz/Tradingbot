@@ -12,6 +12,8 @@ Widget lineChart(
   double? maxY,
   double barWidth = 2,
   Color color = const Color(0xFF60A5FA),
+  String Function(double v)? leftLabel,
+  String Function(double x)? bottomLabel,
 }) {
   return SizedBox(
     height: height,
@@ -21,8 +23,44 @@ Widget lineChart(
         maxY: maxY,
         gridData:
             FlGridData(show: showGrid, drawVerticalLine: drawVerticalGrid),
-        titlesData:
-            showTitles ? const FlTitlesData() : const FlTitlesData(show: false),
+        titlesData: (leftLabel == null && bottomLabel == null && !showTitles)
+            ? const FlTitlesData(show: false)
+            : FlTitlesData(
+                bottomTitles: AxisTitles(
+                  sideTitles: SideTitles(
+                    showTitles: bottomLabel != null || showTitles,
+                    reservedSize: 22,
+                    interval: 1,
+                    getTitlesWidget: (v, _) {
+                      if (bottomLabel == null) return const SizedBox.shrink();
+                      final t = bottomLabel(v);
+                      if (t.isEmpty) return const SizedBox.shrink();
+                      return Text(t,
+                          style: const TextStyle(
+                              fontSize: 10, color: Colors.white60));
+                    },
+                  ),
+                ),
+                leftTitles: AxisTitles(
+                  sideTitles: SideTitles(
+                    showTitles: leftLabel != null || showTitles,
+                    reservedSize: 44,
+                    interval: 1,
+                    getTitlesWidget: (v, _) {
+                      if (leftLabel == null) return const SizedBox.shrink();
+                      final t = leftLabel(v);
+                      if (t.isEmpty) return const SizedBox.shrink();
+                      return Text(t,
+                          style: const TextStyle(
+                              fontSize: 10, color: Colors.white60));
+                    },
+                  ),
+                ),
+                rightTitles:
+                    const AxisTitles(sideTitles: SideTitles(showTitles: false)),
+                topTitles:
+                    const AxisTitles(sideTitles: SideTitles(showTitles: false)),
+              ),
         borderData: FlBorderData(show: false),
         lineBarsData: [
           LineChartBarData(
