@@ -767,6 +767,41 @@ async def ping():
         cached = _cache_read("ping.json", None)
         return {"connected": False, "error": str(e), "last_ok": cached.get("server_time") if isinstance(cached, dict) else None}
     
+# -------- background refresher (server-side warm cache) ---------------------
+_BG_TASK: asyncio.Task | None = None
+
+async def _bg_refresh_loop():
+    """
+    Periodically refresh essential caches so UI stays hot even if user never visits a page.
+    """
+    while True:
+        try:
+            await _ensure_connected()
+            # Touch hot endpoints; each writes its own cache on success.
+            try: await accounts()
+            except Exception: pass
+            try: await positions()
+            except Exception: pass
+            try: await orders_open()
+            except Exception: pass
+            try: await pnl_summary()
+            except Exception: pass
+        except Exception:
+            # if completely offline, just sleep and retry
+            pass
+        await asyncio.sleep(15)  # tune as needed
+
+async def start_background_refresh():
+    global _BG_TASK
+    if _BG_TASK and not _BG_TASK.done():
+        return
+    try:
+        loop = asyncio.get_running_loop()
+        _BG_TASK = loop.create_task(_bg_refresh_loop())
+    except RuntimeError:
+        # No loop yet; let caller attach via FastAPI startup
+        pass
+
 def _num_or_none(x):
     """Cast to float and drop NaN/Inf to None so JSON stays valid."""
     if x is None:

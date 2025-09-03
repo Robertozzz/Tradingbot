@@ -68,6 +68,17 @@ def _read_health() -> Dict[str, Any]:
         pass
     return {"ibkr": False}
 
+def _read_positions_cache() -> list[dict]:
+    """Read last-known IBKR positions written by ibkr_api (/runtime/cache/positions.json)."""
+    try:
+        p = CACHE_DIR / "positions.json"
+        if p.exists():
+            j = json.loads(p.read_text(encoding="utf-8"))
+            return j if isinstance(j, list) else []
+    except Exception:
+        pass
+    return []
+
 def _normalize_series(vals: List[float]) -> List[float]:
     if not vals:
         return []
@@ -326,6 +337,7 @@ async def engine_loop(interval: float = 10.0):
                 # ---- Build UI snapshot for /api/bootstrap + /sse/updates ----
                 symbols = [str(a.get("symbol","")).upper() for a in (assets or [])][:50]
                 sparks = _compute_sparks_from_history(HIST, symbols, max_points=60)
+                positions = _read_positions_cache()  # last-known (offline-safe)
                 snap = {
                     "ts": int(time.time()),
                     "updated_iso": datetime.utcnow().strftime("%Y-%m-%dT%H:%M:%SZ"),
@@ -335,6 +347,7 @@ async def engine_loop(interval: float = 10.0):
                     "positions": positions or [],
                     "positionsMeta": getattr(export_positions, "meta", {"count": 0, "byCurrency": {}, "usdByCurrency": {}, "grandUSD": 0.0}),
                     "sparks": sparks,  # symbol -> [0..1] series (may be empty initially)
+                    "positions": positions,  # <-- now included in bootstrap/SSE
                 }
                 # Write atomically so web readers never see partial JSON
                 _write_atomic(STATE_FP, json.dumps(snap, separators=(",", ":"), ensure_ascii=False))

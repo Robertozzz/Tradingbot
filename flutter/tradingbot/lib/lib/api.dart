@@ -4,6 +4,12 @@ import 'package:http/http.dart' as http;
 
 class Api {
   static String baseUrl = '';
+  // -------- simple in-memory last-known caches (for instant UI) ------------
+  static Map<String, dynamic>? lastBootstrap;
+  static Map<String, dynamic>? lastAccounts;
+  static List<dynamic>? lastPositions;
+  static List<dynamic>? lastOpenOrders;
+  static Map<String, dynamic>? lastPnlSummary;
   static final Map<String, _Memo> _memo = {};
   static const _memoTtl = Duration(seconds: 5);
 
@@ -17,6 +23,21 @@ class Api {
         ? baseUrl.substring(0, baseUrl.length - 1)
         : baseUrl;
     return Uri.parse('$root$p');
+  }
+
+  // Bootstrap snapshot from backend engine (offline-friendly)
+  static Future<Map<String, dynamic>> bootstrap({bool refresh = false}) async {
+    if (!refresh && lastBootstrap != null) return lastBootstrap!;
+    final d = await _getObj('/api/bootstrap');
+    lastBootstrap = d;
+    // opportunistically seed other caches if present
+    if (d['accounts'] is Map<String, dynamic>) {
+      lastAccounts = Map<String, dynamic>.from(d['accounts']);
+    }
+    if (d['positions'] is List) {
+      lastPositions = List<dynamic>.from(d['positions']);
+    }
+    return d;
   }
 
   static String _memoKey(String path) => 'GET $path';
@@ -52,9 +73,6 @@ class Api {
     return d;
   }
 
-  // --- Cache-first UI bootstrap (served by web.py from runtime/state.json) ---
-  static Future<Map<String, dynamic>> bootstrap() => _getObj('/api/bootstrap');
-
   static Future<List<dynamic>> _getList(String path) async {
     final k = _memoKey(path);
     final now = DateTime.now();
@@ -84,8 +102,31 @@ class Api {
 
   // --- IBKR endpoints ---
   static Future<Map<String, dynamic>> ibkrAccounts() =>
-      _getObj('/ibkr/accounts');
+      _getObj('/ibkr/accounts').then((m) {
+        lastAccounts = m;
+        return m;
+      });
   static Future<List<dynamic>> ibkrPositions() => _getList('/ibkr/positions');
+  static Future<List<dynamic>> ibkrPositionsCached() async {
+    // return cached immediately if seeded, then refresh in background
+    if (lastPositions != null) {
+      // fire-and-forget refresh
+      unawaited(
+        ibkrPositions()
+            // make this chain Future<void> so onError handler can be void
+            .then<void>((list) {
+          lastPositions = list;
+        }).catchError((_) {
+          // ignore errors; keep existing cache
+        }),
+      );
+      return lastPositions!;
+    }
+    final list = await ibkrPositions();
+    lastPositions = list;
+    return list;
+  }
+
   static Future<List<dynamic>> ibkrSearch(String q) =>
       _getList('/ibkr/search?${Uri(queryParameters: {'q': q}).query}');
 
@@ -163,7 +204,10 @@ class Api {
   }
 
   static Future<List<dynamic>> ibkrOpenOrders() =>
-      _getList('/ibkr/orders/open');
+      _getList('/ibkr/orders/open').then((l) {
+        lastOpenOrders = l;
+        return l;
+      });
   static Future<List<dynamic>> ibkrOrdersHistory({int limit = 200}) =>
       _getList('/ibkr/orders/history?${Uri(queryParameters: {
             'limit': '$limit'
@@ -173,7 +217,10 @@ class Api {
       '/ibkr/pnl/single?${Uri(queryParameters: {'conId': '$conId'}).query}');
 
   static Future<Map<String, dynamic>> ibkrPnlSummary() =>
-      _getObj('/ibkr/pnl/summary');
+      _getObj('/ibkr/pnl/summary').then((m) {
+        lastPnlSummary = m;
+        return m;
+      });
 
   static Future<Map<String, dynamic>> ibkrPortfolioSpark(
           {String duration = '1 D', String barSize = '5 mins'}) =>
@@ -276,4 +323,31 @@ class _Memo {
   final String body;
   final DateTime expires;
   _Memo(this.body, this.expires);
+}
+
+// App-wide background refresher so data stays current even if user doesn't navigate.
+class AppRefresher {
+  static Timer? _t;
+  static void start() {
+    _t?.cancel();
+    _t = Timer.periodic(const Duration(seconds: 20), (_) async {
+      try {
+        await Api.ibkrAccounts();
+      } catch (_) {}
+      try {
+        await Api.ibkrPositions();
+      } catch (_) {}
+      try {
+        await Api.ibkrOpenOrders();
+      } catch (_) {}
+      try {
+        await Api.ibkrPnlSummary();
+      } catch (_) {}
+    });
+  }
+
+  static void stop() {
+    _t?.cancel();
+    _t = null;
+  }
 }

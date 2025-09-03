@@ -90,6 +90,49 @@ try:
 except Exception as e:
     auth_log.exception("Failed to mount auth router")
 
+# -------- Bootstrap snapshot (for instant UI) --------
+@app.get("/api/bootstrap")
+def api_bootstrap():
+    """Return the latest engine snapshot (offline-friendly)."""
+    rt = _runtime_dir()
+    fp = rt / "state.json"
+    if fp.exists():
+        try:
+            data = json.loads(fp.read_text(encoding="utf-8"))
+            return data
+        except json.JSONDecodeError as e:
+            raise HTTPException(500, f"Malformed runtime/state.json: {e}")
+    # Safe empty shape
+    return {
+        "ts": int(time.time()),
+        "updated_iso": None,
+        "health": {"ibkr": False},
+        "accounts": [],
+        "assets": [],
+        "positions": [],
+        "sparks": {},
+        "positionsMeta": {"count": 0, "byCurrency": {}, "usdByCurrency": {}, "grandUSD": 0.0},
+    }
+
+@app.get("/sse/state")
+async def sse_state():
+    """Push state.json updates (optional; polling also works)."""
+    async def event_gen():
+        rt = _runtime_dir()
+        state = rt / "state.json"
+        last_mtime = 0.0
+        while True:
+            try:
+                m = state.stat().st_mtime
+                if m != last_mtime:
+                    last_mtime = m
+                    payload = state.read_text(encoding="utf-8")
+                    yield f"event: state\ndata: {payload}\n\n"
+            except FileNotFoundError:
+                yield "event: state\ndata: {}\n\n"
+            await asyncio.sleep(1.0)
+    return StreamingResponse(event_gen(), media_type="text/event-stream")
+
 # -------- OPENAI SETTINGS STORAGE --------
 def _openai_settings_path() -> Path:
     rt = _runtime_dir()
@@ -422,3 +465,13 @@ if FLUTTER_BUILD and FLUTTER_BUILD.exists():
         if not index.exists():
             return JSONResponse({"error": "index.html not found"}, status_code=404)
         return FileResponse(index)
+
+# Kick off IBKR cache warmers on app startup (best-effort)
+try:
+    from .ibkr_api import start_background_refresh
+    @app.on_event("startup")
+    async def _start_bg():
+        await start_background_refresh()
+        mount_log.info("IBKR background refresher started")
+except Exception:
+    mount_log.info("IBKR background refresher not available")

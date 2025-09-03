@@ -34,6 +34,28 @@ class _AssetsPageState extends State<AssetsPage> {
     super.initState();
     // Ensure the global event bus is running (bootstrap + SSE).
     OrderEvents.instance.ensureStarted();
+    // 1) seed immediately from bootstrap or prior cache
+    (() async {
+      try {
+        final boot = await Api.bootstrap(); // offline-friendly
+        final list = (boot['positions'] as List?) ?? const [];
+        if (list.isNotEmpty && mounted) {
+          setState(() {
+            _ibkrPos = list
+                .map<Map<String, dynamic>>(
+                    (e) => Map<String, dynamic>.from(e as Map))
+                .toList();
+          });
+        } else if (Api.lastPositions != null && mounted) {
+          setState(() => _ibkrPos = Api.lastPositions!
+              .map<Map<String, dynamic>>(
+                  (e) => Map<String, dynamic>.from(e as Map))
+              .toList());
+        }
+      } catch (_) {}
+      // then do a live refresh
+      _refreshPositions();
+    })();
     // Seed from the current snapshot immediately (instant paint),
     // then keep it in sync via listener.
     _applySnapshot(OrderEvents.instance.snapshotVN.value);
@@ -62,6 +84,19 @@ class _AssetsPageState extends State<AssetsPage> {
     super.dispose();
   }
 
+  Future<void> _refreshPositions() async {
+    try {
+      final rows = await Api.ibkrPositionsCached();
+      final list = rows
+          .map<Map<String, dynamic>>((e) => Map<String, dynamic>.from(e as Map))
+          .toList();
+      if (!mounted) return;
+      setState(() {
+        _ibkrPos = list;
+      });
+    } catch (_) {}
+  }
+
   void _applySnapshot(Map<String, dynamic> snap) {
     if (!mounted) return;
     // Prefer 'positions' if present in snapshot; otherwise keep current list.
@@ -82,6 +117,19 @@ class _AssetsPageState extends State<AssetsPage> {
         _sparks[k] = v;
       }
     });
+
+    // If a symbol lacks a spark in snapshot, backfill one lazily from /ibkr/history.
+    for (final m in list) {
+      final s = (m['symbol'] ?? '').toString();
+      if (s.isEmpty) continue;
+      final conId = (m['conId'] as num?)?.toInt();
+      final secType = (m['secType'] ?? '').toString();
+      final hasSpark = (_sparks[s]?.isNotEmpty ?? false);
+      if (!hasSpark) {
+        _loadSpark(symbol: s, conId: conId, secType: secType);
+      }
+    }
+
     // Enrich names lazily
     for (final m in list) {
       final s = (m['symbol'] ?? '').toString();
@@ -172,8 +220,8 @@ class _AssetsPageState extends State<AssetsPage> {
       }
     } catch (_) {
     } finally {
-      // clamp() returns num; cast to int to avoid analyzer complaints
-      _sparkInflight = ((_sparkInflight - 1).clamp(0, _sparkMax));
+      // Decrement safely without type churn.
+      _sparkInflight = math.max(0, _sparkInflight - 1);
     }
   }
 
@@ -222,7 +270,7 @@ class _AssetsPageState extends State<AssetsPage> {
     } catch (_) {
       // ignore; leave blank
     } finally {
-      _nameInflight = ((_nameInflight - 1).clamp(0, _nameMax));
+      _nameInflight = math.max(0, _nameInflight - 1);
     }
   }
 

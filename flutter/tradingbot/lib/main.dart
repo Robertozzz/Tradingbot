@@ -9,6 +9,7 @@ import 'lib/trades.dart';
 import 'lib/settings.dart';
 import 'lib/trading_clock.dart';
 import 'lib/ibkr_page.dart';
+import 'lib/api.dart';
 
 void main() async {
   WidgetsFlutterBinding.ensureInitialized();
@@ -99,11 +100,19 @@ class _ShellState extends State<Shell> {
     super.initState();
     // Start the single, auto-reconnecting global orders stream.
     OrderEvents.instance.ensureStarted();
+    // Warm app caches proactively so pages snap on first open.
+    () async {
+      try {
+        await Api.bootstrap();
+      } catch (_) {}
+      AppRefresher.start();
+    }();
   }
 
   @override
   void dispose() {
     super.dispose();
+    AppRefresher.stop();
   }
 
   @override
