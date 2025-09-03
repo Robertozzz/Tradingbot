@@ -28,6 +28,7 @@ class _AssetsPageState extends State<AssetsPage> {
   final _searchCtl = TextEditingController();
   StreamSubscription<Map<String, dynamic>>? _orderBusSub;
   VoidCallback? _snapListen;
+  Timer? _posPoll; // periodic positions refresher
 
   @override
   void initState() {
@@ -54,7 +55,7 @@ class _AssetsPageState extends State<AssetsPage> {
         }
       } catch (_) {}
       // then do a live refresh
-      _refreshPositions();
+      _refreshPositions(forceLive: true);
     })();
     // Seed from the current snapshot immediately (instant paint),
     // then keep it in sync via listener.
@@ -71,6 +72,11 @@ class _AssetsPageState extends State<AssetsPage> {
         _loadPnlSingle(conId);
       }
     }, onError: (_) {});
+
+    // Keep positions fresh even if SSE snapshot doesn't include them
+    _posPoll = Timer.periodic(const Duration(seconds: 20), (_) {
+      _refreshPositions(); // normal (memoized) fetch; API has 5s memo anyway
+    });
   }
 
   @override
@@ -81,12 +87,19 @@ class _AssetsPageState extends State<AssetsPage> {
     if (_snapListen != null) {
       OrderEvents.instance.snapshotVN.removeListener(_snapListen!);
     }
+    try {
+      _posPoll?.cancel();
+    } catch (_) {}
     super.dispose();
   }
 
-  Future<void> _refreshPositions() async {
+  Future<void> _refreshPositions({bool forceLive = false}) async {
     try {
-      final rows = await Api.ibkrPositionsCached();
+      // On first call we want a guaranteed live hit to paint the table.
+      final rows = forceLive
+          ? await Api.ibkrPositions() // live fetch (still 5s memo in Api)
+          : await Api
+              .ibkrPositionsCached(); // fast path with background refresh
       final list = rows
           .map<Map<String, dynamic>>((e) => Map<String, dynamic>.from(e as Map))
           .toList();
@@ -100,7 +113,9 @@ class _AssetsPageState extends State<AssetsPage> {
   void _applySnapshot(Map<String, dynamic> snap) {
     if (!mounted) return;
     // Prefer 'positions' if present in snapshot; otherwise keep current list.
-    final pos = (snap['positions'] as List?) ?? const [];
+    final pos =
+        (snap['positions'] ?? snap['portfolio'] ?? snap['holdings']) as List? ??
+            const [];
     final sparks = (snap['sparks'] as Map?) ?? const {};
     final list = pos
         .map<Map<String, dynamic>>((e) => Map<String, dynamic>.from(e as Map))

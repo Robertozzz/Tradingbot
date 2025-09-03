@@ -62,7 +62,7 @@ class OrderEvents {
         if (acc is Map<String, dynamic>) {
           Api.lastAccounts = Map<String, dynamic>.from(acc);
         }
-        final pos = m['positions'];
+        final pos = m['positions'] ?? m['portfolio'] ?? m['holdings'];
         if (pos is List) {
           Api.lastPositions = List<dynamic>.from(pos);
         }
