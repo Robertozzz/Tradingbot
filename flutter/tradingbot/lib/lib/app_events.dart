@@ -49,13 +49,27 @@ class OrderEvents {
 
   Future<void> _loadBootstrap() async {
     try {
-      final uri = Uri.parse('${Api.baseUrl}/api/bootstrap');
+      final uri = Uri.parse(Api.sseUrl('/api/bootstrap'));
       final r = await http.get(uri, headers: {
         'Accept': 'application/json',
       });
       if (r.statusCode == 200) {
         final Map<String, dynamic> m =
             jsonDecode(r.body) as Map<String, dynamic>;
+        // Mirror into Api caches so pages that read Api.last* instantly see it.
+        Api.lastBootstrap = m;
+        final acc = m['accounts'];
+        if (acc is Map<String, dynamic>) {
+          Api.lastAccounts = Map<String, dynamic>.from(acc);
+        }
+        final pos = m['positions'];
+        if (pos is List) {
+          Api.lastPositions = List<dynamic>.from(pos);
+        }
+        final pnl = m['pnlSummary'] ?? m['pnl'] ?? m['pnl_summary'];
+        if (pnl is Map<String, dynamic>) {
+          Api.lastPnlSummary = Map<String, dynamic>.from(pnl);
+        }
         snapshotVN.value = m;
         _ctrl.add({'t': 'snapshot', 'data': m});
         lastUpdateVN.value = DateTime.now();
@@ -69,7 +83,7 @@ class OrderEvents {
   void _startSse() {
     _sse?.cancel();
     _sse = SSEClient.subscribeToSSE(
-      url: '${Api.baseUrl}/sse/updates',
+      url: Api.sseUrl('/sse/updates'),
       method: SSERequestType.GET,
       header: const {'Accept': 'text/event-stream'},
     ).listen((evt) {
@@ -85,6 +99,20 @@ class OrderEvents {
         if (evt.event == 'snapshot') {
           final Map<String, dynamic> snap =
               (jsonDecode(data) as Map).cast<String, dynamic>();
+          // Keep Api caches in sync with the latest snapshot.
+          Api.lastBootstrap = snap;
+          final acc = snap['accounts'];
+          if (acc is Map<String, dynamic>) {
+            Api.lastAccounts = Map<String, dynamic>.from(acc);
+          }
+          final pos = snap['positions'];
+          if (pos is List) {
+            Api.lastPositions = List<dynamic>.from(pos);
+          }
+          final pnl = snap['pnlSummary'] ?? snap['pnl'] ?? snap['pnl_summary'];
+          if (pnl is Map<String, dynamic>) {
+            Api.lastPnlSummary = Map<String, dynamic>.from(pnl);
+          }
           snapshotVN.value = snap;
           _ctrl.add({'t': 'snapshot', 'data': snap});
           lastUpdateVN.value = DateTime.now();
@@ -92,6 +120,18 @@ class OrderEvents {
         }
         // Generic/typed events if you later add them (e.g., t=positions, t=pnl)
         final m = Map<String, dynamic>.from(jsonDecode(data) as Map);
+        // Lightweight cache updates when server sends small typed deltas.
+        final t = (m['t'] ?? m['type'] ?? '').toString();
+        if (t == 'positions' && m['data'] is List) {
+          Api.lastPositions = List<dynamic>.from(m['data'] as List);
+        } else if ((t == 'accounts' || t == 'account') &&
+            m['data'] is Map<String, dynamic>) {
+          Api.lastAccounts =
+              Map<String, dynamic>.from(m['data'] as Map<String, dynamic>);
+        } else if (t == 'pnl_summary' && m['data'] is Map<String, dynamic>) {
+          Api.lastPnlSummary =
+              Map<String, dynamic>.from(m['data'] as Map<String, dynamic>);
+        }
         _ctrl.add(m);
         lastUpdateVN.value = DateTime.now();
       } catch (_) {

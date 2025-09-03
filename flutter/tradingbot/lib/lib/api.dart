@@ -332,16 +332,20 @@ class AppRefresher {
     _t?.cancel();
     _t = Timer.periodic(const Duration(seconds: 20), (_) async {
       try {
-        await Api.ibkrAccounts();
+        final m = await Api.ibkrAccounts();
+        Api.lastAccounts = m;
       } catch (_) {}
       try {
-        await Api.ibkrPositions();
+        final l = await Api.ibkrPositions();
+        Api.lastPositions = l;
       } catch (_) {}
       try {
-        await Api.ibkrOpenOrders();
+        final l = await Api.ibkrOpenOrders();
+        Api.lastOpenOrders = l;
       } catch (_) {}
       try {
-        await Api.ibkrPnlSummary();
+        final m = await Api.ibkrPnlSummary();
+        Api.lastPnlSummary = m;
       } catch (_) {}
     });
   }
