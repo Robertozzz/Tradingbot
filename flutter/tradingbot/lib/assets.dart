@@ -2,12 +2,16 @@ import 'dart:async';
 import 'dart:math' as math;
 import 'package:fl_chart/fl_chart.dart';
 import 'package:flutter/material.dart';
+import 'package:flutter/services.dart';
 import 'package:intl/intl.dart';
 import 'package:tradingbot/api.dart';
 import 'package:tradingbot/charts.dart';
 import 'package:tradingbot/asset_lookup.dart';
 import 'package:tradingbot/tradingview_widget.dart';
 import 'package:tradingbot/app_events.dart';
+import 'dart:convert';
+import 'package:flutter_client_sse/flutter_client_sse.dart';
+import 'package:flutter_client_sse/constants/sse_request_type_enum.dart';
 
 class AssetsPage extends StatefulWidget {
   const AssetsPage({super.key});
@@ -43,7 +47,7 @@ class _AssetsPageState extends State<AssetsPage> {
       try {
         final server = await Api.ibkrNames(); // GET /ibkr/names
         server.forEach((k, v) {
-          final name = (v ?? '').toString().trim();
+          final name = (v).toString().trim();
           if (name.isEmpty) return;
           // Accept either numeric conId keys or "SYM:XYZ"/"CID:123" style.
           final isNumKey = (k is num) || (int.tryParse(k) != null);
@@ -106,6 +110,7 @@ class _AssetsPageState extends State<AssetsPage> {
 
   @override
   void dispose() {
+    _searchCtl.dispose();
     try {
       _orderBusSub?.cancel();
     } catch (_) {}
@@ -658,6 +663,14 @@ class _AssetPanelState extends State<_AssetPanel> {
   //bool advanced =
   //   false; // NEW: replaces "TradingView" switch & controls size/TV
 
+  // --- Debug/raw bundle state ---
+  final TextEditingController _debugCtl = TextEditingController();
+  bool _debugBusy = false;
+  bool _debugExpanded = false;
+
+  String _prettyJson(dynamic v) =>
+      const JsonEncoder.withIndent('  ').convert(v);
+
   // NEW: live data
   List<Map<String, dynamic>> _orders = const [];
   Map<String, num>? _pnl;
@@ -670,6 +683,7 @@ class _AssetPanelState extends State<_AssetPanel> {
   VoidCallback? _advListener;
   StreamSubscription<Map<String, dynamic>>? _orderBusSub;
   Timer? _ordersPoll;
+  StreamSubscription<SSEModel>? _ticksSub; // live tick SSE
   DateTime? _parseBarTime(dynamic raw) {
     if (raw == null) return null;
     if (raw is int) {
@@ -891,6 +905,46 @@ class _AssetPanelState extends State<_AssetPanel> {
         _rememberQuote(conId, widget.symbol, q);
       } catch (_) {}
     });
+
+    // --- NEW: subscribe to live ticks via SSE (bid/ask + last) ---
+    () async {
+      try {
+        // Resolve an instrument id to subscribe (prefer conId)
+        final int? conId = ((widget.pos['conId'] as num?) ??
+                (_quoteLive?['conId'] as num?) ??
+                (_histLive?['contract']?['conId'] as num?))
+            ?.toInt();
+        if (conId == null) return;
+        final url = Api.sseUrl('/ibkr/ticks?conId=$conId&types=bidask,last');
+        _ticksSub = SSEClient.subscribeToSSE(
+          method: SSERequestType.GET,
+          url: url,
+          header: {'Accept': 'text/event-stream'},
+        ).listen((evt) {
+          if (evt.event != 'tick' || evt.data == null) return;
+          try {
+            final m = jsonDecode(evt.data!);
+            final t = (m['type'] ?? '').toString();
+            if (t == 'bidask') {
+              final bid = (m['bid'] as num?)?.toDouble();
+              final ask = (m['ask'] as num?)?.toDouble();
+              if (mounted) {
+                setState(() {
+                  if (bid != null) _bid = bid;
+                  if (ask != null) _ask = ask;
+                });
+              }
+            } else if (t == 'last') {
+              final last = (m['price'] as num?)?.toDouble() ??
+                  (m['last'] as num?)?.toDouble();
+              if (mounted && last != null) {
+                setState(() => _last = last);
+              }
+            }
+          } catch (_) {/* ignore malformed tick */}
+        });
+      } catch (_) {/* stream unavailable → polling still works */}
+    }();
     // No listener needed here; dialog listens to VN for sizing.
     // BUT the PANEL also must rebuild so the Switch, height, and TV swap update.
     _advListener = () {
@@ -955,10 +1009,194 @@ class _AssetPanelState extends State<_AssetPanel> {
     } catch (_) {/* ignore */}
   }
 
+  Future<void> _loadDebugBundle() async {
+    if (!mounted) return;
+    setState(() => _debugBusy = true);
+    try {
+      // Resolve conId best-effort
+      final int? conId = ((widget.pos['conId'] as num?) ??
+              (_quoteLive?['conId'] as num?) ??
+              (_histLive?['contract']?['conId'] as num?) ??
+              (widget.quote?['conId'] as num?) ??
+              (widget.hist?['contract']?['conId'] as num?))
+          ?.toInt();
+
+      // Parallel fetches where sensible
+      final futures = <String, Future<dynamic>>{
+        'quote': Api.ibkrQuote(
+          conId: conId,
+          symbol: widget.symbol,
+          secType: _bestSecType(),
+          exchange: _bestExchange() ?? '',
+          currency: _bestCurrency() ?? '',
+        ),
+        if (conId != null) 'pnlSingle': Api.ibkrPnlSingle(conId),
+        'openOrders': Api.ibkrOpenOrders(),
+        'ordersHistory': Api.ibkrOrdersHistory(limit: 500),
+        'accounts': Api.ibkrAccounts(),
+      };
+
+      // Extra IBKR endpoints (best effort; each wrapped in try/catch later)
+      if (conId != null || widget.symbol.isNotEmpty) {
+        futures['contract'] = Api.ibkrContract(
+          conId: conId,
+          symbol: conId == null ? widget.symbol : null,
+          secType: _bestSecType().isEmpty ? 'STK' : _bestSecType(),
+          exchange: _bestExchange() ?? 'SMART',
+          currency: _bestCurrency() ?? 'USD',
+        );
+      }
+
+      futures['executions'] = Api.ibkrExecutions(
+        days: 30,
+        conId: conId,
+        symbol: (conId == null) ? widget.symbol : null,
+      );
+
+// raw fills (if you expose it separately from executions)
+      futures['fills'] = Api.ibkrFills(
+        days: 30,
+        conId: conId,
+        symbol: (conId == null) ? widget.symbol : null,
+      );
+
+// account-level transactions (dividends, fees, interest, etc.)
+      futures['transactions90d'] = Api.ibkrTransactions(days: 90);
+
+// dividends/corp actions for this instrument (if available on backend)
+      futures['dividends'] = Api.ibkrDividends(
+        conId: conId,
+        symbol: (conId == null) ? widget.symbol : null,
+        years: 5,
+      );
+
+// tax lots (per instrument)
+      if (conId != null) futures['taxLots'] = Api.ibkrTaxLots(conId: conId);
+
+// fundamentals (choose one or gather a few)
+      futures['fundamentals_snapshot'] = Api.ibkrFundamentals(
+        conId: conId,
+        symbol: (conId == null) ? widget.symbol : null,
+        report: 'snapshot',
+      );
+      futures['fundamentals_ratios'] = Api.ibkrFundamentals(
+        conId: conId,
+        symbol: (conId == null) ? widget.symbol : null,
+        report: 'ratios',
+      );
+
+// greeks (only meaningful if options; will likely return error for equities)
+      if (conId != null) futures['greeks'] = Api.ibkrGreeks(conId: conId);
+
+      // history is heavier; reuse currently selected TF to keep it fast
+      final tf = _tfParams[_tf]!;
+      futures['history'] = Api.ibkrHistory(
+        conId: conId,
+        symbol: widget.symbol,
+        duration: tf['duration']!,
+        barSize: tf['barSize']!,
+        what: ((_bestSecType() == 'FX' ||
+                _bestSecType() == 'CASH' ||
+                _bestSecType() == 'IND')
+            ? 'MIDPOINT'
+            : 'TRADES'),
+        useRTH: !(_bestSecType() == 'FX' || _bestSecType() == 'CASH'),
+        secType: _bestSecType(),
+        exchange: _bestExchange() ?? '',
+        currency: _bestCurrency() ?? '',
+      );
+
+      final results = <String, dynamic>{};
+      for (final e in futures.entries) {
+        try {
+          results[e.key] = await e.value;
+        } catch (err) {
+          results[e.key] = {'error': err.toString()};
+        }
+      }
+
+      // Filter orders history to this instrument (by conId if possible, else symbol)
+      List historyOrders = (results['ordersHistory'] as List?) ?? const [];
+      final filteredOrders = historyOrders.where((o) {
+        final m = (o is Map) ? o : const {};
+        final oc = (m['conId'] as num?)?.toInt();
+        if (conId != null && oc != null) return oc == conId;
+        return (m['symbol']?.toString() ?? '').toUpperCase() ==
+            widget.symbol.toUpperCase();
+      }).toList();
+
+      // Pick the first account for context
+      Map<String, dynamic>? acctFirst;
+      try {
+        final acc = results['accounts'] as Map<String, dynamic>?;
+        if (acc != null && acc.isNotEmpty) {
+          acctFirst = Map<String, dynamic>.from(acc.values.first);
+        }
+      } catch (_) {}
+
+      // Build final bundle
+      final bundle = <String, dynamic>{
+        'symbol': widget.symbol,
+        'positionRow': widget.pos, // what we clicked on from the table
+        'prettyName': _assetName,
+        'conId': conId,
+        'quote': results['quote'],
+        'historyMeta': (results['history'] is Map)
+            ? {
+                // don’t dump every bar; it can be huge. keep meta + last few.
+                'contract': (results['history'] as Map)['contract'],
+                'barsTail':
+                    (((results['history'] as Map)['bars'] as List?) ?? const [])
+                        .take(10)
+                        .toList(),
+                'barsCount':
+                    (((results['history'] as Map)['bars'] as List?) ?? const [])
+                        .length,
+              }
+            : results['history'],
+        if (results.containsKey('pnlSingle')) 'pnlSingle': results['pnlSingle'],
+        'openOrdersFiltered': (results['openOrders'] is List)
+            ? (results['openOrders'] as List).where((o) {
+                final m = (o is Map) ? o : const {};
+                final oc = (m['conId'] as num?)?.toInt();
+                if (conId != null && oc != null) return oc == conId;
+                return (m['symbol']?.toString() ?? '').toUpperCase() ==
+                    widget.symbol.toUpperCase();
+              }).toList()
+            : results['openOrders'],
+        'ordersHistoryFiltered': filteredOrders,
+        if (acctFirst != null) 'accountFirst': acctFirst,
+        // ---- NEW sections ----
+        if (results['contract'] != null) 'contract': results['contract'],
+        if (results['executions'] != null) 'executions': results['executions'],
+        if (results['fills'] != null) 'fills': results['fills'],
+        if (results['transactions90d'] != null)
+          'transactions90d': results['transactions90d'],
+        if (results['dividends'] != null) 'dividends': results['dividends'],
+        if (results['taxLots'] != null) 'taxLots': results['taxLots'],
+        if (results['fundamentals_snapshot'] != null)
+          'fundamentals_snapshot': results['fundamentals_snapshot'],
+        if (results['fundamentals_ratios'] != null)
+          'fundamentals_ratios': results['fundamentals_ratios'],
+        if (results['greeks'] != null) 'greeks': results['greeks'],
+      };
+
+      _debugCtl.text = _prettyJson(bundle);
+    } finally {
+      if (mounted) setState(() => _debugBusy = false);
+    }
+  }
+
   @override
   void dispose() {
     if (_advListener != null) widget.advancedVN.removeListener(_advListener!);
     _quoteTimer?.cancel();
+    // also stop live tick SSE
+    try {
+      _ticksSub?.cancel();
+    } catch (_) {}
+    // and dispose debug text controller
+    _debugCtl.dispose();
     try {
       _orderBusSub?.cancel();
     } catch (_) {}
@@ -1538,6 +1776,81 @@ class _AssetPanelState extends State<_AssetPanel> {
                         ),
                       ),
                     ),
+            ],
+          ),
+        ),
+        const SizedBox(height: 12),
+
+        // --- Raw IBKR data (debug) ---
+        Container(
+          decoration: BoxDecoration(
+            color: const Color(0xFF0B1426),
+            border: Border.all(color: const Color(0xFF22314E)),
+            borderRadius: BorderRadius.circular(12),
+          ),
+          padding: const EdgeInsets.all(12),
+          child: Column(
+            crossAxisAlignment: CrossAxisAlignment.start,
+            children: [
+              Row(children: [
+                const Text('Raw IBKR data (debug)',
+                    style: TextStyle(fontWeight: FontWeight.bold)),
+                const Spacer(),
+                IconButton(
+                  tooltip: _debugExpanded ? 'Collapse' : 'Expand',
+                  icon: Icon(
+                      _debugExpanded ? Icons.expand_less : Icons.expand_more),
+                  onPressed: () =>
+                      setState(() => _debugExpanded = !_debugExpanded),
+                ),
+                const SizedBox(width: 6),
+                FilledButton.icon(
+                  onPressed: _debugBusy ? null : _loadDebugBundle,
+                  icon: _debugBusy
+                      ? const SizedBox(
+                          width: 14,
+                          height: 14,
+                          child: CircularProgressIndicator(strokeWidth: 2))
+                      : const Icon(Icons.download),
+                  label: const Text('Load'),
+                ),
+                const SizedBox(width: 8),
+                OutlinedButton.icon(
+                  onPressed: () async {
+                    await Clipboard.setData(
+                        ClipboardData(text: _debugCtl.text));
+                    if (mounted) {
+                      ScaffoldMessenger.of(context).showSnackBar(
+                          const SnackBar(content: Text('Copied debug JSON')));
+                    }
+                  },
+                  icon: const Icon(Icons.copy),
+                  label: const Text('Copy'),
+                ),
+              ]),
+              const SizedBox(height: 8),
+              SizedBox(
+                width: double.infinity,
+                height: _debugExpanded ? 320 : 140,
+                child: TextField(
+                  controller: _debugCtl,
+                  readOnly: true,
+                  expands: true,
+                  maxLines: null,
+                  minLines: null,
+                  style: const TextStyle(
+                    fontFeatures: [FontFeature.tabularFigures()],
+                    fontFamily: 'monospace',
+                    fontSize: 12,
+                  ),
+                  decoration: const InputDecoration(
+                    isDense: true,
+                    border: OutlineInputBorder(),
+                    hintText:
+                        'Click Load to fetch raw data for this instrument…',
+                  ),
+                ),
+              ),
             ],
           ),
         ),

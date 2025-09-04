@@ -12,6 +12,7 @@ import asyncio
 from collections import defaultdict, deque
 from datetime import datetime, timezone
 from fastapi import Request
+from xml.etree import ElementTree as ET
 
 # Router must be created before any @router.get/post decorators
 router = APIRouter(prefix="/ibkr", tags=["ibkr"])
@@ -1176,6 +1177,15 @@ def _contract_json(c: Contract) -> dict:
         "lastTradeDateOrContractMonth": getattr(c, "lastTradeDateOrContractMonth", None),
     }
 
+async def _contract_from_conid(cid: int) -> Contract:
+    await _ensure_connected()
+    c = Contract(conId=int(cid))
+    try:
+        [qc] = await ib.qualifyContractsAsync(c)
+        return qc
+    except Exception:
+        return c
+
 # ---------- orders log ----------
 def _log_order(event: str, payload: dict):
     try:
@@ -1546,6 +1556,434 @@ async def quote(
     _cache_write(cache_key, out)
     return out
 
+# ==========================
+# Level 2 (DOM) ring buffers
+# ==========================
+# State per conId
+DEPTH_STATE: dict[int, dict] = {}               # conId -> {"bids":[...], "asks":[...], "ts": int}
+DEPTH_TICKER: dict[int, Any] = {}               # conId -> Ticker
+DEPTH_LASTLEN: dict[int, tuple[int,int]] = {}   # conId -> (lenBids, lenAsks) to detect changes
+DEPTH_SUBS: dict[int, set[asyncio.Queue]] = defaultdict(set)  # conId -> set of subscriber queues
+
+def _depth_snapshot_from_tkr(tkr, depth: int) -> dict:
+    bids, asks = [], []
+    for lvl in (getattr(tkr, "domBids", None) or [])[:depth]:
+        bids.append({"price": _num_or_none(getattr(lvl, "price", None)),
+                     "size": _num_or_none(getattr(lvl, "size", None)),
+                     "mm": getattr(lvl, "marketMaker", None)})
+    for lvl in (getattr(tkr, "domAsks", None) or [])[:depth]:
+        asks.append({"price": _num_or_none(getattr(lvl, "price", None)),
+                     "size": _num_or_none(getattr(lvl, "size", None)),
+                     "mm": getattr(lvl, "marketMaker", None)})
+    return {"bids": bids, "asks": asks, "ts": int(time.time())}
+
+async def _ensure_depth_subscribed(conId: int, depth: int, smart: bool):
+    await _ensure_connected()
+    if conId in DEPTH_TICKER:
+        return
+    c = await _contract_from_conid(conId)
+    tkr = ib.reqMktDepth(c, numRows=max(1, min(20, depth)), isSmartDepth=bool(smart))
+    DEPTH_TICKER[conId] = tkr
+    DEPTH_LASTLEN[conId] = (-1, -1)
+    # prime a snapshot quickly
+    await asyncio.sleep(0.25)
+    DEPTH_STATE[conId] = _depth_snapshot_from_tkr(tkr, depth)
+    def _on_update(_):
+        try:
+            b = getattr(tkr, "domBids", None) or []
+            a = getattr(tkr, "domAsks", None) or []
+            lastB, lastA = DEPTH_LASTLEN.get(conId, (-1,-1))
+            if len(b) == lastB and len(a) == lastA:
+                # still may have price/size changes; always rebuild small snapshot
+                pass
+            DEPTH_LASTLEN[conId] = (len(b), len(a))
+            snap = _depth_snapshot_from_tkr(tkr, depth)
+            DEPTH_STATE[conId] = snap
+            # fan out to subscribers (non-blocking)
+            for q in list(DEPTH_SUBS.get(conId, set())):
+                try: q.put_nowait({"conId": conId, **snap})
+                except asyncio.QueueFull: pass
+        except Exception:
+            pass
+    tkr.updateEvent += _on_update
+
+def _maybe_unsubscribe_depth(conId: int):
+    if DEPTH_SUBS.get(conId):
+        return
+    tkr = DEPTH_TICKER.pop(conId, None)
+    DEPTH_LASTLEN.pop(conId, None)
+    if tkr:
+        try: ib.cancelMktDepth(tkr.contract)
+        except Exception: pass
+
+@router.get("/marketdepth/stream")
+async def market_depth_stream(conId: int, depth: int = 10, smart: bool = True, poll_keepalive: float = 20.0):
+    """
+    SSE of DOM snapshots. Emits:
+      event: depth
+      data: { conId, bids:[{price,size,mm}], asks:[...], ts }
+    Sends an initial snapshot, then live updates.
+    """
+    await _ensure_depth_subscribed(conId, depth, smart)
+    q: asyncio.Queue = asyncio.Queue(maxsize=200)
+    DEPTH_SUBS[conId].add(q)
+    async def _gen():
+        # initial
+        snap = DEPTH_STATE.get(conId) or {"bids": [], "asks": [], "ts": int(time.time())}
+        yield f"event: depth\ndata: {json.dumps({'conId': conId, **snap}, separators=(',',':'))}\n\n"
+        last_keep = time.time()
+        try:
+            while True:
+                try:
+                    item = await asyncio.wait_for(q.get(), timeout=max(5.0, float(poll_keepalive)))
+                    yield f"event: depth\ndata: {json.dumps(item, separators=(',',':'))}\n\n"
+                    last_keep = time.time()
+                except asyncio.TimeoutError:
+                    # periodic keepalive to keep proxies happy
+                    yield f": keepalive {int(time.time())}\n\n"
+        except asyncio.CancelledError:
+            return
+        finally:
+            DEPTH_SUBS[conId].discard(q)
+            _maybe_unsubscribe_depth(conId)
+    return StreamingResponse(_gen(), media_type="text/event-stream")
+
+# ==========================
+# Real-time bars ring buffer
+# ==========================
+RTBARS_STATE: dict[int, deque] = defaultdict(lambda: deque(maxlen=300))  # conId -> deque of bars
+RTBARS_TICKER: dict[int, Any] = {}                                       # conId -> Ticker
+RTBARS_LASTCOUNT: dict[int, int] = {}                                    # conId -> last len(rtBars)
+RTBARS_SUBS: dict[int, set[asyncio.Queue]] = defaultdict(set)            # conId -> set of queues
+
+def _bar_to_dict(b) -> dict:
+    return {
+        "t": util.formatIBDatetime(getattr(b, "time", None)) if getattr(b, "time", None) else None,
+        "o": _num_or_none(getattr(b, "open", None)),
+        "h": _num_or_none(getattr(b, "high", None)),
+        "l": _num_or_none(getattr(b, "low", None)),
+        "c": _num_or_none(getattr(b, "close", None)),
+        "v": _num_or_none(getattr(b, "volume", None)),
+    }
+
+async def _ensure_rtbars_subscribed(conId: int):
+    await _ensure_connected()
+    if conId in RTBARS_TICKER:
+        return
+    c = await _contract_from_conid(conId)
+    tkr = ib.reqRealTimeBars(c, whatToShow="TRADES", useRHT=False if hasattr(IB, 'reqRealTimeBars') else False)
+    # Note: ib_insync parameter is useRTH (typo-safe below)
+    RTBARS_TICKER[conId] = tkr
+    RTBARS_LASTCOUNT[conId] = 0
+    # small warmup
+    await asyncio.sleep(0.35)
+    for b in list(getattr(tkr, "rtBars", []) or [])[-30:]:
+        RTBARS_STATE[conId].append(_bar_to_dict(b))
+    def _on_update(_):
+        try:
+            bars = list(getattr(tkr, "rtBars", []) or [])
+            last = RTBARS_LASTCOUNT.get(conId, 0)
+            if len(bars) > last:
+                # push new tail items
+                for b in bars[last:]:
+                    d = _bar_to_dict(b)
+                    RTBARS_STATE[conId].append(d)
+                    for q in list(RTBARS_SUBS.get(conId, set())):
+                        try: q.put_nowait({"conId": conId, "bar": d})
+                        except asyncio.QueueFull: pass
+            RTBARS_LASTCOUNT[conId] = len(bars)
+        except Exception:
+            pass
+    tkr.updateEvent += _on_update
+
+def _maybe_unsubscribe_rtbars(conId: int):
+    if RTBARS_SUBS.get(conId):
+        return
+    tkr = RTBARS_TICKER.pop(conId, None)
+    RTBARS_LASTCOUNT.pop(conId, None)
+    if tkr:
+        try: ib.cancelRealTimeBars(tkr.contract)
+        except Exception: pass
+
+@router.get("/livebars/stream")
+async def live_bars_stream(conId: int, poll_keepalive: float = 20.0):
+    """
+    SSE of 5-sec real-time bars.
+      event: rtbar
+      data: { conId, bar: {t,o,h,l,c,v} }
+    Sends a small history window first (buffer), then live updates.
+    """
+    await _ensure_rtbars_subscribed(conId)
+    q: asyncio.Queue = asyncio.Queue(maxsize=500)
+    RTBARS_SUBS[conId].add(q)
+    async def _gen():
+        # initial burst
+        buf = list(RTBARS_STATE.get(conId, deque()))[-60:]
+        for d in buf:
+            yield f"event: rtbar\ndata: {json.dumps({'conId': conId, 'bar': d}, separators=(',',':'))}\n\n"
+        try:
+            while True:
+                try:
+                    item = await asyncio.wait_for(q.get(), timeout=max(5.0, float(poll_keepalive)))
+                    yield f"event: rtbar\ndata: {json.dumps(item, separators=(',',':'))}\n\n"
+                except asyncio.TimeoutError:
+                    yield f": keepalive {int(time.time())}\n\n"
+        except asyncio.CancelledError:
+            return
+        finally:
+            RTBARS_SUBS[conId].discard(q)
+            _maybe_unsubscribe_rtbars(conId)
+    return StreamingResponse(_gen(), media_type="text/event-stream")
+
+# ==========================
+# Tick-by-tick (Level 1) SSE
+# ==========================
+# We fan out IBKR tick-by-tick events to per-(conId,type) subscriber queues.
+# Supported types: 'last', 'bidask', 'midpoint'
+
+# (conId, type) -> set(queues)
+TICKS_SUBS: dict[tuple[int, str], set[asyncio.Queue]] = defaultdict(set)
+# Active subscriptions we requested from IB: (conId, type)
+TICKS_ACTIVE: set[tuple[int, str]] = set()
+# Small last-value cache for replay on connect
+TICKS_LAST: dict[tuple[int, str], dict] = {}
+
+def _tick_time_to_iso(ts: int | float | None) -> tuple[int | None, str | None]:
+    try:
+        if ts is None:
+            return None, None
+        ts_i = int(ts)
+        dt = datetime.fromtimestamp(ts_i, tz=timezone.utc).isoformat().replace("+00:00","Z")
+        return ts_i, dt
+    except Exception:
+        return None, None
+
+def _emit_tick(conId: int, typ: str, payload: dict):
+    key = (int(conId), typ)
+    TICKS_LAST[key] = payload
+    for q in list(TICKS_SUBS.get(key, set())):
+        try:
+            q.put_nowait(payload)
+        except asyncio.QueueFull:
+            pass
+
+async def _ensure_ticks_handlers_attached():
+    """
+    Attach global ib_insync event handlers once (idempotent).
+    We’ll still call reqTickByTickData per (conId,type) to start feeds.
+    """
+    if getattr(_ensure_ticks_handlers_attached, "_attached", False):
+        return
+
+    def _on_all_last(tick):
+        try:
+            c = getattr(tick, "contract", None)
+            conId = getattr(c, "conId", None)
+            if not conId:
+                return
+            ts_i, dt = _tick_time_to_iso(getattr(tick, "time", None))
+            d = {
+                "conId": int(conId),
+                "type": "last",
+                "price": _num_or_none(getattr(tick, "price", None)),
+                "size": _num_or_none(getattr(tick, "size", None)),
+                "exchange": getattr(tick, "exchange", None),
+                "specialConditions": getattr(tick, "specialConditions", None),
+                "ts": ts_i, "time": dt,
+            }
+            _emit_tick(int(conId), "last", d)
+        except Exception:
+            pass
+
+    def _on_bid_ask(tick):
+        try:
+            c = getattr(tick, "contract", None)
+            conId = getattr(c, "conId", None)
+            if not conId:
+                return
+            ts_i, dt = _tick_time_to_iso(getattr(tick, "time", None))
+            d = {
+                "conId": int(conId),
+                "type": "bidask",
+                "bid": _num_or_none(getattr(tick, "bidPrice", None)),
+                "bidSize": _num_or_none(getattr(tick, "bidSize", None)),
+                "ask": _num_or_none(getattr(tick, "askPrice", None)),
+                "askSize": _num_or_none(getattr(tick, "askSize", None)),
+                "ts": ts_i, "time": dt,
+            }
+            _emit_tick(int(conId), "bidask", d)
+        except Exception:
+            pass
+
+    def _on_midpoint(tick):
+        try:
+            c = getattr(tick, "contract", None)
+            conId = getattr(c, "conId", None)
+            if not conId:
+                return
+            ts_i, dt = _tick_time_to_iso(getattr(tick, "time", None))
+            d = {
+                "conId": int(conId),
+                "type": "midpoint",
+                "mid": _num_or_none(getattr(tick, "midPoint", None)),
+                "ts": ts_i, "time": dt,
+            }
+            _emit_tick(int(conId), "midpoint", d)
+        except Exception:
+            pass
+
+    # Attach event listeners
+    ib.tickByTickAllLast += _on_all_last
+    ib.tickByTickBidAsk += _on_bid_ask
+    ib.tickByTickMidPoint += _on_midpoint
+    setattr(_ensure_ticks_handlers_attached, "_attached", True)
+
+async def _ensure_tick_subscription(conId: int, typ: str):
+    await _ensure_connected()
+    await _ensure_ticks_handlers_attached()
+    key = (int(conId), typ)
+    if key in TICKS_ACTIVE:
+        return
+    c = await _contract_from_conid(int(conId))
+    # numberOfTicks=0 means stream; ignoreSize=False keeps sizes
+    try:
+        if typ == "last":
+            ib.reqTickByTickData(c, "AllLast", 0, False)
+        elif typ == "bidask":
+            ib.reqTickByTickData(c, "BidAsk", 0, False)
+        elif typ == "midpoint":
+            ib.reqTickByTickData(c, "MidPoint", 0, True)
+        else:
+            raise ValueError(f"unsupported tick type {typ}")
+        TICKS_ACTIVE.add(key)
+    except Exception as e:
+        raise HTTPException(502, f"tick subscription failed: {e!s}")
+
+def _maybe_unsubscribe_tick(conId: int, typ: str):
+    key = (int(conId), typ)
+    if TICKS_SUBS.get(key):
+        return  # still has listeners
+    if key not in TICKS_ACTIVE:
+        return
+    # Try to cancel; best-effort
+    try:
+        c = Contract(conId=int(conId))
+        if typ == "last":
+            ib.cancelTickByTickData(c, "AllLast")
+        elif typ == "bidask":
+            ib.cancelTickByTickData(c, "BidAsk")
+        elif typ == "midpoint":
+            ib.cancelTickByTickData(c, "MidPoint")
+    except Exception:
+        pass
+    finally:
+        TICKS_ACTIVE.discard(key)
+
+@router.get("/ticks/stream")
+async def ticks_stream(
+    conId: int,
+    types: str = "bidask,last",
+    poll_keepalive: float = 20.0
+):
+    """
+    SSE of tick-by-tick updates. `types` is CSV of: bidask,last,midpoint.
+    Emits:
+      event: tick
+      data: { conId, type: 'bidask'|'last'|'midpoint', ...fields..., ts, time }
+    Sends a small replay (last value per requested type) and then live ticks.
+    """
+    wanted = []
+    for t in (types or "").split(","):
+        tt = t.strip().lower()
+        if tt in ("bidask","last","midpoint"):
+            wanted.append(tt)
+    if not wanted:
+        raise HTTPException(400, "types must include at least one of bidask,last,midpoint")
+
+    # Ensure IB subs are active
+    for typ in wanted:
+        await _ensure_tick_subscription(int(conId), typ)
+
+    # Create one queue for all types on this connection
+    q: asyncio.Queue = asyncio.Queue(maxsize=2000)
+    keylist = [(int(conId), typ) for typ in wanted]
+    for k in keylist:
+        TICKS_SUBS[k].add(q)
+
+    async def _gen():
+        # Replay last-value (per type) so UI has something immediately
+        for k in keylist:
+            if k in TICKS_LAST:
+                yield f"event: tick\ndata: {json.dumps(TICKS_LAST[k], separators=(',',':'))}\n\n"
+        try:
+            while True:
+                try:
+                    item = await asyncio.wait_for(q.get(), timeout=max(5.0, float(poll_keepalive)))
+                    yield f"event: tick\ndata: {json.dumps(item, separators=(',',':'))}\n\n"
+                except asyncio.TimeoutError:
+                    # proxy keepalive
+                    yield f": keepalive {int(time.time())}\n\n"
+        except asyncio.CancelledError:
+            return
+        finally:
+            # Detach queue from all keys and maybe cancel IB subs
+            for k in keylist:
+                TICKS_SUBS[k].discard(q)
+                _maybe_unsubscribe_tick(*k)
+
+    return StreamingResponse(_gen(), media_type="text/event-stream")
+
+# --- expanded / “full” quote ------------------------------------------------
+@router.get("/quote/full")
+async def quote_full(
+    symbol: str | None = None,
+    conId: int | None = None,
+    secType: str | None = None,
+    exchange: str | None = None,
+    currency: str | None = None,
+):
+    """
+    Enriched L1 snapshot: bid/ask (+sizes), last/close, high/low, lastExchange,
+    rtVolume/vwap if your market data entitlements include them.
+    """
+    try:
+        await _ensure_connected()
+    except Exception as e:
+        raise HTTPException(503, f"IBKR offline for quote/full: {e}")
+    c = _mk_contract(symbol, conId, exchange, secType, currency)
+    # snapshot path is generally more reliable across data packages
+    tkr = ib.reqMktData(c, genericTickList="233", snapshot=True)  # 233 = RT Volume
+    await asyncio.sleep(0.35)
+    ib.cancelMktData(c)
+    # try to find the ticker IB created
+    t = next((x for x in ib.tickers() if getattr(x.contract, "conId", None) == getattr(c, "conId", None)), None)
+    if not t:
+        raise HTTPException(502, "quote/full: no ticker data")
+    def _n(x): 
+        try:
+            v = float(x); 
+            return v if math.isfinite(v) else None
+        except Exception:
+            return None
+    out = {
+        "conId": getattr(t.contract, "conId", None),
+        "symbol": getattr(t.contract, "localSymbol", None) or t.contract.symbol,
+        "bid": _n(getattr(t, "bid", None)),
+        "bidSize": _n(getattr(t, "bidSize", None)),
+        "ask": _n(getattr(t, "ask", None)),
+        "askSize": _n(getattr(t, "askSize", None)),
+        "last": _n(getattr(t, "last", None)),
+        "lastSize": _n(getattr(t, "lastSize", None)),
+        "close": _n(getattr(t, "close", None)),
+        "high": _n(getattr(t, "high", None)),
+        "low": _n(getattr(t, "low", None)),
+        "vwap": _n(getattr(t, "vwap", None)),
+        "rtVolume": getattr(t, "rtVolume", None),   # raw IB string "last;size;...;vwap;volume"
+        "lastExchange": getattr(t, "lastExchange", None),
+        "time": util.formatIBDatetime(getattr(t, "time", None)) if getattr(t, "time", None) else None,
+    }
+    return out
+
 # --- intraday/period history (bars) ----------------------------------------
 @router.get("/history")
 async def history(
@@ -1597,6 +2035,284 @@ async def history(
     }
     _cache_write(cache_key, out)
     return out
+
+# --- Contract details (minTick, tradingHours, multiplier, etc.) -------------
+@router.get("/contract/details")
+async def contract_details(
+    symbol: str | None = None,
+    conId: int | None = None,
+    secType: str = "STK",
+    exchange: str = "SMART",
+    currency: str = "USD",
+):
+    await _ensure_connected()
+    c = _mk_contract(symbol, conId, exchange, secType, currency)
+    cds = await ib.reqContractDetailsAsync(c)
+    if not cds:
+        raise HTTPException(404, "No contract details")
+    def _cd_json(cd):
+        # compact but useful subset
+        return {
+            "contract": _contract_json(cd.contract),
+            "minTick": getattr(cd, "minTick", None),
+            "multiplier": getattr(cd, "contract", None) and getattr(cd.contract, "multiplier", None),
+            "tradingHours": getattr(cd, "tradingHours", None),
+            "liquidHours": getattr(cd, "liquidHours", None),
+            "longName": getattr(cd, "longName", None) or getattr(cd, "description", None),
+            "timeZoneId": getattr(cd, "timeZoneId", None),
+            "underConId": getattr(cd, "underConId", None),
+            "evRule": getattr(cd, "evRule", None),
+            "evMultiplier": getattr(cd, "evMultiplier", None),
+            "secIdList": getattr(cd, "secIdList", None),
+        }
+    return {"details": [_cd_json(cd) for cd in cds]}
+
+# --- Market depth (Level 2) -------------------------------------------------
+@router.get("/marketdepth")
+async def market_depth(conId: int, depth: int = 10, smart: bool = True):
+    await _ensure_connected()
+    c = await _contract_from_conid(conId)
+    tkr = ib.reqMktDepth(c, numRows=max(1, min(20, depth)), isSmartDepth=bool(smart))
+    # brief settle; DOM updates in tkr.domBids/Asks
+    await asyncio.sleep(0.4)
+    bids = []
+    asks = []
+    try:
+        for lvl in (getattr(tkr, "domBids", None) or [])[:depth]:
+            bids.append({"price": _num_or_none(getattr(lvl, "price", None)),
+                         "size": _num_or_none(getattr(lvl, "size", None)),
+                         "mm": getattr(lvl, "marketMaker", None)})
+        for lvl in (getattr(tkr, "domAsks", None) or [])[:depth]:
+            asks.append({"price": _num_or_none(getattr(lvl, "price", None)),
+                         "size": _num_or_none(getattr(lvl, "size", None)),
+                         "mm": getattr(lvl, "marketMaker", None)})
+    finally:
+        try: ib.cancelMktDepth(c)
+        except Exception: pass
+    return {"conId": conId, "bids": bids, "asks": asks}
+
+# --- Live bars (5-sec RT bars snapshot) ------------------------------------
+@router.get("/livebars")
+async def live_bars(conId: int, barSize: str = "5 secs"):
+    """
+    Returns recent real-time bars buffered for this contract.
+    Note: IB only supports 5-sec RT bars; barSize is accepted for parity but ignored.
+    """
+    await _ensure_connected()
+    c = await _contract_from_conid(conId)
+    tkr = ib.reqRealTimeBars(c, whatToShow="TRADES", useRTH=False)
+    await asyncio.sleep(0.6)
+    bars = []
+    try:
+        for b in list(getattr(tkr, "rtBars", []) or [])[-40:]:
+            bars.append({"t": util.formatIBDatetime(b.time), "o": b.open, "h": b.high, "l": b.low, "c": b.close, "v": b.volume})
+    finally:
+        try: ib.cancelRealTimeBars(c)
+        except Exception: pass
+    return {"conId": conId, "bars": bars}
+
+# --- Option chain (expirations/strikes) ------------------------------------
+@router.get("/options/chain")
+async def options_chain(underConId: int):
+    await _ensure_connected()
+    # Need underlying's base details to fetch option params
+    uc = await _contract_from_conid(underConId)
+    params = await ib.reqSecDefOptParamsAsync(uc.symbol, uc.exchange or "", uc.secType, underConId)
+    # Flatten unique expirations/strikes/tradingClasses
+    exps, strikes, tclasses = set(), set(), set()
+    for p in params or []:
+        for e in (p.expirations or []): exps.add(e)
+        for s in (p.strikes or []):
+            try: strikes.add(float(s))
+            except Exception: continue
+        for tc in (p.tradingClasses or []): tclasses.add(tc)
+    return {
+        "underConId": underConId,
+        "underSymbol": uc.symbol,
+        "expirations": sorted(exps),
+        "strikes": sorted(strikes),
+        "tradingClasses": sorted(tclasses),
+    }
+
+# --- Open interest (placeholder) -------------------------------------------
+@router.get("/openinterest")
+async def open_interest(conId: int, duration: str = "1 M"):
+    # IB API doesn’t provide a general historical OI series via standard whatToShow.
+    # Implement via a vendor or IBKR’s delayed OPRA feed if available in your setup.
+    raise HTTPException(501, "Open interest history not available via standard IB API")
+
+# --- Corporate actions (placeholder) ---------------------------------------
+@router.get("/corpactions")
+async def corp_actions(conId: int, years: int = 5):
+    raise HTTPException(501, "Corporate actions feed not implemented here")
+
+# --- News list & story ------------------------------------------------------
+@router.get("/news")
+async def news(conId: int, limit: int = 50):
+    """
+    Returns recent headlines observed by /news/stream (if subscribed),
+    filtered to the symbol of conId. Best-effort cache, not a historical pull.
+    """
+    c = await _contract_from_conid(conId)
+    sym = getattr(c, "localSymbol", None) or getattr(c, "symbol", None)
+    if not sym:
+        return []
+    symU = sym.upper()
+    items = [it for it in list(NEWS_RECENT)[-400:] if (it.get("symbol") or "").upper() == symU]
+    items = items[-abs(limit):]
+    return items
+
+@router.get("/news/story")
+async def news_story(id: str = Query(..., description="Format: PROVIDER:ARTICLEID")):
+    """
+    Fetch a single story body. Example id: 'BZ:123456789'
+    """
+    await _ensure_connected()
+    if ":" not in id:
+        raise HTTPException(400, "id must be PROVIDER:ARTICLEID")
+    prov, aid = id.split(":", 1)
+    try:
+        art = await ib.reqNewsArticleAsync(prov, aid)
+        return {
+            "id": id,
+            "provider": prov,
+            "articleId": aid,
+            "text": getattr(art, "articleText", None),
+            "html": getattr(art, "articleText", None),  # IB often returns HTML; caller can render/strip
+        }
+    except Exception as e:
+        raise HTTPException(502, f"news story fetch failed: {e!s}")
+
+# --- Earnings (CalendarReport parse) ---------------------------------------
+@router.get("/earnings")
+async def earnings(conId: int):
+    """
+    Pulls IB fundamental CalendarReport XML and extracts a few common fields.
+    """
+    await _ensure_connected()
+    c = await _contract_from_conid(conId)
+    try:
+        xml = await ib.reqFundamentalDataAsync(c, reportType="CalendarReport")
+    except Exception as e:
+        raise HTTPException(502, f"earnings fetch failed: {e!s}")
+    out = {"conId": conId, "symbol": c.symbol}
+    try:
+        root = ET.fromstring(xml or "<root/>")
+        # Heuristic: look for NextEarningsDate / NextReportDate / EPS values
+        def _find_text(paths):
+            for p in paths:
+                el = root.find(p)
+                if el is not None and (el.text or "").strip():
+                    return el.text.strip()
+            return None
+        out["nextReportDate"] = _find_text(["/CalNext/Date", ".//CalNext/Date", ".//NextReportDate"])
+        out["nextReportTime"] = _find_text(["/CalNext/Time", ".//CalNext/Time", ".//NextReportTime"])
+        out["epsEstimate"] = _find_text([".//EPS/Mean", ".//Earnings/Estimate"])
+    except Exception:
+        out["rawXml"] = xml
+    return out
+
+# --- Dividend accruals (placeholder) ---------------------------------------
+@router.get("/dividends/accruals")
+async def dividends_accruals(conId: int):
+    raise HTTPException(501, "Dividend accruals per-instrument not implemented")
+
+# --- What-if / Margin preview ----------------------------------------------
+@router.post("/whatif")
+async def what_if(payload: dict = Body(...)):
+    """
+    Body: { conId, side(BUY/SELL), type(MKT/LMT), qty, limitPrice? }
+    Returns IB's what-if margin/commission estimate.
+    """
+    await _ensure_connected()
+    conId = payload.get("conId")
+    if not conId:
+        raise HTTPException(400, "conId required for what-if")
+    side = (payload.get("side") or "BUY").upper()
+    typ  = (payload.get("type") or "MKT").upper()
+    qty  = float(payload.get("qty", 0) or 0)
+    lmt  = payload.get("limitPrice")
+    if qty <= 0:
+        raise HTTPException(400, "qty must be > 0")
+    c = await _contract_from_conid(int(conId))
+    if typ == "LMT":
+        if lmt is None:
+            raise HTTPException(400, "limitPrice required for LMT what-if")
+        order: Order = LimitOrder(side, qty, float(lmt))
+    else:
+        order = MarketOrder(side, qty)
+    order.whatIf = True
+    try:
+        rep = await ib.whatIfOrderAsync(c, order)
+    except Exception as e:
+        raise HTTPException(502, f"what-if failed: {e!s}")
+    # ib_insync returns OrderState-like with margin/commission fields
+    return {
+        "initialMarginChange": _num_or_none(getattr(rep, "initMarginChange", None)),
+        "maintenanceMarginChange": _num_or_none(getattr(rep, "maintMarginChange", None)),
+        "equityWithLoanChange": _num_or_none(getattr(rep, "equityWithLoanChange", None)),
+        "commission": _num_or_none(getattr(rep, "commission", None)),
+        "minCommission": _num_or_none(getattr(rep, "minCommission", None)),
+        "maxCommission": _num_or_none(getattr(rep, "maxCommission", None)),
+        "warningText": getattr(rep, "warningText", None),
+    }
+
+# --- Shortability & borrow fee snapshot ------------------------------------
+@router.get("/shortability")
+async def shortability(conId: int):
+    """
+    Pulls shortable & fee rate via generic ticks (236, 593) when entitled.
+    """
+    await _ensure_connected()
+    c = await _contract_from_conid(conId)
+    tkr = ib.reqMktData(c, genericTickList="236,593", snapshot=True)
+    await asyncio.sleep(0.4)
+    ib.cancelMktData(c)
+    t = next((x for x in ib.tickers() if getattr(x.contract, "conId", None) == conId), None)
+    if not t:
+        raise HTTPException(502, "shortability: no data")
+    # Field names vary; use getattr defensively
+    return {
+        "conId": conId,
+        "shortableShares": getattr(t, "shortableShares", None),
+        "feeRate": _num_or_none(getattr(t, "feeRate", None)),
+        "rebateRate": _num_or_none(getattr(t, "rebateRate", None)),
+        "timestamp": util.formatIBDatetime(getattr(t, "time", None)) if getattr(t, "time", None) else None,
+    }
+
+# --- “Realized PnL” as executions list (client can compute) ----------------
+@router.get("/realizedpnl")
+async def realized_pnl(conId: int, days: int = 365):
+    """
+    Returns recent executions (fills) for this conId; the client can compute
+    realized PnL from these if desired. (IB doesn’t expose a simple per-conId
+    realized PnL endpoint.)
+    """
+    await _ensure_connected()
+    # Time filter: last N days
+    since = datetime.utcnow().timestamp() - max(1, int(days)) * 86400
+    exe_filter = util.ExecutionFilter(time=datetime.utcfromtimestamp(since))
+    exes = await ib.reqExecutionsAsync(exe_filter)
+    rows = []
+    for r in exes or []:
+        try:
+            c = getattr(r, "contract", None)
+            if not c or getattr(c, "conId", None) != int(conId):
+                continue
+            cr = getattr(r, "commissionReport", None)
+            rows.append({
+                "time": util.formatIBDatetime(getattr(r, "time", None)) if getattr(r, "time", None) else None,
+                "side": getattr(r, "side", None),
+                "price": _num_or_none(getattr(r, "price", None)),
+                "shares": _num_or_none(getattr(r, "shares", None)),
+                "commission": _num_or_none(getattr(cr, "commission", None)) if cr else None,
+                "realizedPNL": _num_or_none(getattr(cr, "realizedPNL", None)) if cr else None,
+                "orderId": getattr(r, "orderId", None),
+                "execId": getattr(r, "execId", None),
+            })
+        except Exception:
+            continue
+    return rows
 
 # --- PnL for a single contract --------------------------------------------
 @router.get("/pnl/single")

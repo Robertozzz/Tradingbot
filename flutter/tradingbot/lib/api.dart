@@ -52,6 +52,15 @@ class Api {
     return '$root$p';
   }
 
+  /// IBKR tick-by-tick SSE (bid/ask, last, midpoint).
+  /// Use with your SSE client (e.g. EventSource) in the UI.
+  /// Example: EventSource(Api.ibkrTicksStreamUrl(conId: 12345, types: 'bidask,last'))
+  static String ibkrTicksStreamUrl(
+      {required int conId, String types = 'bidask,last'}) {
+    final qp = Uri(queryParameters: {'conId': '$conId', 'types': types}).query;
+    return sseUrl('/ibkr/ticks/stream?$qp');
+  }
+
   static Future<Map<String, dynamic>> _getObj(String path) async {
     // tiny 5s memo for hot endpoints to prevent stampedes
     final k = _memoKey(path);
@@ -229,17 +238,17 @@ class Api {
             'barSize': barSize
           }).query}');
 
-  // --- Pretty names (server-synced) ----------------------------------------
-  /// Fetch server-side pretty names. Server may return keys as
-  /// "CID:123"/"SYM:AAPL" or raw "123"/"AAPL"; caller normalizes.
-  static Future<Map<String, dynamic>> ibkrNames() => _getObj('/ibkr/names');
+  /// Fetch server-side pretty names as a normalized Map<String,String>.
+  /// Server may return "CID:123"/"SYM:AAPL" or raw "123"/"AAPL"; we normalize to strings.
+  static Future<Map<String, String>> ibkrNames() async {
+    final d = await _getObj('/ibkr/names');
+    return d.map((k, v) => MapEntry(k.toString(), (v ?? '').toString()));
+  }
 
   /// Upsert one or more pretty names on the server.
   /// Example body: { "CID:123": "Alphabet Inc", "SYM:AAPL": "Apple Inc" }
-  static Future<void> ibkrSetNames(Map<String, String> pairs) async {
-    // Cast to dynamic to satisfy postJson
-    await postJson('/ibkr/names', pairs.map((k, v) => MapEntry(k, v)));
-  }
+  static Future<Map<String, dynamic>> ibkrSetNames(Map<String, String> names) =>
+      postJson('/ibkr/names', names);
 
   // --- Generic JSON POST helper ---
   static Future<Map<String, dynamic>> postJson(
@@ -274,6 +283,226 @@ class Api {
     return list
         .map<Map<String, dynamic>>((e) => Map<String, dynamic>.from(e))
         .toList();
+  }
+
+// ---- Extra optional endpoints for the debug bundle ----
+// Contract detail for a conId or symbol/secType/exchange/currency.
+  static Future<Map<String, dynamic>> ibkrContract({
+    int? conId,
+    String? symbol,
+    String secType = 'STK',
+    String exchange = 'SMART',
+    String currency = 'USD',
+  }) async {
+    final params = <String, String>{
+      if (conId != null) 'conId': '$conId',
+      if (symbol != null && symbol.isNotEmpty) 'symbol': symbol,
+      'secType': secType,
+      'exchange': exchange,
+      'currency': currency,
+    };
+    return _getObj('/ibkr/contract?${Uri(queryParameters: params).query}');
+  }
+
+  // ── NEW: Full contract details (minTick, multiplier, trading hours, etc.)
+  static Future<Map<String, dynamic>> ibkrContractDetails({
+    int? conId,
+    String? symbol,
+    String secType = 'STK',
+    String exchange = 'SMART',
+    String currency = 'USD',
+  }) async {
+    final params = <String, String>{
+      if (conId != null) 'conId': '$conId',
+      if (symbol != null && symbol.isNotEmpty) 'symbol': symbol,
+      'secType': secType,
+      'exchange': exchange,
+      'currency': currency,
+    };
+    return _getObj(
+        '/ibkr/contract/details?${Uri(queryParameters: params).query}');
+  }
+
+  // ── NEW: Full quote (NBBO components, rtVolume, vwap, shortable tier/fee if exposed)
+  static Future<Map<String, dynamic>> ibkrQuoteFull({
+    String? symbol,
+    int? conId,
+    String secType = 'STK',
+    String exchange = 'SMART',
+    String currency = 'USD',
+  }) async {
+    final params = <String, String>{
+      if (symbol != null && symbol.isNotEmpty) 'symbol': symbol,
+      if (conId != null) 'conId': '$conId',
+      'secType': secType,
+      'exchange': exchange,
+      'currency': currency,
+    };
+    return _getObj('/ibkr/quote/full?${Uri(queryParameters: params).query}');
+  }
+
+  // ── NEW: Level 2 / Market depth
+  static Future<List<dynamic>> ibkrL2(
+      {required int conId, int depth = 10}) async {
+    final params = <String, String>{'conId': '$conId', 'depth': '$depth'};
+    return _getList('/ibkr/marketdepth?${Uri(queryParameters: params).query}');
+  }
+
+  // ── NEW: Live bars stream snapshot (server provides polling/sse -> we expose GET list)
+  static Future<List<dynamic>> ibkrLiveBars(
+      {required int conId, String barSize = '5 secs'}) async {
+    final params = <String, String>{'conId': '$conId', 'barSize': barSize};
+    return _getList('/ibkr/livebars?${Uri(queryParameters: params).query}');
+  }
+
+  // ── NEW: Option chain metadata for an underlying
+  static Future<Map<String, dynamic>> ibkrOptionChain(
+      {required int underConId}) async {
+    final params = <String, String>{'underConId': '$underConId'};
+    return _getObj('/ibkr/options/chain?${Uri(queryParameters: params).query}');
+  }
+
+  // ── NEW: Open interest history (futures/options)
+  static Future<List<dynamic>> ibkrOpenInterest(
+      {required int conId, String duration = '1 M'}) async {
+    final params = <String, String>{'conId': '$conId', 'duration': duration};
+    return _getList('/ibkr/openinterest?${Uri(queryParameters: params).query}');
+  }
+
+  // ── NEW: Corporate actions (splits, etc.)
+  static Future<List<dynamic>> ibkrCorpActions(
+      {required int conId, int years = 5}) async {
+    final params = <String, String>{'conId': '$conId', 'years': '$years'};
+    return _getList('/ibkr/corpactions?${Uri(queryParameters: params).query}');
+  }
+
+  // ── NEW: News headlines / stories
+  static Future<List<dynamic>> ibkrNews(
+      {required int conId, int limit = 50}) async {
+    final params = <String, String>{'conId': '$conId', 'limit': '$limit'};
+    return _getList('/ibkr/news?${Uri(queryParameters: params).query}');
+  }
+
+  static Future<Map<String, dynamic>> ibkrNewsStory(
+      {required String id}) async {
+    final params = <String, String>{'id': id};
+    return _getObj('/ibkr/news/story?${Uri(queryParameters: params).query}');
+  }
+
+  // ── NEW: Earnings / calendar for symbol
+  static Future<Map<String, dynamic>> ibkrEarnings({required int conId}) async {
+    final params = <String, String>{'conId': '$conId'};
+    return _getObj('/ibkr/earnings?${Uri(queryParameters: params).query}');
+  }
+
+  // ── NEW: Dividend accruals specific to instrument
+  static Future<Map<String, dynamic>> ibkrDividendAccruals(
+      {required int conId}) async {
+    final params = <String, String>{'conId': '$conId'};
+    return _getObj(
+        '/ibkr/dividends/accruals?${Uri(queryParameters: params).query}');
+  }
+
+  // ── NEW: What-if / margin preview
+  static Future<Map<String, dynamic>> ibkrWhatIf({
+    required int conId,
+    required String side,
+    required String type,
+    required double qty,
+    double? limitPrice,
+  }) async {
+    final body = <String, dynamic>{
+      'conId': conId,
+      'side': side,
+      'type': type,
+      'qty': qty,
+      if (limitPrice != null) 'limitPrice': limitPrice,
+    };
+    return postJson('/ibkr/whatif', body);
+  }
+
+  // ── NEW: Shortability & borrow rate snapshot
+  static Future<Map<String, dynamic>> ibkrShortability(
+      {required int conId}) async {
+    final params = <String, String>{'conId': '$conId'};
+    return _getObj('/ibkr/shortability?${Uri(queryParameters: params).query}');
+  }
+
+  // ── NEW: Realized P&L for a symbol (window)
+  static Future<List<dynamic>> ibkrRealizedPnl(
+      {required int conId, int days = 365}) async {
+    final params = <String, String>{'conId': '$conId', 'days': '$days'};
+    return _getList('/ibkr/realizedpnl?${Uri(queryParameters: params).query}');
+  }
+
+// Executions/fills (recent). Filter by conId/symbol server-side if possible.
+  static Future<List<dynamic>> ibkrExecutions(
+      {int? days = 7, int? conId, String? symbol}) async {
+    final params = <String, String>{
+      if (days != null) 'days': '$days',
+      if (conId != null) 'conId': '$conId',
+      if (symbol != null && symbol.isNotEmpty) 'symbol': symbol,
+    };
+    return _getList('/ibkr/executions?${Uri(queryParameters: params).query}');
+  }
+
+// Transaction history (deposits/withdrawals/dividends/fees...) – account-level.
+  static Future<List<dynamic>> ibkrTransactions(
+      {int? days = 90, String? type}) async {
+    final params = <String, String>{
+      if (days != null) 'days': '$days',
+      if (type != null && type.isNotEmpty)
+        'type': type, // e.g. 'DIVIDEND','FEE'
+    };
+    return _getList('/ibkr/transactions?${Uri(queryParameters: params).query}');
+  }
+
+// Corporate actions / dividends for a given instrument (if your backend supports it).
+  static Future<List<dynamic>> ibkrDividends(
+      {int? conId, String? symbol, int? years = 3}) async {
+    final params = <String, String>{
+      if (conId != null) 'conId': '$conId',
+      if (symbol != null && symbol.isNotEmpty) 'symbol': symbol,
+      if (years != null) 'years': '$years',
+    };
+    return _getList('/ibkr/dividends?${Uri(queryParameters: params).query}');
+  }
+
+// Tax lots / average price lots for a position (when available).
+  static Future<List<dynamic>> ibkrTaxLots({required int conId}) async {
+    return _getList(
+        '/ibkr/taxlots?${Uri(queryParameters: {'conId': '$conId'}).query}');
+  }
+
+// Option greeks / model (no-op for non-derivatives).
+  static Future<Map<String, dynamic>> ibkrGreeks({required int conId}) async {
+    return _getObj(
+        '/ibkr/greeks?${Uri(queryParameters: {'conId': '$conId'}).query}');
+  }
+
+// Fundamentals (snapshot/ratios/financials…). Report can be 'snapshot' | 'ratios' | 'financials'.
+  static Future<Map<String, dynamic>> ibkrFundamentals({
+    int? conId,
+    String? symbol,
+    String report = 'snapshot',
+  }) async {
+    final params = <String, String>{
+      if (conId != null) 'conId': '$conId',
+      if (symbol != null && symbol.isNotEmpty) 'symbol': symbol,
+      'report': report,
+    };
+    return _getObj('/ibkr/fundamentals?${Uri(queryParameters: params).query}');
+  }
+
+// Executions vs. orders history separation (optional, if you want raw fills in addition to executions).
+  static Future<List<dynamic>> ibkrFills(
+      {int? days = 7, int? conId, String? symbol}) async {
+    final params = <String, String>{
+      if (days != null) 'days': '$days',
+      if (conId != null) 'conId': '$conId',
+      if (symbol != null && symbol.isNotEmpty) 'symbol': symbol,
+    };
+    return _getList('/ibkr/fills?${Uri(queryParameters: params).query}');
   }
 
   static Future<Map<String, dynamic>> ibkrPlaceOrder({
