@@ -229,6 +229,18 @@ class Api {
             'barSize': barSize
           }).query}');
 
+  // --- Pretty names (server-synced) ----------------------------------------
+  /// Fetch server-side pretty names. Server may return keys as
+  /// "CID:123"/"SYM:AAPL" or raw "123"/"AAPL"; caller normalizes.
+  static Future<Map<String, dynamic>> ibkrNames() => _getObj('/ibkr/names');
+
+  /// Upsert one or more pretty names on the server.
+  /// Example body: { "CID:123": "Alphabet Inc", "SYM:AAPL": "Apple Inc" }
+  static Future<void> ibkrSetNames(Map<String, String> pairs) async {
+    // Cast to dynamic to satisfy postJson
+    await postJson('/ibkr/names', pairs.map((k, v) => MapEntry(k, v)));
+  }
+
   // --- Generic JSON POST helper ---
   static Future<Map<String, dynamic>> postJson(
       String path, Map<String, dynamic> body) async {

@@ -24,10 +24,9 @@ class _AssetsPageState extends State<AssetsPage> {
   final Map<int, Map<String, num>> _pnl =
       {}; // conId -> {unrealized, realized, daily}
   // cache of pretty names keyed by conId (fallback to symbol key)
-  final Map<String, String> _names = {};
-  // cache last seen table prices so the cell never flickers back to "—"
-  final Map<int, num> _lastPxByCid = {};
-  final Map<String, num> _lastPxBySym = {};
+  static final Map<String, String> _names = {};
+  static final Map<int, num> _lastPxByCid = {};
+  static final Map<String, num> _lastPxBySym = {};
   final _searchCtl = TextEditingController();
   StreamSubscription<Map<String, dynamic>>? _orderBusSub;
   VoidCallback? _snapListen;
@@ -38,6 +37,29 @@ class _AssetsPageState extends State<AssetsPage> {
     super.initState();
     // Ensure the global event bus is running (bootstrap + SSE).
     OrderEvents.instance.ensureStarted();
+    // Fetch pretty names stored on the backend and merge them into the
+    // app-lifetime cache so the positions table can render them immediately.
+    (() async {
+      try {
+        final server = await Api.ibkrNames(); // GET /ibkr/names
+        server.forEach((k, v) {
+          final name = (v ?? '').toString().trim();
+          if (name.isEmpty) return;
+          // Accept either numeric conId keys or "SYM:XYZ"/"CID:123" style.
+          final isNumKey = (k is num) || (int.tryParse(k) != null);
+          final key = isNumKey
+              ? 'CID:${int.parse(k.toString())}'
+              : (k.toString().startsWith('CID:') ||
+                      k.toString().startsWith('SYM:')
+                  ? k.toString()
+                  : 'SYM:${k.toString()}');
+          _AssetPanelState._prettyNameCache[key] = name;
+        });
+        if (mounted) setState(() {}); // repaint any open tables
+      } catch (_) {
+        // offline or endpoint missing -> no-op (local cache still works)
+      }
+    })();
     // 1) seed immediately from bootstrap or prior cache
     (() async {
       try {
@@ -432,7 +454,9 @@ class _AssetsPageState extends State<AssetsPage> {
                     final spark = _sparks[sym] ?? const [];
                     final pn = conId != null ? _pnl[conId] : null;
                     final nameKey = conId != null ? 'CID:$conId' : 'SYM:$sym';
-                    final pretty = _names[nameKey] ?? '';
+                    final pretty = _names[nameKey] ??
+                        _AssetPanelState._prettyNameCache[nameKey] ??
+                        '';
 
                     return DataRow(cells: [
                       DataCell(Text(m['account']?.toString() ?? '')),
@@ -684,8 +708,9 @@ class _AssetPanelState extends State<_AssetPanel> {
   double? _num(dynamic v) {
     if (v == null) return null;
     if (v is num) return v.toDouble();
-    if (v is String)
+    if (v is String) {
       return double.tryParse(v.replaceAll(RegExp(r'[^\d\.\-]'), ''));
+    }
     return null;
   }
 
@@ -710,7 +735,14 @@ class _AssetPanelState extends State<_AssetPanel> {
     if (name.trim().isEmpty) return;
     final cid = (widget.pos['conId'] as num?)?.toInt();
     final key = cid != null ? 'CID:$cid' : 'SYM:${widget.symbol}';
-    _prettyNameCache[key] = name.trim();
+    final val = name.trim();
+    _prettyNameCache[key] = val; // immediate UX
+    // Fire-and-forget server save so names sync across devices.
+    () async {
+      try {
+        await Api.ibkrSetNames({key: val}); // POST /ibkr/names
+      } catch (_) {/* ignore */}
+    }();
   }
 
   bool _isTerminal(String? s) {

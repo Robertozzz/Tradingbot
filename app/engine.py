@@ -42,6 +42,18 @@ STATUS_FP = RUNTIME / "status.json"   # optional: written by your watchdog/IBKR 
 CACHE_DIR = RUNTIME / "cache"
 CACHE_DIR.mkdir(parents=True, exist_ok=True)
 
+# at top, reuse CACHE_DIR from above or compute same runtime path
+PRETTY_NAMES = CACHE_DIR / "pretty_names.json"
+
+def _read_pretty_names() -> dict:
+    try:
+        if PRETTY_NAMES.exists():
+            j = json.loads(PRETTY_NAMES.read_text(encoding="utf-8"))
+            return j if isinstance(j, dict) else {}
+    except Exception:
+        pass
+    return {}
+
 def _write_atomic(fp: Path, text: str) -> None:
     """Atomic write: prevents readers from seeing partial files."""
     tmp = fp.with_suffix(fp.suffix + ".tmp")
@@ -348,6 +360,7 @@ async def engine_loop(interval: float = 10.0):
                     "positionsMeta": getattr(export_positions, "meta", {"count": 0, "byCurrency": {}, "usdByCurrency": {}, "grandUSD": 0.0}),
                     "sparks": sparks,  # symbol -> [0..1] series (may be empty initially)
                     "positions": positions,  # <-- now included in bootstrap/SSE
+                    "names": _read_pretty_names(),   # <-- add this line
                 }
                 # Write atomically so web readers never see partial JSON
                 _write_atomic(STATE_FP, json.dumps(snap, separators=(",", ":"), ensure_ascii=False))

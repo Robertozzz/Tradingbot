@@ -38,6 +38,49 @@ ORDERS_LOG = RUNTIME / "orders.log"
 CACHE_DIR = RUNTIME / "cache"
 CACHE_DIR.mkdir(parents=True, exist_ok=True)
 XPRA_TOGGLE = RUNTIME / "xpra_main_enabled.conf"
+# near other cache helpers
+PRETTY_NAMES_FILE = CACHE_DIR / "pretty_names.json"
+
+def _names_read() -> dict[str, str]:
+    d = _cache_read(PRETTY_NAMES_FILE.name, {})
+    return d if isinstance(d, dict) else {}
+
+def _names_write(d: dict[str, str]) -> None:
+    # keep it bounded and sanitized
+    clean = {}
+    for k, v in (d or {}).items():
+        ks = str(k)[:200]
+        vs = str(v)[:400]
+        if ks and vs:
+            clean[ks] = vs
+    _cache_write(PRETTY_NAMES_FILE.name, clean)
+
+@router.get("/names")
+async def names_get():
+    """
+    Return { "CID:123": "Alphabet Inc", "SYM:AAPL": "Apple Inc", ... }.
+    """
+    return _names_read()
+
+@router.post("/names")
+async def names_set(payload: dict = Body(...)):
+    """
+    Upsert one or more pretty names.
+    Body can be { "key": "CID:123", "value": "Nice Name" }
+    or a dict { "CID:123": "Nice Name", "SYM:AAPL": "Other" }.
+    """
+    cur = _names_read()
+    if "key" in payload and "value" in payload:
+        k, v = str(payload["key"]), str(payload["value"])
+        if k and v:
+            cur[k] = v
+    else:
+        for k, v in (payload or {}).items():
+            k = str(k); v = str(v)
+            if k and v:
+                cur[k] = v
+    _names_write(cur)
+    return {"ok": True, "count": len(cur)}
 
 def _safe_name(s: str) -> str:
     return re.sub(r"[^A-Za-z0-9_.-]+", "_", s)[:180]
