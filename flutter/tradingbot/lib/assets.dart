@@ -25,6 +25,9 @@ class _AssetsPageState extends State<AssetsPage> {
       {}; // conId -> {unrealized, realized, daily}
   // cache of pretty names keyed by conId (fallback to symbol key)
   final Map<String, String> _names = {};
+  // cache last seen table prices so the cell never flickers back to "—"
+  final Map<int, num> _lastPxByCid = {};
+  final Map<String, num> _lastPxBySym = {};
   final _searchCtl = TextEditingController();
   StreamSubscription<Map<String, dynamic>>? _orderBusSub;
   VoidCallback? _snapListen;
@@ -382,7 +385,13 @@ class _AssetsPageState extends State<AssetsPage> {
                     ],
                     selected: {_sparkTf},
                     onSelectionChanged: (s) {
-                      setState(() => _sparkTf = s.first);
+                      setState(() {
+                        _sparkTf = s.first;
+                        // visually indicate refresh; avoid stale-looking sparks
+                        _sparks.clear();
+                        _sparkRanges.clear();
+                        _sparkTimes.clear();
+                      });
                       // Re-load sparks for visible positions under new TF.
                       for (final m in _ibkrPos) {
                         final s = (m['symbol'] ?? '').toString();
@@ -460,8 +469,17 @@ class _AssetsPageState extends State<AssetsPage> {
                           currency: (m['currency'] ?? '').toString(),
                         ),
                         builder: (_, snap) {
-                          final px = (snap.data?['last'] ?? snap.data?['close'])
-                              as num?;
+                          final q = snap.data;
+                          final pxNet = (q?['last'] ?? q?['close']) as num?;
+                          // prefer cached value if this poll hasn’t returned yet
+                          final cached = conId != null
+                              ? _lastPxByCid[conId]
+                              : _lastPxBySym[sym];
+                          final px = pxNet ?? cached;
+                          if (pxNet != null) {
+                            if (conId != null) _lastPxByCid[conId] = pxNet;
+                            _lastPxBySym[sym] = pxNet;
+                          }
                           return Text(px == null ? '—' : fMoney.format(px));
                         },
                       )),
@@ -646,6 +664,55 @@ class _AssetPanelState extends State<_AssetPanel> {
     return null;
   }
 
+  // --- Chart timeframe for the trade panel ---
+  String _tf = '1D';
+  static const Map<String, Map<String, String>> _tfParams = {
+    '1D': {'duration': '1 D', 'barSize': '5 mins'},
+    '5D': {'duration': '5 D', 'barSize': '30 mins'},
+    '1M': {'duration': '1 M', 'barSize': '1 day'},
+    '3M': {'duration': '3 M', 'barSize': '1 day'},
+    '1Y': {'duration': '1 Y', 'barSize': '1 week'},
+  };
+
+// === Global (in-memory, app-lifetime) caches ===
+  static final Map<int, Map<String, dynamic>> _lastQuoteByCid = {};
+  static final Map<String, Map<String, dynamic>> _lastQuoteBySym = {};
+  static final Map<String, String> _prettyNameCache =
+      {}; // key: 'CID:123' or 'SYM:AAPL'
+
+// Robust number extractor (handles num or string "123.45")
+  double? _num(dynamic v) {
+    if (v == null) return null;
+    if (v is num) return v.toDouble();
+    if (v is String)
+      return double.tryParse(v.replaceAll(RegExp(r'[^\d\.\-]'), ''));
+    return null;
+  }
+
+  void _applyQuote(Map<String, dynamic>? q) {
+    if (q == null) return;
+    setState(() {
+      _bid = _num(q['bid'] ?? q['bidPrice'] ?? q['BID']);
+      _ask = _num(q['ask'] ?? q['askPrice'] ?? q['ASK']);
+      _last = _num(q['last'] ?? q['lastPrice'] ?? q['close'] ?? q['MARK']);
+    });
+  }
+
+  void _rememberQuote(int? conId, String sym, Map<String, dynamic> q) {
+    if (conId != null) {
+      _lastQuoteByCid[conId] = q;
+    } else {
+      _lastQuoteBySym[sym] = q;
+    }
+  }
+
+  void _rememberPrettyName(String name) {
+    if (name.trim().isEmpty) return;
+    final cid = (widget.pos['conId'] as num?)?.toInt();
+    final key = cid != null ? 'CID:$cid' : 'SYM:${widget.symbol}';
+    _prettyNameCache[key] = name.trim();
+  }
+
   bool _isTerminal(String? s) {
     final st = (s ?? '').toUpperCase();
     return st == 'FILLED' ||
@@ -741,20 +808,31 @@ class _AssetPanelState extends State<_AssetPanel> {
     _quoteLive = widget.quote;
     _histLive = widget.hist;
     // <-- also seed L1 so pills/notional work before the first poll tick
-    if (_quoteLive != null) {
-      _bid = (_quoteLive!['bid'] as num?)?.toDouble();
-      _ask = (_quoteLive!['ask'] as num?)?.toDouble();
-      _last = (_quoteLive!['last'] as num?)?.toDouble() ??
-          (_quoteLive!['close'] as num?)?.toDouble();
-    }
-    // Seed a nice display name if the caller already had it cached.
+    if (_quoteLive != null) _applyQuote(_quoteLive);
+
+    // 1) Seed pretty name from any cache/snapshot first
+    final cid = (widget.pos['conId'] as num?)?.toInt();
+    final nameKey = cid != null ? 'CID:$cid' : 'SYM:${widget.symbol}';
+    final snapNames =
+        (OrderEvents.instance.snapshotVN.value['names'] as Map?) ?? const {};
+    final snapName = snapNames[cid?.toString()] ?? snapNames[widget.symbol];
+    final cachedName = _prettyNameCache[nameKey];
     final seeded = (widget.pos['prettyName'] as String?);
     if (seeded != null && seeded.isNotEmpty) {
       _assetName = seeded;
+    } else if (cachedName != null && cachedName.isNotEmpty) {
+      _assetName = cachedName;
+    } else if (snapName is String && snapName.isNotEmpty) {
+      _assetName = snapName;
+      _rememberPrettyName(snapName);
     } else {
-      // Fall back to a quick lookup.
-      _loadPrettyName();
+      _loadPrettyName(); // falls back to search once, then caches
     }
+
+    // 2) Seed quotes from cache so Bid/Mid/Ask show immediately
+    final cachedQ =
+        cid != null ? _lastQuoteByCid[cid] : _lastQuoteBySym[widget.symbol];
+    if (cachedQ != null) _applyQuote(cachedQ);
     _refreshLive(silent: true);
     // If history wasn’t provided, fetch it right away so the chart appears quickly.
     if (_histLive == null) {
@@ -776,13 +854,9 @@ class _AssetPanelState extends State<_AssetPanel> {
           currency: _bestCurrency() ?? '',
         );
         if (!mounted) return;
-        setState(() {
-          _quoteLive = q;
-          _bid = (q['bid'] as num?)?.toDouble();
-          _ask = (q['ask'] as num?)?.toDouble();
-          _last = (q['last'] as num?)?.toDouble() ??
-              (q['close'] as num?)?.toDouble();
-        });
+        setState(() => _quoteLive = q);
+        _applyQuote(q);
+        _rememberQuote(conId, widget.symbol, q);
       } catch (_) {}
     });
     // No listener needed here; dialog listens to VN for sizing.
@@ -912,11 +986,12 @@ class _AssetPanelState extends State<_AssetPanel> {
       final what =
           (st == 'FX' || st == 'CASH' || st == 'IND') ? 'MIDPOINT' : 'TRADES';
       final useRth = !(st == 'FX' || st == 'CASH');
+      final p = _tfParams[_tf]!;
       final h = await Api.ibkrHistory(
         conId: conId,
         symbol: widget.symbol,
-        duration: '5 D',
-        barSize: '30 mins',
+        duration: p['duration']!,
+        barSize: p['barSize']!,
         what: what,
         useRTH: useRth,
         secType: st,
@@ -928,6 +1003,8 @@ class _AssetPanelState extends State<_AssetPanel> {
         _quoteLive = q;
         _histLive = h;
       });
+      _applyQuote(q);
+      _rememberQuote(conId, widget.symbol, q);
     } catch (_) {}
   }
 
@@ -1267,6 +1344,30 @@ class _AssetPanelState extends State<_AssetPanel> {
               ]),
           ]),
         ],
+
+        const SizedBox(height: 8),
+        // ---- panel timeframe selector ----
+        Row(
+          children: [
+            const Text('Timeframe'),
+            const SizedBox(width: 8),
+            SegmentedButton<String>(
+              segments: const [
+                ButtonSegment(value: '1D', label: Text('1d')),
+                ButtonSegment(value: '5D', label: Text('5d')),
+                ButtonSegment(value: '1M', label: Text('1m')),
+                ButtonSegment(value: '3M', label: Text('3m')),
+                ButtonSegment(value: '1Y', label: Text('1y')),
+              ],
+              selected: {_tf},
+              onSelectionChanged: (s) {
+                setState(() => _tf = s.first);
+                _reloadQuoteHist();
+              },
+            ),
+            const Spacer(),
+          ],
+        ),
         const SizedBox(height: 8),
         AnimatedContainer(
           duration: const Duration(milliseconds: 220),
