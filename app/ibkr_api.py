@@ -13,6 +13,7 @@ from collections import defaultdict, deque
 from datetime import datetime, timezone
 from fastapi import Request
 from xml.etree import ElementTree as ET
+from typing import Deque
 
 # Router must be created before any @router.get/post decorators
 router = APIRouter(prefix="/ibkr", tags=["ibkr"])
@@ -378,8 +379,32 @@ async def _enrich_names_with_details(rows: list[dict], maxn: int = 6) -> None:
             prim_exch = getattr(cd.contract, "primaryExchange", None) or getattr(cd.contract, "exchange", None)
             for r in rows:
                 if r.get("conId") == cid:
+                    # Only upgrade weak or missing names.
                     if long_name and ((r.get("name") or "").strip().upper() in ("", (r.get("symbol") or "").strip().upper())):
                         r["name"] = long_name
+                        # Persist to server-side names cache without overwriting good values with empties.
+                        try:
+                            key_cid = f"CID:{int(cid)}"
+                            names = _names_read()
+                            names[key_cid] = long_name
+                            # Also alias by symbol if we have one
+                            sym_here = (r.get("symbol") or "").strip().upper()
+                            if sym_here:
+                                names[f"SYM:{sym_here}"] = long_name
+                            _names_write(names)
+                        except Exception:
+                            pass
+                        # Write-through to pretty-names cache so future loads are instant
+                        try:
+                            names = _names_read()
+                            names[f"CID:{int(cid)}"] = long_name
+                            sym_here = (r.get("symbol") or "").upper()
+                            if sym_here:
+                                names[f"SYM:{sym_here}"] = long_name
+                            _names_write(names)
+                        except Exception:
+                            # Cache write is best-effort; never block the UI on this.
+                            pass
                     if prim_exch and not r.get("primaryExchange"):
                         r["primaryExchange"] = prim_exch
         except Exception:
@@ -1510,48 +1535,69 @@ async def quote(
     cache_key = f"quote-{_safe_name(str(conId or 'sym-'+str(symbol or '')))}.json"
     try:
         await _ensure_connected()
-    except Exception as e:
+    except Exception:
         cached = _cache_read(cache_key, None)
         if cached is not None:
             return cached
-        # fall through to return an empty-like structure
+        # return an empty skeleton
+        return {"conId": conId, "symbol": symbol, "last": None, "close": None, "bid": None, "ask": None,
+                "high": None, "low": None, "time": None}
+
     c = _mk_contract(symbol, conId, exchange, secType, currency)
-    # qualify conId-only contracts so exchange/currency are present
+    # Always attempt qualification when conId path is used to ensure exch/ccy
     if conId and (not getattr(c, "exchange", None) or not getattr(c, "currency", None)):
         try:
             [c] = await ib.qualifyContractsAsync(c)
         except Exception:
             pass
+
+    # 1) Try fast snapshot tickers
     try:
         tkrs = await ib.reqTickersAsync(c)
         t = tkrs[0] if tkrs else None
-        if not t or all(getattr(t, f, None) is None for f in ("last", "close", "bid", "ask")):
-            # one-shot snapshot fallback (for accounts without live ticks)
-            tkr = ib.reqMktData(c, snapshot=True)
+    except Exception:
+        t = None
+
+    # 2) Snapshot path with short polling (covers delayed data)
+    if not t or all(getattr(t, f, None) is None for f in ("last", "close", "bid", "ask")):
+        tkr = ib.reqMktData(c, snapshot=True)
+        # short poll up to ~1.5s
+        for _ in range(6):
             await asyncio.sleep(0.25)
+            t = next((x for x in ib.tickers() if getattr(x.contract, "conId", None) == getattr(c, "conId", None)), None)
+            if t and any(getattr(t, f, None) is not None for f in ("last", "close", "bid", "ask", "delayedLast", "delayedBid", "delayedAsk", "delayedClose")):
+                break
+        try:
             ib.cancelMktData(c)
-            t = next((x for x in ib.tickers() if x.contract.conId == getattr(c, "conId", None)), None)
-    except Exception as e:
-        raise HTTPException(502, detail=f"quote failed: {e!s}")
-    out = {
+        except Exception:
+            pass
+
+    def pick_live_or_delayed(obj, live, delayed):
+        v = getattr(obj, live, None)
+        if v is None:
+            v = getattr(obj, delayed, None)
+        return _num_or_none(v)
+
+    if not t:
+        out = {
             "conId": getattr(c, "conId", None),
             "symbol": getattr(c, "localSymbol", None) or getattr(c, "symbol", None),
             "last": None, "close": None, "bid": None, "ask": None,
             "high": None, "low": None, "time": None,
         }
-    if not t:
         _cache_write(cache_key, out)
         return out
+
     out = {
         "conId": getattr(t.contract, "conId", None),
         "symbol": getattr(t.contract, "localSymbol", None) or t.contract.symbol,
-        "last": _num_or_none(t.last),
-        "close": _num_or_none(t.close),
-        "bid": _num_or_none(t.bid),
-        "ask": _num_or_none(t.ask),
-        "high": _num_or_none(t.high),
-        "low": _num_or_none(t.low),
-        "time": util.formatIBDatetime(t.time) if getattr(t, "time", None) else None,
+        "last": pick_live_or_delayed(t, "last", "delayedLast"),
+        "close": pick_live_or_delayed(t, "close", "delayedClose"),
+        "bid": pick_live_or_delayed(t, "bid", "delayedBid"),
+        "ask": pick_live_or_delayed(t, "ask", "delayedAsk"),
+        "high": _num_or_none(getattr(t, "high", None)),
+        "low": _num_or_none(getattr(t, "low", None)),
+        "time": util.formatIBDatetime(getattr(t, "time", None)) if getattr(t, "time", None) else None,
     }
     _cache_write(cache_key, out)
     return out
@@ -1747,6 +1793,8 @@ TICKS_SUBS: dict[tuple[int, str], set[asyncio.Queue]] = defaultdict(set)
 TICKS_ACTIVE: set[tuple[int, str]] = set()
 # Small last-value cache for replay on connect
 TICKS_LAST: dict[tuple[int, str], dict] = {}
+# NEW: small *history* buffer per (conId,type) so we can serve last-N via HTTP
+TICKS_BUF: dict[tuple[int, str], Deque[dict]] = defaultdict(lambda: deque(maxlen=1000))
 
 def _tick_time_to_iso(ts: int | float | None) -> tuple[int | None, str | None]:
     try:
@@ -1761,6 +1809,10 @@ def _tick_time_to_iso(ts: int | float | None) -> tuple[int | None, str | None]:
 def _emit_tick(conId: int, typ: str, payload: dict):
     key = (int(conId), typ)
     TICKS_LAST[key] = payload
+    try:
+        TICKS_BUF[key].append(payload)
+    except Exception:  # extremely defensive
+        pass
     for q in list(TICKS_SUBS.get(key, set())):
         try:
             q.put_nowait(payload)
@@ -1878,6 +1930,216 @@ def _maybe_unsubscribe_tick(conId: int, typ: str):
         pass
     finally:
         TICKS_ACTIVE.discard(key)
+# === Compatibility aliases + light feature endpoints for frontend ===
+
+@router.get("/ticks/history")
+async def ticks_history_alias(conId: int, types: str = "trades", limit: int = 500):
+    """
+    Alias for /ticks with friendlier 'types' names used by the frontend:
+      trades -> last, bid -> bidask, ask -> bidask, mid -> midpoint, all -> bidask,last,midpoint
+    """
+    m = {
+        "trades": "last",
+        "trade": "last",
+        "bid": "bidask",
+        "ask": "bidask",
+        "mid": "midpoint",
+        "midpoint": "midpoint",
+        "all": "bidask,last,midpoint",
+    }
+    # map a CSV like "trades,bid" to our types
+    mapped = []
+    for t in (types or "").split(","):
+        t = t.strip().lower()
+        mapped.append(m.get(t, t))
+    # collapse and dedupe
+    want = []
+    seen = set()
+    for t in ",".join(mapped).split(","):
+        tt = t.strip()
+        if tt and tt in ("bidask", "last", "midpoint") and tt not in seen:
+            seen.add(tt); want.append(tt)
+    if not want:
+        want = ["last"]
+    return await ticks_recent(conId=conId, types=",".join(want), limit=limit)  # reuse existing impl
+
+
+@router.get("/executions")
+async def executions(days: int = 7, conId: int | None = None, symbol: str | None = None):
+    """
+    Recent executions across the account (optionally filtered by conId or symbol).
+    Mirrors data shape used in realized_pnl, but returns all matches.
+    """
+    await _ensure_connected()
+    since = datetime.utcnow().timestamp() - max(1, int(days)) * 86400
+    exe_filter = util.ExecutionFilter(time=datetime.utcfromtimestamp(since))
+    exes = await ib.reqExecutionsAsync(exe_filter)
+    out = []
+    symU = (symbol or "").strip().upper()
+    for r in exes or []:
+        try:
+            c = getattr(r, "contract", None)
+            if not c:
+                continue
+            if conId is not None and int(getattr(c, "conId", -1)) != int(conId):
+                continue
+            if symU and ((getattr(c, "localSymbol", "") or getattr(c, "symbol", "") or "").upper() != symU):
+                continue
+            cr = getattr(r, "commissionReport", None)
+            out.append({
+                "time": util.formatIBDatetime(getattr(r, "time", None)) if getattr(r, "time", None) else None,
+                "conId": getattr(c, "conId", None),
+                "symbol": getattr(c, "localSymbol", None) or getattr(c, "symbol", None),
+                "side": getattr(r, "side", None),
+                "price": _num_or_none(getattr(r, "price", None)),
+                "shares": _num_or_none(getattr(r, "shares", None)),
+                "commission": _num_or_none(getattr(cr, "commission", None)) if cr else None,
+                "realizedPNL": _num_or_none(getattr(cr, "realizedPNL", None)) if cr else None,
+                "orderId": getattr(r, "orderId", None),
+                "execId": getattr(r, "execId", None),
+            })
+        except Exception:
+            continue
+    return out
+
+
+@router.get("/fills")
+async def fills(days: int = 7, conId: int | None = None, symbol: str | None = None):
+    """
+    Thin alias of /executions for UI naming harmony.
+    """
+    return await executions(days=days, conId=conId, symbol=symbol)  # type: ignore[arg-type]
+
+
+@router.get("/fundamentals")
+async def fundamentals(conId: int | None = None, symbol: str | None = None, report: str = "snapshot"):
+    """
+    Simple wrapper over IB Fundamental Data.
+    report: 'snapshot' -> ReportSnapshot
+            'ratios'   -> Ratios
+            'financials' -> ReportsFinStatements
+            (anything else is passed through)
+    """
+    await _ensure_connected()
+    if not conId and not symbol:
+        raise HTTPException(400, "conId or symbol required")
+    c = await _contract_from_conid(int(conId)) if conId else await _resolve_contract(symbol or "", "STK", "SMART", "USD")
+    rpt_map = {
+        "snapshot": "ReportSnapshot",
+        "ratios": "Ratios",
+        "financials": "ReportsFinStatements",
+    }
+    rpt = rpt_map.get((report or "").lower(), report or "ReportSnapshot")
+    try:
+        xml = await ib.reqFundamentalDataAsync(c, reportType=rpt)
+    except Exception as e:
+        raise HTTPException(502, f"fundamentals fetch failed: {e!s}")
+    # Return both raw XML (string) and a naive HTML mirror for convenience
+    return {"conId": getattr(c, "conId", None), "symbol": getattr(c, "symbol", None), "report": rpt, "xml": xml, "html": xml}
+
+
+@router.get("/greeks")
+async def greeks(conId: int):
+    """
+    Snapshot of option greeks/model for an option contract (if entitled).
+    For non-derivatives or missing entitlements, returns neutral nulls.
+    """
+    await _ensure_connected()
+    c = await _contract_from_conid(int(conId))
+    # request snapshot market data; modelGreeks usually appears here
+    tkr = ib.reqMktData(c, snapshot=True)
+    await asyncio.sleep(0.4)
+    ib.cancelMktData(c)
+    t = next((x for x in ib.tickers() if getattr(x.contract, "conId", None) == int(conId)), None)
+    mg = getattr(t, "modelGreeks", None) if t else None
+    out = {
+        "conId": int(conId),
+        "impliedVol": _num_or_none(getattr(mg, "impliedVol", None)) if mg else None,
+        "delta": _num_or_none(getattr(mg, "delta", None)) if mg else None,
+        "gamma": _num_or_none(getattr(mg, "gamma", None)) if mg else None,
+        "vega": _num_or_none(getattr(mg, "vega", None)) if mg else None,
+        "theta": _num_or_none(getattr(mg, "theta", None)) if mg else None,
+        "underPrice": _num_or_none(getattr(mg, "undPrice", None)) if mg else None,
+        "theoPrice": _num_or_none(getattr(t, "theoPrice", None)) if t else None,
+        "time": util.formatIBDatetime(getattr(t, "time", None)) if t and getattr(t, "time", None) else None,
+    }
+    return out
+
+# --- fast label lookup by conId (fill longName and cache) -------------------
+async def _long_name_for_conid(cid: int) -> str | None:
+    try:
+        cds = await ib.reqContractDetailsAsync(Contract(conId=int(cid)))
+        if cds:
+            nm = getattr(cds[0], "longName", None) or getattr(cds[0], "description", None)
+            return nm
+    except Exception:
+        return None
+    return None
+
+def _names_cache_key_for(c: Contract | None = None, conId: int | None = None, symbol: str | None = None) -> str:
+    if c and getattr(c, "conId", None):
+        return f"CID:{c.conId}"
+    if conId:
+        return f"CID:{int(conId)}"
+    if symbol:
+        return f"SYM:{str(symbol).upper()}"
+    return ""
+
+@router.get("/contract/label")
+async def contract_label(conId: int | None = None, symbol: str | None = None):
+    """
+    Returns { conId, symbol, name } with best-effort longName enrichment.
+    Uses and updates the pretty-names cache so subsequent loads are instant.
+    """
+    if not conId and not symbol:
+        raise HTTPException(400, "conId or symbol required")
+    c = await _contract_from_conid(int(conId)) if conId else await _resolve_contract(symbol or "", "STK", "SMART", "USD")
+    key = _names_cache_key_for(c)
+    names = _names_read()
+    pretty = names.get(key)
+    if not pretty:
+        nm = await _long_name_for_conid(int(getattr(c, "conId", 0)))
+        if nm:
+            names[key] = nm
+            # also index by symbol for convenience
+            if getattr(c, "localSymbol", None) or getattr(c, "symbol", None):
+                names[_names_cache_key_for(symbol=(getattr(c, "localSymbol", None) or getattr(c, "symbol", None)))] = nm
+            _names_write(names)
+            pretty = nm
+    return {
+        "conId": getattr(c, "conId", None),
+        "symbol": getattr(c, "localSymbol", None) or getattr(c, "symbol", None),
+        "name": pretty or getattr(c, "symbol", None),
+    }
+
+
+@router.get("/transactions")
+async def transactions(days: int = 90):
+    """
+    Placeholder: IB API doesn’t expose a simple REST for cash transactions here.
+    Returns an empty array so the UI can render gracefully.
+    (Consider Flex queries or account downloads for real data.)
+    """
+    return []
+
+
+@router.get("/dividends")
+async def dividends(days: int = 365):
+    """
+    Placeholder for account-level dividend history.
+    Returns an empty array to keep UI happy until a data source is wired.
+    """
+    return []
+
+
+@router.get("/taxlots")
+async def taxlots(conId: int):
+    """
+    Placeholder for tax lot breakdown by instrument; IBKR API access is limited here.
+    Returns an empty array for now.
+    """
+    return []
+
 
 @router.get("/ticks/stream")
 async def ticks_stream(
@@ -1932,6 +2194,39 @@ async def ticks_stream(
                 _maybe_unsubscribe_tick(*k)
 
     return StreamingResponse(_gen(), media_type="text/event-stream")
+
+@router.get("/ticks")
+async def ticks_recent(
+    conId: int,
+    types: str = "bidask,last",
+    limit: int = 200
+):
+    """
+    Return last-N cached tick prints for requested types (best-effort, in-memory).
+    This complements /ticks/stream which is SSE.
+    """
+    # ensure we have a live subscription so the buffer fills
+    wanted = []
+    for t in (types or "").split(","):
+        tt = t.strip().lower()
+        if tt in ("bidask","last","midpoint"):
+            wanted.append(tt)
+    if not wanted:
+        raise HTTPException(400, "types must include at least one of bidask,last,midpoint")
+    for typ in wanted:
+        try:
+            await _ensure_tick_subscription(int(conId), typ)
+        except Exception:
+            # If we cannot subscribe, still try to serve whatever we have
+            pass
+    out: dict[str, list[dict]] = {}
+    lim = max(1, min(2000, int(limit)))
+    for typ in wanted:
+        buf = list(TICKS_BUF.get((int(conId), typ), deque()))
+        out[typ] = buf[-lim:]
+    # also include the most recent unified view for convenience
+    out["_last"] = [TICKS_LAST[k] for k in [(int(conId), t) for t in wanted] if k in TICKS_LAST]
+    return out
 
 # --- expanded / “full” quote ------------------------------------------------
 @router.get("/quote/full")
@@ -2066,6 +2361,54 @@ async def contract_details(
             "secIdList": getattr(cd, "secIdList", None),
         }
     return {"details": [_cd_json(cd) for cd in cds]}
+
+def _parse_ib_hours(s: str | None) -> list[dict]:
+    """
+    Parse IB's tradingHours/liquidHours format like 'YYYYMMDD:HHMM-HHMM;YYYYMMDD:CLOSED;...'
+    into a structured list.
+    """
+    out = []
+    if not s:
+        return out
+    for part in str(s).split(";"):
+        part = part.strip()
+        if not part:
+            continue
+        if ":" not in part:
+            continue
+        day, span = part.split(":", 1)
+        if span.upper() == "CLOSED":
+            out.append({"date": day, "closed": True})
+            continue
+        if "-" in span:
+            o, c = span.split("-", 1)
+            out.append({"date": day, "open": o, "close": c, "closed": False})
+    return out
+
+@router.get("/tradinghours")
+async def trading_hours(
+    conId: int | None = None,
+    symbol: str | None = None,
+    exchange: str = "SMART",
+):
+    """
+    Convenience endpoint exposing trading/liquid hours without the full details blob.
+    """
+    await _ensure_connected()
+    c = await _contract_from_conid(int(conId)) if conId else await _resolve_contract(symbol or "", "STK", exchange, "USD")
+    cds = await ib.reqContractDetailsAsync(c)
+    if not cds:
+        raise HTTPException(404, "No contract details")
+    cd = cds[0]
+    th = getattr(cd, "tradingHours", None)
+    lh = getattr(cd, "liquidHours", None)
+    return {
+        "contract": _contract_json(cd.contract),
+        "tradingHours": th,
+        "liquidHours": lh,
+        "tradingHoursParsed": _parse_ib_hours(th),
+        "liquidHoursParsed": _parse_ib_hours(lh),
+    }
 
 # --- Market depth (Level 2) -------------------------------------------------
 @router.get("/marketdepth")
@@ -2257,6 +2600,20 @@ async def what_if(payload: dict = Body(...)):
         "warningText": getattr(rep, "warningText", None),
     }
 
+@router.post("/commission/preview")
+async def commission_preview(payload: dict = Body(...)):
+    """
+    Thin alias to /whatif focused on commission preview.
+    Body: { conId, side, type, qty, limitPrice? }
+    """
+    res = await what_if(payload)  # type: ignore[arg-type]
+    return {
+        "commission": res.get("commission"),
+        "minCommission": res.get("minCommission"),
+        "maxCommission": res.get("maxCommission"),
+        "warningText": res.get("warningText"),
+    }
+
 # --- Shortability & borrow fee snapshot ------------------------------------
 @router.get("/shortability")
 async def shortability(conId: int):
@@ -2278,6 +2635,19 @@ async def shortability(conId: int):
         "feeRate": _num_or_none(getattr(t, "feeRate", None)),
         "rebateRate": _num_or_none(getattr(t, "rebateRate", None)),
         "timestamp": util.formatIBDatetime(getattr(t, "time", None)) if getattr(t, "time", None) else None,
+    }
+
+@router.get("/borrowrate")
+async def borrow_rate(conId: int):
+    """
+    Alias of /shortability that returns only the fee/rebate rates.
+    """
+    d = await shortability(conId)  # type: ignore[arg-type]
+    return {
+        "conId": d.get("conId"),
+        "feeRate": d.get("feeRate"),
+        "rebateRate": d.get("rebateRate"),
+        "timestamp": d.get("timestamp"),
     }
 
 # --- “Realized PnL” as executions list (client can compute) ----------------

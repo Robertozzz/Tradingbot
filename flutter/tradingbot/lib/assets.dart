@@ -57,7 +57,11 @@ class _AssetsPageState extends State<AssetsPage> {
                       k.toString().startsWith('SYM:')
                   ? k.toString()
                   : 'SYM:${k.toString()}');
-          _AssetPanelState._prettyNameCache[key] = name;
+          // Harden: only improve, never downgrade an existing pretty name.
+          final existing = _AssetPanelState._prettyNameCache[key];
+          if (existing == null || existing.trim().isEmpty) {
+            _AssetPanelState._prettyNameCache[key] = name;
+          }
         });
         if (mounted) setState(() {}); // repaint any open tables
       } catch (_) {
@@ -168,11 +172,14 @@ class _AssetsPageState extends State<AssetsPage> {
         final rawKey = entry.key;
         final name = (entry.value ?? '').toString();
         if (name.isEmpty) continue;
-        if (rawKey is num ||
-            (rawKey is String && int.tryParse(rawKey) != null)) {
-          _names['CID:${int.parse(rawKey.toString())}'] = name;
-        } else {
-          _names['SYM:${rawKey.toString()}'] = name;
+        final k = (rawKey is num ||
+                (rawKey is String && int.tryParse(rawKey) != null))
+            ? 'CID:${int.parse(rawKey.toString())}'
+            : 'SYM:${rawKey.toString()}';
+        // Harden: don't overwrite an existing non-empty pretty name.
+        final existing = _names[k];
+        if (existing == null || existing.trim().isEmpty) {
+          _names[k] = name;
         }
       }
     });
@@ -338,7 +345,14 @@ class _AssetsPageState extends State<AssetsPage> {
         return (m['name'] ?? m['description'] ?? '').toString();
       })();
       if (name != null && name.trim().isNotEmpty && mounted) {
-        setState(() => _names[key] = name!.trim());
+        final candidate = name.trim();
+        final existing = _names[key];
+        // Harden: only set if empty or strictly longer than what's there.
+        if (existing == null ||
+            existing.trim().isEmpty ||
+            candidate.length > existing.length) {
+          setState(() => _names[key] = candidate);
+        }
       }
     } catch (_) {
       // ignore; leave blank
@@ -684,6 +698,19 @@ class _AssetPanelState extends State<_AssetPanel> {
   StreamSubscription<Map<String, dynamic>>? _orderBusSub;
   Timer? _ordersPoll;
   StreamSubscription<SSEModel>? _ticksSub; // live tick SSE
+  // --- Live tick ring buffer for debug bundle ---
+  static const int _ticksTailMax = 200;
+  final List<Map<String, dynamic>> _ticksTail = <Map<String, dynamic>>[];
+  void _pushTick(Map<String, dynamic> t) {
+    // Add a client timestamp so we can correlate with UI updates
+    t['tsClient'] = DateTime.now().toIso8601String();
+    _ticksTail.add(t);
+    final over = _ticksTail.length - _ticksTailMax;
+    if (over > 0) {
+      _ticksTail.removeRange(0, over);
+    }
+  }
+
   DateTime? _parseBarTime(dynamic raw) {
     if (raw == null) return null;
     if (raw is int) {
@@ -730,10 +757,13 @@ class _AssetPanelState extends State<_AssetPanel> {
 
   void _applyQuote(Map<String, dynamic>? q) {
     if (q == null) return;
+    final nbid = _num(q['bid'] ?? q['bidPrice'] ?? q['BID']);
+    final nask = _num(q['ask'] ?? q['askPrice'] ?? q['ASK']);
+    final nlast = _num(q['last'] ?? q['lastPrice'] ?? q['close'] ?? q['MARK']);
     setState(() {
-      _bid = _num(q['bid'] ?? q['bidPrice'] ?? q['BID']);
-      _ask = _num(q['ask'] ?? q['askPrice'] ?? q['ASK']);
-      _last = _num(q['last'] ?? q['lastPrice'] ?? q['close'] ?? q['MARK']);
+      if (nbid != null) _bid = nbid; // keep previous if null
+      if (nask != null) _ask = nask; // keep previous if null
+      if (nlast != null) _last = nlast; // keep previous if null
     });
   }
 
@@ -925,6 +955,10 @@ class _AssetPanelState extends State<_AssetPanel> {
           try {
             final m = jsonDecode(evt.data!);
             final t = (m['type'] ?? '').toString();
+            // Always push a normalized copy of the raw tick into the ring buffer
+            if (m is Map) {
+              _pushTick(Map<String, dynamic>.from(m));
+            }
             if (t == 'bidask') {
               final bid = (m['bid'] as num?)?.toDouble();
               final ask = (m['ask'] as num?)?.toDouble();
@@ -997,14 +1031,19 @@ class _AssetPanelState extends State<_AssetPanel> {
         final cid = (m['conId'] as num?)?.toInt();
         if (conId != null && cid != null && cid == conId) {
           if (mounted) {
-            setState(() => _assetName = (m['name'] ?? '').toString());
+            final nm = (m['name'] ?? '').toString();
+            setState(() => _assetName = nm);
+            // Persist to server + cache so future paints don't regress.
+            if (nm.trim().isNotEmpty) _rememberPrettyName(nm);
           }
           return;
         }
       }
       if (list.isNotEmpty && mounted) {
         final m = Map<String, dynamic>.from(list.first as Map);
-        setState(() => _assetName = (m['name'] ?? '').toString());
+        final nm = (m['name'] ?? '').toString();
+        setState(() => _assetName = nm);
+        if (nm.trim().isNotEmpty) _rememberPrettyName(nm);
       }
     } catch (_) {/* ignore */}
   }
@@ -1140,7 +1179,9 @@ class _AssetPanelState extends State<_AssetPanel> {
         'positionRow': widget.pos, // what we clicked on from the table
         'prettyName': _assetName,
         'conId': conId,
+        // Latest REST quote (fresh at load-time) and the current live snapshot
         'quote': results['quote'],
+        'liveQuoteSnapshot': _quoteLive,
         'historyMeta': (results['history'] is Map)
             ? {
                 // don’t dump every bar; it can be huge. keep meta + last few.
@@ -1179,6 +1220,8 @@ class _AssetPanelState extends State<_AssetPanel> {
         if (results['fundamentals_ratios'] != null)
           'fundamentals_ratios': results['fundamentals_ratios'],
         if (results['greeks'] != null) 'greeks': results['greeks'],
+        // Tail of recent live ticks captured from SSE (client-side)
+        'liveTicksTail': List<Map<String, dynamic>>.unmodifiable(_ticksTail),
       };
 
       _debugCtl.text = _prettyJson(bundle);
@@ -1817,12 +1860,15 @@ class _AssetPanelState extends State<_AssetPanel> {
                 const SizedBox(width: 8),
                 OutlinedButton.icon(
                   onPressed: () async {
+                    // Capture the messenger before the async gap to avoid using
+                    // BuildContext across await.
+                    final messenger = ScaffoldMessenger.of(context);
                     await Clipboard.setData(
-                        ClipboardData(text: _debugCtl.text));
-                    if (mounted) {
-                      ScaffoldMessenger.of(context).showSnackBar(
-                          const SnackBar(content: Text('Copied debug JSON')));
-                    }
+                      ClipboardData(text: _debugCtl.text),
+                    );
+                    messenger.showSnackBar(
+                      const SnackBar(content: Text('Copied debug JSON')),
+                    );
                   },
                   icon: const Icon(Icons.copy),
                   label: const Text('Copy'),

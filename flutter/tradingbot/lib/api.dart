@@ -12,6 +12,9 @@ class Api {
   static Map<String, dynamic>? lastPnlSummary;
   static final Map<String, _Memo> _memo = {};
   static const _memoTtl = Duration(seconds: 5);
+  // --- NEW: last-known quotes to prevent null regressions ---
+  static final Map<int, Map<String, dynamic>> _lastQuoteByCid = {};
+  static final Map<String, Map<String, dynamic>> _lastQuoteBySym = {};
 
   static Uri _uri(String path) {
     final p = path.startsWith('/') ? path : '/$path';
@@ -59,6 +62,14 @@ class Api {
       {required int conId, String types = 'bidask,last'}) {
     final qp = Uri(queryParameters: {'conId': '$conId', 'types': types}).query;
     return sseUrl('/ibkr/ticks/stream?$qp');
+  }
+
+  /// Alias to match the UI's current subscription path (/ibkr/ticks?...).
+  /// Keeps both endpoints available while the backend settles on one.
+  static String ibkrTicksUrl(
+      {required int conId, String types = 'bidask,last'}) {
+    final qp = Uri(queryParameters: {'conId': '$conId', 'types': types}).query;
+    return sseUrl('/ibkr/ticks?$qp');
   }
 
   static Future<Map<String, dynamic>> _getObj(String path) async {
@@ -153,7 +164,17 @@ class Api {
     params['exchange'] = exchange;
     params['currency'] = currency;
     final q = Uri(queryParameters: params).query;
-    return _getObj('/ibkr/quote?$q');
+    // Fetch fresh, then coalesce with last-known so nulls never downgrade UI.
+    final fresh = await _getObj('/ibkr/quote?$q');
+    final merged =
+        _mergeQuoteWithCache(conId: conId, symbol: symbol, fresh: fresh);
+    // Update sticky caches
+    if (conId != null) {
+      _lastQuoteByCid[conId] = merged;
+    } else if (symbol != null && symbol.isNotEmpty) {
+      _lastQuoteBySym[symbol] = merged;
+    }
+    return merged;
   }
 
   static Future<Map<String, dynamic>> ibkrHistory({
@@ -238,7 +259,7 @@ class Api {
             'barSize': barSize
           }).query}');
 
-  /// Fetch server-side pretty names as a normalized Map<String,String>.
+  /// Fetch server-side pretty names as a normalized Map String,String.
   /// Server may return "CID:123"/"SYM:AAPL" or raw "123"/"AAPL"; we normalize to strings.
   static Future<Map<String, String>> ibkrNames() async {
     final d = await _getObj('/ibkr/names');
@@ -265,6 +286,92 @@ class Api {
     final d = jsonDecode(r.body);
     if (d is! Map<String, dynamic>) throw Exception('Expected object');
     return d;
+  }
+
+  // ----------------- Helpers (private) -----------------
+  static num? _asNum(dynamic v) {
+    if (v == null) return null;
+    if (v is num) return v;
+    if (v is String) {
+      final s = v.trim();
+      if (s.isEmpty) return null;
+      return num.tryParse(s.replaceAll(RegExp(r'[^\d\.\-]'), ''));
+    }
+    return null;
+  }
+
+  static T? _preferNew<T>(T? incoming, T? prior) {
+    // Use incoming if it's non-null; otherwise keep prior.
+    return incoming ?? prior;
+  }
+
+  /// Merge a freshly fetched quote with any cached one so transient nulls
+  /// don't wipe out existing values (bid/ask/last/close & common aliases).
+  static Map<String, dynamic> _mergeQuoteWithCache({
+    required Map<String, dynamic> fresh,
+    int? conId,
+    String? symbol,
+  }) {
+    final prior = (conId != null)
+        ? _lastQuoteByCid[conId]
+        : (symbol != null && symbol.isNotEmpty
+            ? _lastQuoteBySym[symbol]
+            : null);
+    if (prior == null) return fresh;
+    final out = Map<String, dynamic>.from(fresh);
+
+    // Reconcile canonical fields
+    final bidNew = _asNum(fresh['bid'] ?? fresh['bidPrice'] ?? fresh['BID']);
+    final bidOld = _asNum(prior['bid'] ?? prior['bidPrice'] ?? prior['BID']);
+    final askNew = _asNum(fresh['ask'] ?? fresh['askPrice'] ?? fresh['ASK']);
+    final askOld = _asNum(prior['ask'] ?? prior['askPrice'] ?? prior['ASK']);
+    final lastNew = _asNum(
+        fresh['last'] ?? fresh['lastPrice'] ?? fresh['MARK'] ?? fresh['close']);
+    final lastOld = _asNum(
+        prior['last'] ?? prior['lastPrice'] ?? prior['MARK'] ?? prior['close']);
+    final closeNew = _asNum(fresh['close']);
+    final closeOld = _asNum(prior['close']);
+
+    // Canonicalize + write back to multiple common keys so both UIs & panels benefit.
+    final bidFinal = _preferNew(bidNew, bidOld);
+    final askFinal = _preferNew(askNew, askOld);
+    final lastFinal = _preferNew(lastNew, lastOld);
+    final closeFinal = _preferNew(closeNew, closeOld);
+
+    if (bidFinal != null) {
+      out['bid'] = bidFinal;
+      out['bidPrice'] = bidFinal;
+      out['BID'] = bidFinal;
+    }
+    if (askFinal != null) {
+      out['ask'] = askFinal;
+      out['askPrice'] = askFinal;
+      out['ASK'] = askFinal;
+    }
+    if (lastFinal != null) {
+      out['last'] = lastFinal;
+      out['lastPrice'] = lastFinal;
+      // Some backends use MARK as "last-like" snapshot
+      out['MARK'] = lastFinal;
+    }
+    if (closeFinal != null) {
+      out['close'] = closeFinal;
+    }
+
+    // Prefer stable identifiers from either side
+    out['conId'] = _preferNew(fresh['conId'] as int?, prior['conId'] as int?);
+    out['symbol'] =
+        _preferNew(fresh['symbol'] as String?, prior['symbol'] as String?);
+    out['secType'] =
+        _preferNew(fresh['secType'] as String?, prior['secType'] as String?);
+    out['exchange'] =
+        _preferNew(fresh['exchange'] as String?, prior['exchange'] as String?);
+    out['primaryExchange'] = _preferNew(fresh['primaryExchange'] as String?,
+        prior['primaryExchange'] as String?);
+    out['currency'] =
+        _preferNew(fresh['currency'] as String?, prior['currency'] as String?);
+
+    return out;
   }
 
   static Future<List<Map<String, dynamic>>> ibkrVerifySymbols(
@@ -323,6 +430,20 @@ class Api {
         '/ibkr/contract/details?${Uri(queryParameters: params).query}');
   }
 
+  // ── NEW: Trading hours (explicit endpoint; some backends prefer this over contract details)
+  static Future<Map<String, dynamic>> ibkrTradingHours({
+    int? conId,
+    String? symbol,
+    String exchange = 'SMART',
+  }) async {
+    final params = <String, String>{
+      if (conId != null) 'conId': '$conId',
+      if (symbol != null && symbol.isNotEmpty) 'symbol': symbol,
+      'exchange': exchange,
+    };
+    return _getObj('/ibkr/tradinghours?${Uri(queryParameters: params).query}');
+  }
+
   // ── NEW: Full quote (NBBO components, rtVolume, vwap, shortable tier/fee if exposed)
   static Future<Map<String, dynamic>> ibkrQuoteFull({
     String? symbol,
@@ -348,6 +469,11 @@ class Api {
     return _getList('/ibkr/marketdepth?${Uri(queryParameters: params).query}');
   }
 
+  /// Alias matching the name you asked for.
+  static Future<List<dynamic>> ibkrMarketDepth(
+          {required int conId, int depth = 10}) =>
+      ibkrL2(conId: conId, depth: depth);
+
   // ── NEW: Live bars stream snapshot (server provides polling/sse -> we expose GET list)
   static Future<List<dynamic>> ibkrLiveBars(
       {required int conId, String barSize = '5 secs'}) async {
@@ -361,6 +487,40 @@ class Api {
     final params = <String, String>{'underConId': '$underConId'};
     return _getObj('/ibkr/options/chain?${Uri(queryParameters: params).query}');
   }
+
+  // ── NEW: Commission preview (what-if fees/commissions)
+  static Future<Map<String, dynamic>> ibkrCommissionPreview({
+    required int conId,
+    required String side, // BUY/SELL
+    required String type, // MKT/LMT
+    required double qty,
+    double? limitPrice,
+  }) async {
+    final body = <String, dynamic>{
+      'conId': conId,
+      'side': side,
+      'type': type,
+      'qty': qty,
+      if (limitPrice != null) 'limitPrice': limitPrice,
+    };
+    return postJson('/ibkr/commission/preview', body);
+  }
+
+  // ── NEW: Margin preview (explicit endpoint aliasing your what-if)
+  static Future<Map<String, dynamic>> ibkrMarginPreview({
+    required int conId,
+    required String side,
+    required String type,
+    required double qty,
+    double? limitPrice,
+  }) =>
+      ibkrWhatIf(
+        conId: conId,
+        side: side,
+        type: type,
+        qty: qty,
+        limitPrice: limitPrice,
+      );
 
   // ── NEW: Open interest history (futures/options)
   static Future<List<dynamic>> ibkrOpenInterest(
@@ -428,6 +588,17 @@ class Api {
     return _getObj('/ibkr/shortability?${Uri(queryParameters: params).query}');
   }
 
+  /// Alias to match the name you listed.
+  static Future<Map<String, dynamic>> ibkrShortable({required int conId}) =>
+      ibkrShortability(conId: conId);
+
+  // ── NEW: Securities lending borrow rate snapshot (separate from shortability if exposed)
+  static Future<Map<String, dynamic>> ibkrBorrowRate(
+      {required int conId}) async {
+    final params = <String, String>{'conId': '$conId'};
+    return _getObj('/ibkr/borrowrate?${Uri(queryParameters: params).query}');
+  }
+
   // ── NEW: Realized P&L for a symbol (window)
   static Future<List<dynamic>> ibkrRealizedPnl(
       {required int conId, int days = 365}) async {
@@ -444,6 +615,21 @@ class Api {
       if (symbol != null && symbol.isNotEmpty) 'symbol': symbol,
     };
     return _getList('/ibkr/executions?${Uri(queryParameters: params).query}');
+  }
+
+  // ── NEW: Historical last-N ticks (separate from SSE). Path name assumes backend: /ibkr/ticks/history
+  static Future<List<dynamic>> ibkrTicks({
+    required int conId,
+    int limit = 500,
+    String types = 'trades', // or 'bid','ask','mid','all' per backend
+  }) async {
+    final params = <String, String>{
+      'conId': '$conId',
+      'limit': '$limit',
+      'types': types,
+    };
+    return _getList(
+        '/ibkr/ticks/history?${Uri(queryParameters: params).query}');
   }
 
 // Transaction history (deposits/withdrawals/dividends/fees...) – account-level.
