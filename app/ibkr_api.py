@@ -1559,7 +1559,7 @@ async def quote(
         t = None
 
     # 2) Snapshot path with short polling (covers delayed data)
-    if not t or all(getattr(t, f, None) is None for f in ("last", "close", "bid", "ask")):
+    if not t or all(getattr(t, f, None) is None for f in ("last", "close", "bid", "ask", "high", "low")):
         tkr = ib.reqMktData(c, snapshot=True)
         # short poll up to ~1.5s
         for _ in range(6):
@@ -1599,8 +1599,86 @@ async def quote(
         "low": _num_or_none(getattr(t, "low", None)),
         "time": util.formatIBDatetime(getattr(t, "time", None)) if getattr(t, "time", None) else None,
     }
+        # Historical fallback if L1 is entirely empty (protects against null bid/ask/last/close)
+    if not any([out["last"], out["bid"], out["ask"], out["close"], out["high"], out["low"]]):
+        try:
+            bars = await ib.reqHistoricalDataAsync(
+                c,
+                endDateTime="",
+                durationStr="1 D",
+                barSizeSetting="5 mins",
+                whatToShow=("MIDPOINT" if (getattr(c, "secType", "STK").upper() in ("CASH","FX","IND")) else "TRADES"),
+                useRTH=False,
+                formatDate=2,
+            )
+            if bars:
+                tail = bars[-1]
+                out["close"] = _num_or_none(getattr(tail, "close", None))
+                if out["last"] is None:
+                    out["last"] = out["close"]
+        except Exception:
+            pass
+
+    # --- Sticky cache merge: never let a spurious null overwrite good values ---
+    try:
+        prev = _cache_read(cache_key, None)
+        if isinstance(prev, dict):
+            for k in ("last", "close", "bid", "ask", "high", "low", "time"):
+                if out.get(k) is None and prev.get(k) is not None:
+                    out[k] = prev[k]
+            # also keep a non-empty symbol if this response lacks it
+            if not out.get("symbol") and prev.get("symbol"):
+                out["symbol"] = prev["symbol"]
+    except Exception:
+        pass
+    
     _cache_write(cache_key, out)
     return out
+
+# --- Compact contract endpoint (UI calls /ibkr/contract) -------------------
+@router.get("/contract")
+async def contract_base(
+    conId: int | None = None,
+    symbol: str | None = None,
+    secType: str = "STK",
+    exchange: str = "SMART",
+    currency: str = "USD",
+):
+    """
+    Lightweight contract/details for debug & UI metadata.
+    Matches front-end call to /ibkr/contract?..., complementing /ibkr/contract/details.
+    """
+    await _ensure_connected()
+    c = _mk_contract(symbol, conId, exchange, secType, currency)
+    try:
+        cds = await ib.reqContractDetailsAsync(c)
+        if not cds:
+            raise HTTPException(404, "No contract details found")
+        cd = cds[0]
+        k = cd.contract
+        return {
+            "contract": {
+                "conId": getattr(k, "conId", None),
+                "symbol": getattr(k, "symbol", None),
+                "secType": getattr(k, "secType", None),
+                "currency": getattr(k, "currency", None),
+                "exchange": getattr(k, "exchange", None),
+                "primaryExchange": getattr(k, "primaryExchange", None),
+                "localSymbol": getattr(k, "localSymbol", None),
+                "tradingClass": getattr(k, "tradingClass", None),
+                "multiplier": getattr(k, "multiplier", None),
+            },
+            "longName": getattr(cd, "longName", None) or getattr(cd, "description", None),
+            "minTick": getattr(cd, "minTick", None),
+            "priceMagnifier": getattr(cd, "priceMagnifier", None),
+            "timeZoneId": getattr(cd, "timeZoneId", None),
+            "tradingHours": getattr(cd, "tradingHours", None),
+            "liquidHours": getattr(cd, "liquidHours", None),
+        }
+    except HTTPException:
+        raise
+    except Exception as e:
+        raise HTTPException(502, f"contract lookup failed: {e!s}")
 
 # ==========================
 # Level 2 (DOM) ring buffers

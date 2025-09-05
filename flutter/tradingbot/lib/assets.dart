@@ -757,13 +757,24 @@ class _AssetPanelState extends State<_AssetPanel> {
 
   void _applyQuote(Map<String, dynamic>? q) {
     if (q == null) return;
-    final nbid = _num(q['bid'] ?? q['bidPrice'] ?? q['BID']);
-    final nask = _num(q['ask'] ?? q['askPrice'] ?? q['ASK']);
-    final nlast = _num(q['last'] ?? q['lastPrice'] ?? q['close'] ?? q['MARK']);
+
+    double? parseNum(dynamic v) {
+      if (v == null) return null;
+      if (v is num) return v.toDouble();
+      if (v is String)
+        return double.tryParse(v.replaceAll(RegExp(r'[^\d\.\-]'), ''));
+      return null;
+    }
+
+    final nbid = parseNum(q['bid'] ?? q['bidPrice'] ?? q['BID']);
+    final nask = parseNum(q['ask'] ?? q['askPrice'] ?? q['ASK']);
+    final nlast =
+        parseNum(q['last'] ?? q['lastPrice'] ?? q['close'] ?? q['MARK']);
+
     setState(() {
-      if (nbid != null) _bid = nbid; // keep previous if null
-      if (nask != null) _ask = nask; // keep previous if null
-      if (nlast != null) _last = nlast; // keep previous if null
+      if (nbid != null) _bid = nbid;
+      if (nask != null) _ask = nask;
+      if (nlast != null) _last = nlast;
     });
   }
 
